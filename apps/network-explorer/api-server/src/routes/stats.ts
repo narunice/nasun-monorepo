@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { sql, pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { OFFCHAIN_CATEGORIES } from '../config/categories.js';
@@ -48,6 +48,25 @@ function parseDays(range: string | undefined): number {
   return 7;
 }
 
+/**
+ * Uniform failure response for the read-only stats endpoints.
+ *
+ * Every loader below deliberately lets its error escape the `cached()` wrapper.
+ * `cached()` memoises only a resolved value, so a query that fails stays
+ * uncached and the next request retries -- whereas the catch-and-return-[]
+ * these handlers used to share turned a timeout into a "successfully empty"
+ * answer and pinned it for the rest of the TTL. That is how /network-summary
+ * spent months reporting uniqueAddresses = 0, and it is indistinguishable from
+ * a genuinely empty network to every caller.
+ *
+ * Shape mirrors the leaderboard's transient failure in routes/ecosystem.ts so
+ * clients only have to understand one retry contract.
+ */
+function statsUnavailable(c: Context, code: string, err: unknown) {
+  console.error(`${code} query failed:`, err);
+  return c.json({ error: code, retryAfterMs: 30_000 }, 503);
+}
+
 // Native NSN coin type as the indexer stores it (zero-padded 64-char address).
 // Spelled out rather than indexed off KNOWN_COIN_TYPES: that array carries an
 // instruction to re-sync it after every devnet reset, and a reorder there must
@@ -60,29 +79,29 @@ const ZERO_ADDRESS_BYTEA = Buffer.alloc(32);
 // Token stats: holder count + circulating supply per known coin type (DB-only)
 app.get('/tokens', async (c) => {
   const getTokenStats = cached('token-stats', 5 * 60 * 1000, async () => {
-    try {
-      const rows = await sql`
-        SELECT
-          coin_type,
-          COUNT(DISTINCT owner_id) AS holders,
-          SUM(coin_balance)::text AS circulating_supply
-        FROM objects
-        WHERE owner_type = ${OWNER_TYPE_ADDRESS}
-          AND coin_type = ANY(${KNOWN_COIN_TYPES as unknown as string[]})
-        GROUP BY coin_type
-      `;
-      return rows.map((r: Record<string, unknown>) => ({
-        coinType: normalizeAddress(r.coin_type as string),
-        holders: Number(r.holders),
-        circulatingSupply: (r.circulating_supply as string) ?? null,
-      }));
-    } catch (err) {
-      console.error('Token stats query failed:', err);
-      return [];
-    }
+    const rows = await sql`
+      SELECT
+        coin_type,
+        COUNT(DISTINCT owner_id) AS holders,
+        SUM(coin_balance)::text AS circulating_supply
+      FROM objects
+      WHERE owner_type = ${OWNER_TYPE_ADDRESS}
+        AND coin_type = ANY(${KNOWN_COIN_TYPES as unknown as string[]})
+      GROUP BY coin_type
+    `;
+    return rows.map((r: Record<string, unknown>) => ({
+      coinType: normalizeAddress(r.coin_type as string),
+      holders: Number(r.holders),
+      circulatingSupply: (r.circulating_supply as string) ?? null,
+    }));
   });
 
-  const data = await getTokenStats();
+  let data: Awaited<ReturnType<typeof getTokenStats>>;
+  try {
+    data = await getTokenStats();
+  } catch (err) {
+    return statsUnavailable(c, 'token_stats_unavailable', err);
+  }
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({ data });
 });
@@ -95,33 +114,33 @@ app.get('/daily-gas', async (c) => {
   // See scanner/network-daily-rollup.ts for why: the indexer only retains ~32 days, so
   // reading history straight from `checkpoints` capped what these charts could ever show.
   const getDailyGas = cached(`daily-gas-${days}`, 5 * 60 * 1000, async () => {
-    try {
-      const [history, today] = await Promise.all([
-        readNetworkDailyStats(days),
-        computeTodayTxGas(),
-      ]);
-      const rows = [...history.map((r) => ({
-        date: r.day,
-        totalGasCost: r.totalGasCost,
-        avgGasPerTx: r.avgGasPerTx,
-        txCount: r.txCount,
-      }))];
-      if (today) {
-        rows.push({
-          date: today.day,
-          totalGasCost: today.totalGasCost,
-          avgGasPerTx: today.avgGasPerTx,
-          txCount: today.txCount,
-        });
-      }
-      return rows;
-    } catch (err) {
-      console.error('Daily gas query failed:', err);
-      return [];
+    const [history, today] = await Promise.all([
+      readNetworkDailyStats(days),
+      computeTodayTxGas(),
+    ]);
+    const rows = [...history.map((r) => ({
+      date: r.day,
+      totalGasCost: r.totalGasCost,
+      avgGasPerTx: r.avgGasPerTx,
+      txCount: r.txCount,
+    }))];
+    if (today) {
+      rows.push({
+        date: today.day,
+        totalGasCost: today.totalGasCost,
+        avgGasPerTx: today.avgGasPerTx,
+        txCount: today.txCount,
+      });
     }
+    return rows;
   });
 
-  const data = await getDailyGas();
+  let data: Awaited<ReturnType<typeof getDailyGas>>;
+  try {
+    data = await getDailyGas();
+  } catch (err) {
+    return statsUnavailable(c, 'daily_gas_unavailable', err);
+  }
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({ data, range: `${days}d` });
 });
@@ -165,15 +184,11 @@ app.get('/top-accounts', async (c) => {
     }));
   });
 
-  // Same reasoning as network-summary: an empty array returned from a catch is
-  // indistinguishable from "this network has no accounts", and `cached()` would
-  // pin that answer for the full TTL. Fail loudly instead.
   let data: Awaited<ReturnType<typeof getTopAccounts>>;
   try {
     data = await getTopAccounts();
   } catch (err) {
-    console.error('Top accounts query failed:', err);
-    return c.json({ error: 'top_accounts_unavailable' }, 503);
+    return statsUnavailable(c, 'top_accounts_unavailable', err);
   }
   c.header('Cache-Control', 'public, max-age=60');
   return c.json({ data, count: data.length });
@@ -185,24 +200,25 @@ app.get('/active-addresses', async (c) => {
 
   // 15min TTL: today's DISTINCT sender scan is still ~14s. Before the rollup the same
   // scan ran once per day in the window, which put range=14d and 30d past the request
-  // timeout -- the catch below then returned [] and this cache served that empty array
-  // for 15 minutes, so the charts looked simply "empty" rather than broken.
+  // timeout. The catch that used to sit here then returned [] and this cache served
+  // that empty array for 15 minutes, so the charts looked simply "empty" rather than
+  // broken -- the failure mode statsUnavailable now exists to prevent.
   const getActiveAddresses = cached(`active-addresses-${days}`, 15 * 60 * 1000, async () => {
-    try {
-      const [history, today] = await Promise.all([
-        readNetworkDailyStats(days),
-        computeTodayActiveAddresses(),
-      ]);
-      const rows = history.map((r) => ({ date: r.day, activeAddresses: r.activeAddresses }));
-      if (today) rows.push({ date: today.day, activeAddresses: today.activeAddresses });
-      return rows;
-    } catch (err) {
-      console.error('Active addresses query failed:', err);
-      return [];
-    }
+    const [history, today] = await Promise.all([
+      readNetworkDailyStats(days),
+      computeTodayActiveAddresses(),
+    ]);
+    const rows = history.map((r) => ({ date: r.day, activeAddresses: r.activeAddresses }));
+    if (today) rows.push({ date: today.day, activeAddresses: today.activeAddresses });
+    return rows;
   });
 
-  const data = await getActiveAddresses();
+  let data: Awaited<ReturnType<typeof getActiveAddresses>>;
+  try {
+    data = await getActiveAddresses();
+  } catch (err) {
+    return statsUnavailable(c, 'active_addresses_unavailable', err);
+  }
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({ data, range: `${days}d` });
 });
@@ -277,8 +293,7 @@ app.get('/network-summary', async (c) => {
     fast = await getFastStats();
     slow = await getSlowStats();
   } catch (err) {
-    console.error('Network summary query failed:', err);
-    return c.json({ error: 'stats_unavailable' }, 503);
+    return statsUnavailable(c, 'network_summary_unavailable', err);
   }
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({
@@ -299,21 +314,21 @@ app.get('/daily-transactions', async (c) => {
   const days = parseDays(c.req.query('range'));
 
   const getDailyTx = cached(`daily-tx-${days}`, 5 * 60 * 1000, async () => {
-    try {
-      const [history, today] = await Promise.all([
-        readNetworkDailyStats(days),
-        computeTodayTxGas(),
-      ]);
-      const rows = history.map((r) => ({ date: r.day, transactions: r.txCount }));
-      if (today) rows.push({ date: today.day, transactions: today.txCount });
-      return rows;
-    } catch (err) {
-      console.error('Daily transactions query failed:', err);
-      return [];
-    }
+    const [history, today] = await Promise.all([
+      readNetworkDailyStats(days),
+      computeTodayTxGas(),
+    ]);
+    const rows = history.map((r) => ({ date: r.day, transactions: r.txCount }));
+    if (today) rows.push({ date: today.day, transactions: today.txCount });
+    return rows;
   });
 
-  const data = await getDailyTx();
+  let data: Awaited<ReturnType<typeof getDailyTx>>;
+  try {
+    data = await getDailyTx();
+  } catch (err) {
+    return statsUnavailable(c, 'daily_transactions_unavailable', err);
+  }
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({ data, range: `${days}d` });
 });
