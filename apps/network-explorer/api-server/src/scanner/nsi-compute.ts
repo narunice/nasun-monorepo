@@ -81,6 +81,10 @@ const MONOTONE_UP_UNTIL = process.env.NSI_MONOTONE_UP_UNTIL
 
 const BATCH_SIZE = 500;
 const STALE_SNAPSHOT_GUARD_DAYS = 2;
+// Stage C scans the indexer's whole retained tx window. It measures ~5s today
+// and scales with chain size, so it gets its own ceiling rather than inheriting
+// the 30s pool default meant for HTTP handlers.
+const TX_COUNT_TIMEOUT_MS = 300_000;
 
 let lastSuccessAt: Date | null = null;
 let errorCount24h = 0;
@@ -158,6 +162,30 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * Human-readable age of the newest `user_nsi` row, for failure alerts.
+ *
+ * Reads the table rather than the in-process `lastSuccessAt` on purpose: after
+ * a restart that variable is null, which is exactly the case where an operator
+ * most needs to know whether standing has been frozen for an hour or a month.
+ */
+async function describeStaleness(): Promise<string> {
+  if (!pointsDb) return 'staleness unknown';
+  try {
+    const [row] = await pointsDb<Array<{ latest: Date | null }>>`
+      SELECT MAX(computed_at) AS latest FROM user_nsi
+    `;
+    const latest = row?.latest ?? null;
+    if (!latest) return 'user_nsi is empty';
+    const hours = (Date.now() - latest.getTime()) / 3_600_000;
+    return hours < 48
+      ? `last write ${hours.toFixed(1)}h ago`
+      : `last write ${(hours / 24).toFixed(1)} days ago`;
+  } catch {
+    return 'staleness unknown';
+  }
+}
+
 async function runCompute(): Promise<void> {
   if (!pointsDb) return;
   const started = Date.now();
@@ -229,19 +257,45 @@ async function runCompute(): Promise<void> {
     }
 
     // Stage C: tx activity from indexer's tx_affected_addresses.
-    // Schema: (tx_sequence_number BIGINT, affected BYTEA, sender BYTEA, PK(affected, tx_sequence_number))
-    // — there is one row per (tx, affected_address), so plain COUNT(*) per sender
-    // would over-count by the number of addresses touched per tx. Use DISTINCT
-    // tx_sequence_number for the true unique-tx count.
-    // 30-day window requires joining `checkpoints` (no time column on this table)
-    // and is deferred to Phase 1.5. Phase 1 uses lifetime distinct-tx count.
-    const txCounts = await indexerDb<Array<{ sender_hex: string; tx_count: string }>>`
-      SELECT encode(sender, 'hex') AS sender_hex,
-             COUNT(DISTINCT tx_sequence_number)::text AS tx_count
-      FROM tx_affected_addresses
-      WHERE sender IS NOT NULL
-      GROUP BY sender
-    `;
+    // Schema: (tx_sequence_number BIGINT, affected BYTEA, sender BYTEA, PK(affected, tx_sequence_number)).
+    //
+    // There is one row per (tx, affected_address). The obvious shape —
+    // COUNT(DISTINCT tx_sequence_number) GROUP BY sender — forces the planner
+    // into a full sort of every row (Seq Scan -> Sort of ~126M rows, cost 23M)
+    // because DISTINCT aggregates cannot hash-aggregate. Past ~126M rows that
+    // crossed the 30s pool statement_timeout and this worker failed *every*
+    // cycle from 2026-07-06 to 2026-08-24 without ever writing a row.
+    //
+    // A sender is always among its own tx's affected addresses, so restricting
+    // to `affected = sender` leaves exactly one row per (sender, tx) and a plain
+    // COUNT(*) becomes identical to the DISTINCT count. Verified on a 50k-tx
+    // window: 50,001 distinct tx vs 50,001 affected=sender rows, and per-sender
+    // counts matched for all 30 senders with zero mismatches. Dropping DISTINCT
+    // unlocks HashAggregate (~11k groups, 1.4MB/worker): 5s instead of a timeout.
+    //
+    // Note on semantics: this is NOT a lifetime count, despite what this comment
+    // used to claim. The indexer prunes to `epochs_to_keep = 400`, so the table
+    // only ever holds the retained window (min tx_sequence_number tracks the
+    // prune horizon, not genesis). It is a rolling ~32-day count and always has
+    // been. Changing that is a formula decision, not a performance one.
+    //
+    // The explicit statement_timeout is scoped to this transaction: the pool-wide
+    // 30s default is right for HTTP handlers but too tight for a batch aggregate
+    // that legitimately takes seconds and grows with the chain.
+    const txCounts = await indexerDb.begin(async (tx) => {
+      const db = tx as unknown as typeof indexerDb;
+      // `unsafe` because SET does not accept bind parameters -- postgres.js would
+      // render this as `SET LOCAL statement_timeout = $1` and Postgres rejects it.
+      // The value is a module constant, never user input.
+      await db.unsafe(`SET LOCAL statement_timeout = ${TX_COUNT_TIMEOUT_MS}`);
+      return db<Array<{ sender_hex: string; tx_count: string }>>`
+        SELECT encode(sender, 'hex') AS sender_hex,
+               COUNT(*)::text        AS tx_count
+        FROM tx_affected_addresses
+        WHERE sender IS NOT NULL AND affected = sender
+        GROUP BY sender
+      `;
+    });
     const txMap = new Map<string, number>(); // wallet (0x-prefixed, lowercase) -> tx count
     for (const r of txCounts) {
       const v = Number(r.tx_count);
@@ -508,8 +562,15 @@ async function runCompute(): Promise<void> {
     console.error('[nsi-compute] failed', err);
     if (errorCount24h % 6 === 1) {
       try {
+        // Say how long standing data has actually been frozen. The bare error
+        // count is restart-scoped (it resets whenever tier-worker is bounced),
+        // so on its own it cannot distinguish a transient blip from the
+        // 2026-07-06 -> 2026-08-24 outage, where the same one-line alert went
+        // out roughly every six hours for seven weeks and read identically
+        // each time. Staleness is the part an operator needs to see.
+        const staleFor = await describeStaleness();
         await sendTelegramAlert(
-          `nsi-compute failed (${errorCount24h}x in 24h): ${(err as Error).message}`,
+          `nsi-compute failed (${errorCount24h}x since restart, ${staleFor}): ${(err as Error).message}`,
           { dedupKey: 'nsi-compute-fail' },
         );
       } catch {
