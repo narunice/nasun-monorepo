@@ -18,8 +18,8 @@ overrides:
   lodash-es: '>=4.18.0'
   axios: '>=1.15.2'
   js-cookie: '>=3.0.7'
-  hono: '>=4.12.25 <5'
-  '@hono/node-server': '>=1.19.10 <2'
+  hono: '>=4.12.34 <5'
+  '@hono/node-server': '>=1.19.15 <2'
   '@mysten/ledgerjs-hw-app-sui': 0.7.0
   readable-stream: ^3.6.2 || ^4.0.0
   rollup: '>=4.59.0 <5'
@@ -67,8 +67,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-
-  apps/baram/scripts: {}
 
   apps/gensol-website/frontend:
     dependencies:
@@ -242,8 +240,8 @@ importers:
   apps/gostop/backend:
     dependencies:
       '@hono/node-server':
-        specifier: '>=1.19.10 <2'
-        version: 1.19.14(hono@4.12.27)
+        specifier: '>=1.19.15 <2'
+        version: 1.19.17(hono@4.13.4)
       '@mysten/bcs':
         specifier: ^1.9.2
         version: 1.9.2
@@ -254,8 +252,8 @@ importers:
         specifier: ^1.8.0
         version: 1.8.0
       hono:
-        specifier: '>=4.12.25 <5'
-        version: 4.12.27
+        specifier: '>=4.12.34 <5'
+        version: 4.13.4
       jose:
         specifier: ^5.2.0
         version: 5.10.0
@@ -358,8 +356,8 @@ importers:
         specifier: ^3.658.0
         version: 3.1047.0
       '@hono/node-server':
-        specifier: '>=1.19.10 <2'
-        version: 1.19.14(hono@4.12.27)
+        specifier: '>=1.19.15 <2'
+        version: 1.19.17(hono@4.13.4)
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
@@ -373,8 +371,8 @@ importers:
         specifier: ^16.4.7
         version: 16.6.1
       hono:
-        specifier: '>=4.12.25 <5'
-        version: 4.12.27
+        specifier: '>=4.12.34 <5'
+        version: 4.13.4
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
@@ -864,8 +862,8 @@ importers:
         specifier: ^3.400.0
         version: 3.1029.0(@aws-sdk/client-dynamodb@3.1029.0)
       '@hono/node-server':
-        specifier: '>=1.19.10 <2'
-        version: 1.19.14(hono@4.12.27)
+        specifier: '>=1.19.15 <2'
+        version: 1.19.17(hono@4.13.4)
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
@@ -879,8 +877,8 @@ importers:
         specifier: ^1.6.0
         version: 1.6.0
       hono:
-        specifier: '>=4.12.25 <5'
-        version: 4.12.27
+        specifier: '>=4.12.34 <5'
+        version: 4.13.4
       jose:
         specifier: ^5.2.0
         version: 5.10.0
@@ -2588,11 +2586,11 @@ packages:
     peerDependencies:
       tailwindcss: ^3.0 || ^4.0
 
-  '@hono/node-server@1.19.14':
-    resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==}
+  '@hono/node-server@1.19.17':
+    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: '>=4.12.25 <5'
+      hono: '>=4.12.34 <5'
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -2968,6 +2966,7 @@ packages:
 
   '@mysten/dapp-kit@0.19.11':
     resolution: {integrity: sha512-b0poDfJVTzmIYtDRT06KFxzer4xAN+KMvIJuZ8bIMXAOfV7a17fMEJ94HI1nXCflQGGbx+BKsIKcb93ptwPgag==}
+    deprecated: 'This package only supports the deprecated Sui JSON-RPC API and will not receive further updates. See the migration guide: https://sdk.mystenlabs.com/sui/migrations/sui-2.0/dapp-kit'
     peerDependencies:
       '@tanstack/react-query': ^5.0.0
       react: 19.2.3
@@ -6202,6 +6201,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   crypto-random-string@2.0.0:
     resolution: {integrity: sha512-v1plID3y9r/lPhviJ1wrXpLeyUIGAZ2SHNYTEapm7/8A9nLPoyvVp3RK/EPFqn5kEznyWgYZNsRtYYIWbuG8KA==}
@@ -7283,8 +7283,8 @@ packages:
     resolution: {integrity: sha512-eSmmWE5bZTK2Nou4g0AI3zZ9rswp7GRKoKXS1BLUkvPviOqs4YTN1djQIqrXy9k5gEtdLPy86JjRwsNM9tnDcA==}
     engines: {node: '>=0.10.0'}
 
-  hono@4.12.27:
-    resolution: {integrity: sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q==}
+  hono@4.13.4:
+    resolution: {integrity: sha512-AGEwKIyRMHRv1t8Wjwa3LHxQ61X5CqrdFT+4BRNTpqS5aJNnpl5WLjADb7vFlJzI/8uK7T5QLVApCMQKNa3LgQ==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -12616,9 +12616,9 @@ snapshots:
     dependencies:
       tailwindcss: 3.4.19(tsx@4.21.0)(yaml@1.10.3)
 
-  '@hono/node-server@1.19.14(hono@4.12.27)':
+  '@hono/node-server@1.19.17(hono@4.13.4)':
     dependencies:
-      hono: 4.12.27
+      hono: 4.13.4
 
   '@humanfs/core@0.19.1': {}
 
@@ -19193,7 +19193,7 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  hono@4.12.27: {}
+  hono@4.13.4: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
@@ -20853,7 +20853,7 @@ snapshots:
   porto@0.2.35(@tanstack/react-query@5.90.21(react@19.2.3))(@types/react@19.2.14)(@wagmi/core@2.22.1(@tanstack/query-core@5.101.4)(@types/react@19.2.14)(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)))(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))(wagmi@2.19.5(@tanstack/query-core@5.101.4)(@tanstack/react-query@5.90.21(react@19.2.3))(@types/react@19.2.14)(bufferutil@4.1.0)(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.6)(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))(zod@4.3.6)):
     dependencies:
       '@wagmi/core': 2.22.1(@tanstack/query-core@5.101.4)(@types/react@19.2.14)(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))
-      hono: 4.12.27
+      hono: 4.13.4
       idb-keyval: 6.2.2
       mipd: 0.0.7(typescript@5.9.3)
       ox: 0.9.17(typescript@5.9.3)(zod@4.3.6)
