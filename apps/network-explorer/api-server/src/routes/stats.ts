@@ -247,15 +247,24 @@ const getSlowStats = cached('network-summary-slow', 30 * 60 * 1000, async () => 
   return { uniqueAddresses: Number(addrCount?.count ?? 0) };
 });
 
-// Prime both caches at boot, chained rather than parallel. Cold-path cost is
-// ~9s + ~7s of scanning, which is past the explorer client's 15s abort in
-// lib/explorer-api.ts -- so the first request after a restart would have died
-// client-side and looked like flakiness. Doing it here means no user request
-// ever pays for the cold scan. Failures stay uncached and simply retry on
-// demand, so a database that is not up yet at import time is harmless.
-void getFastStats()
-  .then(() => getSlowStats())
-  .catch(() => {});
+// Prime both caches shortly after boot, chained rather than parallel. Cold-path
+// cost is ~9s + ~7s of scanning, which is past the explorer client's 15s abort
+// in lib/explorer-api.ts -- so the first request after a restart would have died
+// client-side and looked like flakiness. Priming here means no user request ever
+// pays for the cold scan. Failures stay uncached and simply retry on demand, so
+// a database that is not up yet is harmless.
+//
+// Delayed, not immediate: running these at import time put two large scans in
+// front of the deploy script's post-restart health check, whose own query is a
+// full `checkpoints` scan on a 5s curl timeout. That contention failed a real
+// deploy. The delay keeps priming well inside the 5min TTL while leaving the
+// boot window clear. `unref()` so a pending timer never holds the process open.
+const CACHE_PRIME_DELAY_MS = 30_000;
+setTimeout(() => {
+  void getFastStats()
+    .then(() => getSlowStats())
+    .catch(() => {});
+}, CACHE_PRIME_DELAY_MS).unref();
 
 app.get('/network-summary', async (c) => {
   // Sequential, not Promise.all: on a cold cache these are four large scans
