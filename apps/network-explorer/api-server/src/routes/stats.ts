@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { sql, pointsDb } from '../db.js';
 import { cached } from '../cache.js';
-import { getBalance, discoverAddressesViaRpc } from '../rpc.js';
 import { OFFCHAIN_CATEGORIES } from '../config/categories.js';
 import {
   readNetworkDailyStats,
@@ -49,33 +48,14 @@ function parseDays(range: string | undefined): number {
   return 7;
 }
 
-// Max addresses to discover from DB (prevents unbounded RPC fan-out)
-const MAX_DISCOVERY = 500;
-// Concurrent RPC calls limit (prevents overwhelming the RPC node)
-const RPC_CONCURRENCY = 20;
-
-function safeBigInt(value: string | undefined | null): bigint {
-  if (!value || !/^-?\d+$/.test(value)) return 0n;
-  return BigInt(value);
-}
-
-// Run async tasks with concurrency limit
-async function mapConcurrent<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  concurrency: number,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let idx = 0;
-  async function worker() {
-    while (idx < items.length) {
-      const i = idx++;
-      results[i] = await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  return results;
-}
+// Native NSN coin type as the indexer stores it (zero-padded 64-char address).
+// Spelled out rather than indexed off KNOWN_COIN_TYPES: that array carries an
+// instruction to re-sync it after every devnet reset, and a reorder there must
+// not silently re-point the account ranking at some other coin.
+const NATIVE_COIN_TYPE =
+  '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+// The zero address owns burn/system coin objects and is never a real account.
+const ZERO_ADDRESS_BYTEA = Buffer.alloc(32);
 
 // Token stats: holder count + circulating supply per known coin type (DB-only)
 app.get('/tokens', async (c) => {
@@ -146,68 +126,55 @@ app.get('/daily-gas', async (c) => {
   return c.json({ data, range: `${days}d` });
 });
 
-// RPC-based address discovery (cached separately — expensive but comprehensive)
-const getRpcAddresses = cached('rpc-discovered-addresses', 5 * 60 * 1000, async () => {
-  return discoverAddressesViaRpc();
-});
-
-// Top accounts by SUI balance (hybrid: address discovery from DB + RPC, real-time balance from RPC)
+// Top accounts by native NSN balance, straight from the indexer's `objects` table.
+//
+// The previous shape discovered up to 500 addresses from `tx_affected_addresses`
+// UNION `objects`, then fanned out one `suix_getBalance` RPC call per address.
+// Two things were wrong with it: the `LIMIT` sat *outside* the UNION, so Postgres
+// had to dedupe ~129M rows before it could apply the cap (32s, then a statement
+// timeout once the table passed ~126M rows), and "top" only ever meant "the
+// largest among an arbitrary 500", never the actual top of the network.
+//
+// `objects` already carries `coin_balance` per coin object plus the partial index
+// `objects_coin (owner_id, coin_type) WHERE coin_type IS NOT NULL AND owner_type = 1`,
+// so the real ranking is a single grouped aggregate — 0.4s, no RPC fan-out at all.
+// Balances are indexer-derived rather than live RPC reads; at the current lag
+// (sub-second) that difference is not observable in this view.
 app.get('/top-accounts', async (c) => {
   const limit = parseLimit(c.req.query('limit'));
 
   const getTopAccounts = cached(`top-accounts-${limit}`, 60 * 1000, async () => {
-    // Phase 1: Discover addresses from both PostgreSQL and RPC
-    const [dbRows, rpcAddrs] = await Promise.all([
-      sql`
-        SELECT DISTINCT address FROM (
-          SELECT '0x' || encode(sender, 'hex') AS address
-          FROM tx_affected_addresses
-          UNION
-          SELECT '0x' || encode(owner_id, 'hex') AS address
-          FROM objects
-          WHERE owner_type = ${OWNER_TYPE_ADDRESS}
-        ) all_addresses
-        LIMIT ${MAX_DISCOVERY}
-      `,
-      getRpcAddresses().catch(() => [] as string[]),
-    ]);
-
-    // Merge and deduplicate
-    const addressSet = new Set<string>();
-    for (const r of dbRows) addressSet.add(r.address as string);
-    for (const a of rpcAddrs) addressSet.add(a);
-    addressSet.delete('0x0000000000000000000000000000000000000000000000000000000000000000');
-    const addresses = [...addressSet];
-
-    // Phase 2: Fetch real-time balances via RPC (concurrency-limited)
-    const results = await mapConcurrent(
-      addresses,
-      async (addr) => {
-        try {
-          const bal = await getBalance(addr);
-          return {
-            address: addr,
-            balance: bal.totalBalance,
-            coinCount: bal.coinObjectCount,
-          };
-        } catch {
-          return null;
-        }
-      },
-      RPC_CONCURRENCY,
-    );
-
-    // Phase 3: Filter zero balances, sort descending, limit
-    return results
-      .filter((r): r is NonNullable<typeof r> => r !== null && r.balance !== '0')
-      .sort((a, b) => {
-        const diff = safeBigInt(b.balance) - safeBigInt(a.balance);
-        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
-      })
-      .slice(0, limit);
+    const rows = await sql`
+      SELECT
+        '0x' || encode(owner_id, 'hex') AS address,
+        SUM(coin_balance)::text         AS balance,
+        COUNT(*)::int                   AS coin_count
+      FROM objects
+      WHERE owner_type = ${OWNER_TYPE_ADDRESS}
+        AND coin_type = ${NATIVE_COIN_TYPE}
+        AND owner_id <> ${ZERO_ADDRESS_BYTEA}
+      GROUP BY owner_id
+      HAVING SUM(coin_balance) > 0
+      ORDER BY SUM(coin_balance) DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: Record<string, unknown>) => ({
+      address: r.address as string,
+      balance: r.balance as string,
+      coinCount: Number(r.coin_count),
+    }));
   });
 
-  const data = await getTopAccounts();
+  // Same reasoning as network-summary: an empty array returned from a catch is
+  // indistinguishable from "this network has no accounts", and `cached()` would
+  // pin that answer for the full TTL. Fail loudly instead.
+  let data: Awaited<ReturnType<typeof getTopAccounts>>;
+  try {
+    data = await getTopAccounts();
+  } catch (err) {
+    console.error('Top accounts query failed:', err);
+    return c.json({ error: 'top_accounts_unavailable' }, 503);
+  }
   c.header('Cache-Control', 'public, max-age=60');
   return c.json({ data, count: data.length });
 });
@@ -241,42 +208,69 @@ app.get('/active-addresses', async (c) => {
 });
 
 // Network summary: split into fast (checkpoint-derived) and slow (unique addresses) cache groups
+// Errors deliberately propagate out of these two: `cached()` only memoises a
+// resolved value, so swallowing a failure into a zeroed object (which is what
+// both of these used to do) pinned that fabricated answer in the cache for a
+// full TTL. A failed scan must stay uncached so the next request retries.
+//
+// "fast" is relative -- `events` is a partitioned parent, so COUNT(*) fans out
+// across partitions and takes ~9s cold.
 const getFastStats = cached('network-summary-fast', 5 * 60 * 1000, async () => {
-  try {
-    const [[cpStats], [pkgCount], [eventCount]] = await Promise.all([
-      // Checkpoint-based aggregate: tx count + cp count + latest checkpoint in one scan
-      // Reuses SUM(max_tx - min_tx + 1) pattern from daily-transactions endpoint
-      sql`SELECT
-        COUNT(*) as cp_count,
-        SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::bigint as total_tx,
-        MAX(sequence_number) as latest_seq,
-        MAX(timestamp_ms) as latest_ts
-      FROM checkpoints`,
-      sql`SELECT COUNT(*) as count FROM packages`,
-      sql`SELECT COUNT(*) as count FROM events`,
-    ]);
-    return { cpStats, pkgCount, eventCount };
-  } catch (err) {
-    console.error('Network summary fast stats query failed:', err);
-    return { cpStats: null, pkgCount: null, eventCount: null };
-  }
+  const [[cpStats], [pkgCount], [eventCount]] = await Promise.all([
+    // Checkpoint-based aggregate: tx count + cp count + latest checkpoint in one scan
+    // Reuses SUM(max_tx - min_tx + 1) pattern from daily-transactions endpoint
+    sql`SELECT
+      COUNT(*) as cp_count,
+      SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::bigint as total_tx,
+      MAX(sequence_number) as latest_seq,
+      MAX(timestamp_ms) as latest_ts
+    FROM checkpoints`,
+    sql`SELECT COUNT(*) as count FROM packages`,
+    sql`SELECT COUNT(*) as count FROM events`,
+  ]);
+  return { cpStats, pkgCount, eventCount };
 });
 
-// 30min TTL: COUNT(DISTINCT sender) is expensive (~4s on cache miss)
+// 30min TTL: this scans the whole retained tx window (~7s on cache miss).
 const getSlowStats = cached('network-summary-slow', 30 * 60 * 1000, async () => {
-  try {
-    const [[addrCount]] = await Promise.all([
-      sql`SELECT COUNT(DISTINCT sender) as count FROM tx_affected_addresses`,
-    ]);
-    return { uniqueAddresses: Number(addrCount?.count ?? 0) };
-  } catch (err) {
-    console.error('Network summary slow stats query failed:', err);
-    return { uniqueAddresses: 0 };
-  }
+  // COUNT(DISTINCT sender) makes the planner sort all ~126M rows; grouping
+  // instead lets it hash-aggregate into the ~11k real sender groups, which is
+  // the difference between 7s and a statement timeout. Combined with the catch
+  // that used to sit here, that timeout is why this endpoint spent months
+  // quietly reporting uniqueAddresses = 0.
+  const [addrCount] = await sql`
+    SELECT COUNT(*)::text AS count
+    FROM (
+      SELECT 1 FROM tx_affected_addresses WHERE sender IS NOT NULL GROUP BY sender
+    ) senders
+  `;
+  return { uniqueAddresses: Number(addrCount?.count ?? 0) };
 });
+
+// Prime both caches at boot, chained rather than parallel. Cold-path cost is
+// ~9s + ~7s of scanning, which is past the explorer client's 15s abort in
+// lib/explorer-api.ts -- so the first request after a restart would have died
+// client-side and looked like flakiness. Doing it here means no user request
+// ever pays for the cold scan. Failures stay uncached and simply retry on
+// demand, so a database that is not up yet at import time is harmless.
+void getFastStats()
+  .then(() => getSlowStats())
+  .catch(() => {});
 
 app.get('/network-summary', async (c) => {
-  const [fast, slow] = await Promise.all([getFastStats(), getSlowStats()]);
+  // Sequential, not Promise.all: on a cold cache these are four large scans
+  // against the same database, and running them together was enough contention
+  // to push one past the 30s pool statement_timeout even though each finishes
+  // in 0.05-9s on its own. The TTLs mean this only costs anything on a miss.
+  let fast: Awaited<ReturnType<typeof getFastStats>>;
+  let slow: Awaited<ReturnType<typeof getSlowStats>>;
+  try {
+    fast = await getFastStats();
+    slow = await getSlowStats();
+  } catch (err) {
+    console.error('Network summary query failed:', err);
+    return c.json({ error: 'stats_unavailable' }, 503);
+  }
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({
     data: {
