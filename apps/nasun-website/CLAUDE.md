@@ -144,17 +144,9 @@ X API Basic Plan ($200/month) 에서 100명 이상의 참여자를 처리하기 
 
 ### 관련 파일
 
-```
-cdk/lambda-src/nft-event/
-└── verify-eligibility/                 # 3-Tier Verification Lambda
-    └── src/services/
-        ├── verificationService.ts      # 3-tier orchestration logic
-        ├── engagementCache.ts          # Tier 2 cache lookup (graceful miss → Tier 3)
-        ├── xApiClient.ts              # X API calls (App-Only + User Context)
-        └── taskTracker.ts             # Tier 1 DynamoDB task cache
-
-cdk/lib/nft-event-stack.ts             # CDK: NFT Event 인프라
-```
+> 이 Lambda 구현체는 2026-08-25에 삭제됐다 (AWS 탈출 완료로 실행 경로 소멸).
+> 3-tier 검증 로직의 이력이 필요하면 git 히스토리의
+> `apps/nasun-website/cdk/lambda-src/nft-event/` 를 볼 것.
 
 ---
 
@@ -322,26 +314,15 @@ Response: { "identityId": "...", "token": "..." }
 
 > **Why WALLET_MAPPINGS 빈 캐시는 warn 이상 로깅**: 5/4 W19 weekly DeFi 리더보드가 비어 있던 사고가 새 env var 의존 + S3 gzip 미해제 + 빈 캐시 info 로그 조합으로 silent하게 발생. 외부 fetch로 로드하는 critical 캐시가 0건이면 warn 이상으로 로깅 (feedback_warn_on_empty_critical_cache.md).
 
-## CDK 스택 (apps/nasun-website/cdk/lib)
+## 구 CDK 스택 (삭제됨)
 
-| 스택 | 역할 |
-|------|------|
-| `common-stack.ts` | VPC, 보안, 기본 |
-| `auth-stack.ts` | Cognito + Google/Twitter/MetaMask/Telegram Lambda |
-| `leaderboard-v3-stack.ts` | 리더보드 V3 DynamoDB/Lambda/API GW |
-| `nft-event-stack.ts` | Battalion NFT 3-tier verification |
-| `nft-snapshot-stack.ts` | NFT 스냅샷 스케줄러 |
-| `governance-stack.ts` | 거버넌스 (제안/투표/VotingPower) |
-| `admin-stack.ts` | 관리자 (whitelist export, user mgmt) |
-| `referral-stack.ts` | 리퍼럴 |
-| `bug-report-stack.ts` | 버그 리포트 수집/관리 (Pado feedback도 같은 테이블 공유) |
-| `ecosystem-stack.ts` | 에코시스템 |
-| `devnet-metrics-stack.ts` | Devnet 메트릭 대시보드 |
-| `genesis-pass-stack.ts` | Genesis Pass (디커미션 진행 중) |
-| `agent-vault-stack.ts` | Uju AI agent 자산 보관 |
-| `monitoring-stack.ts` | CloudWatch + 알림 |
-| `shared-waf-stack.ts` | CloudFront WAF (3-rule, 8000/5min cap, OPTIONS 제외, KP/CU/SY blacklist) |
+AWS 탈출이 끝나면서 CDK 스택 정의(`cdk/lib`, `cdk/bin`)와 구 Lambda 핸들러는
+2026-08-25에 삭제됐다. 배포 대상 리소스가 0이고 이를 실행하는 경로도 없다.
+이력은 git 히스토리에 남아 있다.
 
+**단, `cdk/lambda-src/*/box/` 는 살아 있다.** referral / bug-report / leaderboard-v3 /
+wallet-api 네 개는 box systemd 서비스의 실제 소스이며 삭제 대상이 아니다.
+빌드·배포 절차는 [docs/box-services-deploy.md](../../docs/box-services-deploy.md) 참조.
 ## Operational Invariants (자주 까먹는 것)
 
 1. **Prod 배포는 항상 pnpm 스크립트**: `pnpm deploy:nasun-website:prod`. raw rsync 금지 (같은 EC2에 pado/gostop 공존, app-id marker로 cross-app 덮어쓰기 차단). 5/3 사고 후 강제 (feedback_no_raw_rsync_to_prod.md).
