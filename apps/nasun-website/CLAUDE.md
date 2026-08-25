@@ -316,13 +316,16 @@ Response: { "identityId": "...", "token": "..." }
 
 ## 구 CDK 스택 (삭제됨)
 
-AWS 탈출이 끝나면서 CDK 스택 정의(`cdk/lib`, `cdk/bin`)와 구 Lambda 핸들러는
-2026-08-25에 삭제됐다. 배포 대상 리소스가 0이고 이를 실행하는 경로도 없다.
-이력은 git 히스토리에 남아 있다.
+AWS 탈출이 끝나면서 `apps/nasun-website/cdk/` 는 2026-08-25에 통째로 사라졌다. CDK 스택
+정의와 구 Lambda 핸들러는 배포 대상 리소스가 0이고 실행 경로도 없어 삭제했고, 살아 있던
+서비스는 아래대로 이전했다. 이력은 git 히스토리에 남아 있다.
 
-**단, `cdk/lambda-src/*/box/` 는 살아 있다.** referral / bug-report / leaderboard-v3 /
-wallet-api 네 개는 box systemd 서비스의 실제 소스이며 삭제 대상이 아니다.
-빌드·배포 절차는 [docs/box-services-deploy.md](../../docs/box-services-deploy.md) 참조.
+살아 있던 네 개(referral / bug-report / leaderboard-v3 / address-book)는 같은 날
+`apps/nasun-website/box-services/` 로 옮겼다. box systemd 서비스의 실제 소스이며,
+`cdk/` 아래 두면 죽은 코드로 오인되기 때문이다(실제로 그럴 뻔했다). address-book은
+이전 이름이 `wallet-api` 였다. 빌드·배포 절차는
+[docs/box-services-deploy.md](../../docs/box-services-deploy.md) 참조 — 배포 스크립트가
+없는 수동 scp 절차다.
 ## Operational Invariants (자주 까먹는 것)
 
 1. **Prod 배포는 항상 pnpm 스크립트**: `pnpm deploy:nasun-website:prod`. raw rsync 금지 (같은 EC2에 pado/gostop 공존, app-id marker로 cross-app 덮어쓰기 차단). 5/3 사고 후 강제 (feedback_no_raw_rsync_to_prod.md).

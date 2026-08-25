@@ -9,9 +9,9 @@
 // item the lambda would have read.
 
 import postgres from 'postgres';
-import type { Account, DailySnapshot, Post, Season, SeasonAccountScore } from '../../src/types';
+import type { Account, DailySnapshot, Post, Season, SeasonAccountScore } from '../shared/types';
 import { PG } from './config';
-import { getTodayDateString } from '../../src/utils/date';
+import { getTodayDateString } from '../shared/utils/date';
 
 export const sql = postgres({
   host: PG.host, port: PG.port, database: PG.database, username: PG.username, password: PG.password,

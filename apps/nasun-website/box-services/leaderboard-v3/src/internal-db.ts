@@ -18,7 +18,7 @@
 // in the referral Phase 3c teardown, so the AWS path has been a guaranteed no-op (always not-referred)
 // since then. Campaign is paused (telegram verifies ~0/day); dropping it is a no-op vs current behaviour.
 
-import type { Account } from '../../src/types';
+import type { Account } from '../shared/types';
 import { sql, getActiveSeason, getAccountByUsername, getProfileRowByHandle } from './db';
 import { getWriteSql } from './write-pool';
 

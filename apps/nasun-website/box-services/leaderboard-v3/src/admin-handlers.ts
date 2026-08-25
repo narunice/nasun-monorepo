@@ -4,11 +4,11 @@
 
 import type {
   AccountRole, ContentSignal, PostType, AccountLanguage, Platform, BadgeType, CreateSeasonRequest, Season,
-} from '../../src/types';
-import { MAX_CURATED_ITEMS, SCORE_CONSTANTS } from '../../src/types';
-import { normalizeUrl } from '../../src/utils/url-normalizer';
-import { calculatePostScoreWithFollowers } from '../../src/services/score-calculator';
-import { getDateNDaysAgo } from '../../src/utils/date';
+} from '../shared/types';
+import { MAX_CURATED_ITEMS, SCORE_CONSTANTS } from '../shared/types';
+import { normalizeUrl } from '../shared/utils/url-normalizer';
+import { calculatePostScoreWithFollowers } from '../shared/services/score-calculator';
+import { getDateNDaysAgo } from '../shared/utils/date';
 import * as db from './db';
 import * as wdb from './write-db';
 import { sql } from './db';

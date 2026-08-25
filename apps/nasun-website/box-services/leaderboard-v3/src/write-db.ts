@@ -11,13 +11,13 @@ import postgres from 'postgres';
 import type {
   Account, AccountLanguage, AccountRole, ContentSignal, Platform, Post, PostType,
   Season, SeasonAccountScore, SeasonStatus, CreatePostRequest, BannedAccountEntry,
-} from '../../src/types';
+} from '../shared/types';
 import { getWriteSql } from './write-pool';
 import { sql, getProfileRowByHandle } from './db';
 import {
   calculatePostScoreWithFollowers, calculateScoreComponents, getRoleByFollowers, countBonusSignals, addActiveDate,
-} from '../../src/services/score-calculator';
-import { getTodayDateString } from '../../src/utils/date';
+} from '../shared/services/score-calculator';
+import { getTodayDateString } from '../shared/utils/date';
 
 type Tx = ReturnType<typeof postgres>;
 const round3 = (x: number) => Math.round(x * 1000) / 1000;

@@ -12,15 +12,15 @@
 // mirrored; profile freshness is owned by the profile de-Lambda service post-cutover. This does NOT affect
 // any score/rank field -- only the displayName string -- so scoring parity is unaffected.
 
-import type { DailySnapshot, SeasonAccountScore, Season } from '../../src/types';
-import { SCORE_CONSTANTS } from '../../src/types';
+import type { DailySnapshot, SeasonAccountScore, Season } from '../shared/types';
+import { SCORE_CONSTANTS } from '../shared/types';
 import {
   calculateDecayedRawScoreFromPosts,
   calculateConsistencyBonus,
   calculateDailyBaseScore,
-} from '../../src/services/score-calculator';
-import { calculateRankChange } from '../../src/utils/rank';
-import { getTodayDateString, getYesterdayDateString } from '../../src/utils/date';
+} from '../shared/services/score-calculator';
+import { calculateRankChange } from '../shared/utils/rank';
+import { getTodayDateString, getYesterdayDateString } from '../shared/utils/date';
 import * as db from './db';
 import { getWriteSql, endWriteSql } from './write-pool';
 

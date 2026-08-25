@@ -31,10 +31,10 @@ import type {
   SeasonLeaderboardResponse,
   TopClimberEntry,
   TopClimbersResponse,
-} from '../../src/types';
-import { PUBLIC_LEADERBOARD_LIMIT } from '../../src/types';
-import { calculateRankChange } from '../../src/utils/rank';
-import { getTodayDateString, getYesterdayDateString, getDateNDaysAgo, getDayOfYearKST } from '../../src/utils/date';
+} from '../shared/types';
+import { PUBLIC_LEADERBOARD_LIMIT } from '../shared/types';
+import { calculateRankChange } from '../shared/utils/rank';
+import { getTodayDateString, getYesterdayDateString, getDateNDaysAgo, getDayOfYearKST } from '../shared/utils/date';
 import * as db from './db';
 
 type Query = Record<string, string | undefined>;
