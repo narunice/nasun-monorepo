@@ -48,6 +48,13 @@ function parseDays(range: string | undefined): number {
   return 7;
 }
 
+// How long a failed stats query is remembered before it is retried. These
+// endpoints are polled on a 30s interval by the explorer (main.tsx), and their
+// queries cost 1-14s of scanning, so re-running every one of them on every
+// request while the database is degraded is its own outage. Short enough that
+// recovery is picked up quickly, long enough that a sick database gets a break.
+const STATS_NEGATIVE_TTL_MS = 30_000;
+
 /**
  * Uniform failure response for the read-only stats endpoints.
  *
@@ -64,7 +71,12 @@ function parseDays(range: string | undefined): number {
  */
 function statsUnavailable(c: Context, code: string, err: unknown) {
   console.error(`${code} query failed:`, err);
-  return c.json({ error: code, retryAfterMs: 30_000 }, 503);
+  // Retry-After as a real header, not just a body field: `fetchApi` in
+  // lib/explorer-api.ts throws on !res.ok without reading the body, so the
+  // JSON hint alone reaches nobody. Kept in sync with STATS_NEGATIVE_TTL_MS so
+  // a client that honours it comes back exactly when the memo has expired.
+  c.header('Retry-After', String(Math.ceil(STATS_NEGATIVE_TTL_MS / 1000)));
+  return c.json({ error: code, retryAfterMs: STATS_NEGATIVE_TTL_MS }, 503);
 }
 
 // Native NSN coin type as the indexer stores it (zero-padded 64-char address).
@@ -94,7 +106,7 @@ app.get('/tokens', async (c) => {
       holders: Number(r.holders),
       circulatingSupply: (r.circulating_supply as string) ?? null,
     }));
-  });
+  }, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
   let data: Awaited<ReturnType<typeof getTokenStats>>;
   try {
@@ -133,7 +145,7 @@ app.get('/daily-gas', async (c) => {
       });
     }
     return rows;
-  });
+  }, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
   let data: Awaited<ReturnType<typeof getDailyGas>>;
   try {
@@ -182,7 +194,7 @@ app.get('/top-accounts', async (c) => {
       balance: r.balance as string,
       coinCount: Number(r.coin_count),
     }));
-  });
+  }, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
   let data: Awaited<ReturnType<typeof getTopAccounts>>;
   try {
@@ -211,7 +223,7 @@ app.get('/active-addresses', async (c) => {
     const rows = history.map((r) => ({ date: r.day, activeAddresses: r.activeAddresses }));
     if (today) rows.push({ date: today.day, activeAddresses: today.activeAddresses });
     return rows;
-  });
+  }, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
   let data: Awaited<ReturnType<typeof getActiveAddresses>>;
   try {
@@ -245,7 +257,7 @@ const getFastStats = cached('network-summary-fast', 5 * 60 * 1000, async () => {
     sql`SELECT COUNT(*) as count FROM events`,
   ]);
   return { cpStats, pkgCount, eventCount };
-});
+}, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
 // 30min TTL: this scans the whole retained tx window (~7s on cache miss).
 const getSlowStats = cached('network-summary-slow', 30 * 60 * 1000, async () => {
@@ -261,26 +273,7 @@ const getSlowStats = cached('network-summary-slow', 30 * 60 * 1000, async () => 
     ) senders
   `;
   return { uniqueAddresses: Number(addrCount?.count ?? 0) };
-});
-
-// Prime both caches shortly after boot, chained rather than parallel. Cold-path
-// cost is ~9s + ~7s of scanning, which is past the explorer client's 15s abort
-// in lib/explorer-api.ts -- so the first request after a restart would have died
-// client-side and looked like flakiness. Priming here means no user request ever
-// pays for the cold scan. Failures stay uncached and simply retry on demand, so
-// a database that is not up yet is harmless.
-//
-// Delayed, not immediate: running these at import time put two large scans in
-// front of the deploy script's post-restart health check, whose own query is a
-// full `checkpoints` scan on a 5s curl timeout. That contention failed a real
-// deploy. The delay keeps priming well inside the 5min TTL while leaving the
-// boot window clear. `unref()` so a pending timer never holds the process open.
-const CACHE_PRIME_DELAY_MS = 30_000;
-setTimeout(() => {
-  void getFastStats()
-    .then(() => getSlowStats())
-    .catch(() => {});
-}, CACHE_PRIME_DELAY_MS).unref();
+}, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
 app.get('/network-summary', async (c) => {
   // Sequential, not Promise.all: on a cold cache these are four large scans
@@ -321,7 +314,7 @@ app.get('/daily-transactions', async (c) => {
     const rows = history.map((r) => ({ date: r.day, transactions: r.txCount }));
     if (today) rows.push({ date: today.day, transactions: today.txCount });
     return rows;
-  });
+  }, { negativeTtlMs: STATS_NEGATIVE_TTL_MS });
 
   let data: Awaited<ReturnType<typeof getDailyTx>>;
   try {
