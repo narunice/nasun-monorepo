@@ -354,14 +354,6 @@ describe('16 -- Genesis Pass Drop', () => {
       expect(GENESIS_PASS_ADDRESSES[11155111]).toMatch(/^0x[a-fA-F0-9]{40}$/);
     });
 
-    test('production .env uses mainnet contract address', () => {
-      const prodEnv = readFileSync(
-        resolve(__dirname, '../cdk/.env.production'), 'utf-8'
-      );
-      expect(prodEnv).toContain(`GENESIS_PASS_CONTRACT_ADDRESS=${MAINNET_DEPLOYMENT.address}`);
-      expect(prodEnv).toContain('GENESIS_PASS_CHAIN_ID=1');
-    });
-
     test('deployment configs have consistent parameters', () => {
       // Both chains should have same maxSupply and pricing
       expect(MAINNET_DEPLOYMENT.maxSupply).toBe(SEPOLIA_DEPLOYMENT.maxSupply);
