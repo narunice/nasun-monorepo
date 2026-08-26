@@ -1,0 +1,56 @@
+# /etc/systemd/system/nasun-issuer.service
+[Unit]
+Description=Nasun self-hosted JWT issuer (JWKS endpoint)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/issuer
+ExecStart=/usr/bin/node /srv/nasun/issuer/server.mjs
+Restart=on-failure
+RestartSec=2
+
+Environment=ISSUER_PORT=3210
+Environment=ISSUER_BIND=127.0.0.1
+Environment=ISSUER_KID=nasun-2026-06-07-xh2f8s
+Environment=ISSUER_AUDIENCE=ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df
+Environment=ISSUER_NEW_IDENTITY_PREFIX=ap-northeast-2:
+
+# Private key arrives host-decrypted into the per-unit tmpfs ($CREDENTIALS_DIRECTORY/issuer-key),
+# never plaintext on disk, owned by this unit's (dynamic) user only, auto-removed on stop.
+LoadCredentialEncrypted=issuer-key:/srv/nasun/issuer/secrets/issuer-key.cred
+LoadCredentialEncrypted=pg-password:/srv/nasun/issuer/secrets/pg-password.cred
+LoadCredentialEncrypted=mint-secret:/srv/nasun/issuer/secrets/mint-secret.cred
+
+# --- hardening (issuer holds the signing key; minimize blast radius) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# Issuer needs no internet: serve + self-verify + (later) localhost Postgres only.
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+# Re-include this service's npm lockfile, which apps/nasun-website/.gitignore blanket-ignores to keep npm
+# lockfiles out of a pnpm workspace. That rule is correct everywhere except here: this directory is
+# deliberately outside the pnpm workspace, and the box installs /srv/nasun/issuer/node_modules with
+# `npm ci` from exactly this file. It is a deploy input, not stray npm output.
+!package-lock.json

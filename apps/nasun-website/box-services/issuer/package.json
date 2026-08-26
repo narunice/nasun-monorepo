@@ -1,0 +1,14 @@
+{
+  "name": "nasun-issuer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Stage 2: self-hosted RS256 JWT issuer + JWKS endpoint (Cognito replacement)",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "jose": "^5.9.6",
+    "postgres": "^3.4.9"
+  }
+}
