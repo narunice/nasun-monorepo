@@ -466,11 +466,18 @@ function buildWeather(spec: WeatherSpec): Market {
     `Aggregation: ${spec.aggregation}\n` +
     `Threshold: ${spec.threshold}\n` +
     `TieBreak: NO\n`;
+  // Every field gets its own phrasing. The generic fallback used to read
+  // "record sum the daily precipitation sum above 100mm" -- aggregation and
+  // fieldDesc both carry the word, and `question` is onchain-immutable, so a
+  // clumsy sentence ships permanently. It did, on four of the eight weather
+  // markets in this batch.
   const verb = spec.field === 'rainy_days_over'
     ? `more than ${spec.threshold} rainy days`
     : spec.field === 'temperature_max_over'
       ? `a daily high above ${spec.threshold}${spec.unit} on any day`
-      : `${spec.aggregation} ${fieldDesc[spec.field]} above ${spec.threshold}${spec.unit}`;
+      : spec.field === 'precipitation_sum_over'
+        ? `more than ${spec.threshold}${spec.unit} of total precipitation`
+        : `${spec.aggregation} ${fieldDesc[spec.field]} above ${spec.threshold}${spec.unit}`;
   return {
     label: spec.label, category: 'weather',
     question: `Will ${spec.locationName} record ${verb} during ${spec.startDate} through ${spec.endDate}?`,
@@ -726,7 +733,12 @@ async function createOnChain(
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       if (!signed) {
-        const bytes = await buildCreateTx(packageId, cap, resolver, m).build({ client });
+        const tx = buildCreateTx(packageId, cap, resolver, m);
+        // signAndExecuteTransaction used to do this via setSenderIfNotSet.
+        // Building by hand does not, and build() throws "Missing transaction
+        // sender" without it.
+        tx.setSender(admin.toSuiAddress());
+        const bytes = await tx.build({ client });
         const { signature } = await admin.signTransaction(bytes);
         signed = { bytes, signature };
       }
@@ -750,7 +762,12 @@ async function createOnChain(
       // Conflict = rejected at admission, so nothing executed: rebuild with fresh gas.
       const conflict = /not available for consumption|current version|ObjectVersionUnavailable|already locked|reference is not available|EquivocationDetected/i.test(msg);
       // Lost response: the tx may well have executed. Resubmit the SAME bytes.
-      const lostResponse = /HTTP (?:429|5\d\d)|fetch failed|ETIMEDOUT|ECONNRESET|socket hang up/i.test(msg);
+      // The SDK's http transport throws `Unexpected status code: 502`, not
+      // anything containing "HTTP", so match that shape too or this whole
+      // idempotent path never fires on the failure it exists for.
+      const lostResponse =
+        /fetch failed|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EPIPE|socket hang up|network|timeout/i.test(msg)
+        || /(?:HTTP|status code:?)\s*(?:429|5\d\d)/i.test(msg);
       if (conflict) signed = null;
       if (!(conflict || lostResponse) || attempt === 4) throw err;
       await new Promise((r) => setTimeout(r, 3000 * attempt));
@@ -762,11 +779,27 @@ async function createOnChain(
 async function main(): Promise<void> {
   const dry = process.argv.includes('--dry-run');
   const verify = process.argv.includes('--verify');
-  const markets = SPECS.map((s) => {
+  // --only a,b,c : re-run just these labels. Retries inside a single market are
+  // idempotent (see createOnChain), but a re-run of the whole batch after a
+  // partial failure would recreate everything that already succeeded, and
+  // `question` is immutable with no delete path. The failure list printed at the
+  // end is in exactly this format, so a partial run is resumed by pasting it.
+  const onlyArg = process.argv.find((a) => a.startsWith('--only='));
+  const only = onlyArg ? new Set(onlyArg.slice('--only='.length).split(',').map((x) => x.trim()).filter(Boolean)) : null;
+  const allMarkets = SPECS.map((s) => {
     const m = buildMarket(s);
     selfValidate(s, m);
     return m;
   });
+  if (only) {
+    const known = new Set(allMarkets.map((m) => m.label));
+    const unknown = [...only].filter((l) => !known.has(l));
+    if (unknown.length > 0) {
+      console.error(`--only names labels that do not exist: ${unknown.join(', ')}`);
+      process.exit(1);
+    }
+  }
+  const markets = only ? allMarkets.filter((m) => only.has(m.label)) : allMarkets;
   const byCat = markets.reduce<Record<string, number>>((acc, m) => {
     acc[m.category] = (acc[m.category] ?? 0) + 1; return acc;
   }, {});
