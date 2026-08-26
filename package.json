@@ -84,7 +84,7 @@
       "postcss": ">=8.5.23 <9",
       "brace-expansion@>=1 <2": ">=1.1.17 <2",
       "brace-expansion@>=2 <3": ">=2.1.4 <3",
-      "brace-expansion@>=4 <6": ">=5.0.9 <6",
+      "brace-expansion@>=3 <6": ">=5.0.9 <6",
       "dompurify": ">=3.4.13 <4",
       "ws": ">=8.20.1",
       "serialize-javascript": ">=7.0.5",
