@@ -47,7 +47,6 @@ interface MultiChoiceProposalItemProps {
   filter?: "all" | "active" | "expired";
   hasVoted: boolean;
   voteNftUrl?: string;
-  onVoteTxSuccess: () => void | Promise<void>;
 }
 
 export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
@@ -55,7 +54,6 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
   filter = "all",
   hasVoted: hasVotedProp,
   voteNftUrl,
-  onVoteTxSuccess,
 }) => {
   const [localHasVoted, setLocalHasVoted] = useState(hasVotedProp);
   const navigate = useNavigate();
@@ -64,7 +62,6 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
 
   const {
     data: dataResponse,
-    refetch: refetchProposal,
     error,
     isPending,
   } = useSuiClientQuery("getObject", {

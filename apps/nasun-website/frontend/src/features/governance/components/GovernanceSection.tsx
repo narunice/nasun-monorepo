@@ -72,8 +72,8 @@ const ProposalList = () => {
   const { t } = useTranslation(["common", "proposals"]);
   const dashboardId = useNetworkVariable("dashboardId");
   const { account } = useWallet();
-  const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
-  const { data: mcVoteNftsRes, refetch: refetchMcNfts } = useMultiChoiceVoteNfts();
+  const { data: voteNftsRes, error: nftsError } = useVoteNfts();
+  const { data: mcVoteNftsRes } = useMultiChoiceVoteNfts();
   const [filter, setFilter] = useState<ProposalFilter>("all");
 
   const {
@@ -177,13 +177,6 @@ const ProposalList = () => {
               <SmartProposalItem
                 id={id}
                 filter={filter}
-                onVoteTxSuccess={async () => {
-                  for (let i = 0; i < 5; i++) {
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                    await refetchNfts();
-                    await refetchMcNfts();
-                  }
-                }}
                 voteNft={voteNfts.find((nft) => nft.proposalId === id)}
                 mcVoteNft={mcVoteNfts.find((nft) => nft.proposalId === id)}
               />
@@ -226,8 +219,7 @@ const SmartProposalItem: FC<{
   filter: ProposalFilter;
   voteNft: VoteNft | undefined;
   mcVoteNft: VoteNft | undefined;
-  onVoteTxSuccess: () => void | Promise<void>;
-}> = ({ id, filter, voteNft, mcVoteNft, onVoteTxSuccess }) => {
+}> = ({ id, filter, voteNft, mcVoteNft }) => {
   const { data, isPending, error } = useSuiClientQuery("getObject", {
     id,
     options: { showContent: true },
@@ -247,7 +239,6 @@ const SmartProposalItem: FC<{
         filter={filter}
         hasVoted={!!mcVoteNft}
         voteNftUrl={mcVoteNft?.url}
-        onVoteTxSuccess={onVoteTxSuccess}
       />
     );
   }
@@ -257,7 +248,6 @@ const SmartProposalItem: FC<{
       id={id}
       filter={filter}
       voteNft={voteNft}
-      onVoteTxSuccess={onVoteTxSuccess}
     />
   );
 };

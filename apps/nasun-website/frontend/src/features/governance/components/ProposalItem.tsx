@@ -21,14 +21,12 @@ interface ProposalItemsProps {
   id: string;
   filter?: "all" | "active" | "expired";
   voteNft: VoteNft | undefined;
-  onVoteTxSuccess: () => void | Promise<void>;
 }
 
 export const ProposalItem: FC<ProposalItemsProps> = ({
   id,
   filter = "all",
   voteNft,
-  onVoteTxSuccess,
 }) => {
   const { t } = useTranslation("proposals");
   const navigate = useNavigate();
@@ -37,7 +35,6 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
 
   const {
     data: dataResponse,
-    refetch: refetchProposal,
     error,
     isPending,
   } = useSuiClientQuery("getObject", {
