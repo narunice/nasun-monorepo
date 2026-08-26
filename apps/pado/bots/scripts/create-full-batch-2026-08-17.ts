@@ -586,8 +586,16 @@ function selfValidate(spec: Spec, m: Market): void {
 // Optional live upstream verification (--verify)
 // ============================================================
 
+// Timeout to match every resolver in lib/resolvers/. Without it a stalled
+// upstream hangs --verify forever, which is the one path that talks to four
+// third-party APIs.
+const VERIFY_FETCH_TIMEOUT_MS = 15_000;
+
 async function getJson(url: string, headers: Record<string, string> = {}): Promise<unknown> {
-  const res = await fetch(url, { headers: { 'user-agent': 'nasun-pado-batch/1', ...headers } });
+  const res = await fetch(url, {
+    headers: { 'user-agent': 'nasun-pado-batch/1', ...headers },
+    signal: AbortSignal.timeout(VERIFY_FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return await res.json();
 }
@@ -730,6 +738,7 @@ async function createOnChain(
 ): Promise<string> {
   let lastErr: unknown;
   let signed: { bytes: Uint8Array; signature: string } | null = null;
+  let mayHaveExecuted = false;
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       if (!signed) {
@@ -768,6 +777,18 @@ async function createOnChain(
       const lostResponse =
         /fetch failed|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EPIPE|socket hang up|network|timeout/i.test(msg)
         || /(?:HTTP|status code:?)\s*(?:429|5\d\d)/i.test(msg);
+      if (lostResponse) mayHaveExecuted = true;
+      if (conflict && mayHaveExecuted) {
+        // Once a response has been lost, a conflict is what SUCCESS looks like
+        // from here: the gas coin these bytes reference was consumed by the
+        // attempt we never got an answer for. Rebuilding would mint exactly the
+        // duplicate this function exists to prevent, so stop and make a human
+        // look instead of guessing.
+        throw new Error(
+          `${m.label}: ambiguous outcome after a lost response (${msg}). ` +
+          `The market may already exist -- check before re-running, then resume with --only.`,
+        );
+      }
       if (conflict) signed = null;
       if (!(conflict || lostResponse) || attempt === 4) throw err;
       await new Promise((r) => setTimeout(r, 3000 * attempt));
@@ -786,20 +807,23 @@ async function main(): Promise<void> {
   // end is in exactly this format, so a partial run is resumed by pasting it.
   const onlyArg = process.argv.find((a) => a.startsWith('--only='));
   const only = onlyArg ? new Set(onlyArg.slice('--only='.length).split(',').map((x) => x.trim()).filter(Boolean)) : null;
-  const allMarkets = SPECS.map((s) => {
-    const m = buildMarket(s);
-    selfValidate(s, m);
-    return m;
-  });
   if (only) {
-    const known = new Set(allMarkets.map((m) => m.label));
+    const known = new Set(SPECS.map((sp) => sp.label));
     const unknown = [...only].filter((l) => !known.has(l));
     if (unknown.length > 0) {
       console.error(`--only names labels that do not exist: ${unknown.join(', ')}`);
       process.exit(1);
     }
   }
-  const markets = only ? allMarkets.filter((m) => only.has(m.label)) : allMarkets;
+  // Filter BEFORE validating. selfValidate rejects a closeTime in the past, so
+  // validating the whole batch first would make the resume path useless exactly
+  // when it is needed -- one already-closed sibling would abort the run.
+  const selectedSpecs = only ? SPECS.filter((sp) => only.has(sp.label)) : SPECS;
+  const markets = selectedSpecs.map((sp) => {
+    const m = buildMarket(sp);
+    selfValidate(sp, m);
+    return m;
+  });
   const byCat = markets.reduce<Record<string, number>>((acc, m) => {
     acc[m.category] = (acc[m.category] ?? 0) + 1; return acc;
   }, {});
@@ -817,7 +841,7 @@ async function main(): Promise<void> {
 
   if (verify) {
     console.log('\nVerifying identifiers against live upstreams...');
-    const problems = await verifyUpstream(SPECS);
+    const problems = await verifyUpstream(selectedSpecs);
     if (problems.length > 0) {
       console.error(`\nUpstream verification found ${problems.length} problem(s):`);
       for (const p of problems) console.error(`  - ${p}`);
