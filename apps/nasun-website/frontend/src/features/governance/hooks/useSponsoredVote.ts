@@ -22,6 +22,7 @@ import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
+import { assertSponsoredTxMatches } from "../utils/verifySponsoredTx";
 
 const API_URL = import.meta.env.VITE_GOVERNANCE_API_URL;
 const PACKAGE_ID = import.meta.env.VITE_GOVERNANCE_PACKAGE_ID;
@@ -126,6 +127,11 @@ export function useSponsoredVote() {
 
       const { txBytes, sponsorSignature } = await sponsorResponse.json();
       const txBytesArray = fromBase64(txBytes);
+
+      // Never sign what the sponsor hands back without checking it is what we
+      // asked for. Only the transaction kind left this client; everything else
+      // in these bytes was chosen by the API.
+      assertSponsoredTxMatches(txBytesArray, kindBytes, voterAddress);
 
       // 4. User signs
       let userSignature: string;
