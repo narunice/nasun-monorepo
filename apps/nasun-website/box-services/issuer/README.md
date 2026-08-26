@@ -47,6 +47,9 @@ not a degraded issuer, it is a crash loop, and a crash loop takes **every login 
 it. The self-check is a good design (it refuses to serve a key inconsistent with the signer) but it means the
 rollback path has to be ready before the deploy, not after.
 
+A bug hit by a single request no longer does this: since 2026-08-26 every route runs under a top-level catch,
+so a throw becomes one 500 rather than a dead process. Startup failures still exit, by design.
+
 Worse, the loop does not run forever. The unit inherits systemd's defaults (`StartLimitBurst=5`,
 `StartLimitIntervalSec=10s`, verified on the box) against `RestartSec=2`, so five failures inside ten seconds
 put the unit into `failed` **permanently**. Restarting it then requires:
@@ -79,22 +82,30 @@ ssh "$BOX_SSH" '
   curl -s http://127.0.0.1:3210/health'
 ```
 
-`/health` should report `"mint":true,"salt":true`, but do not read more into it than it says: both fields are
-derived from whether the credential *paths* are set, not from the credentials decrypting or Postgres being
-reachable. `true` therefore does not prove `/mint` works. Confirm the real thing with an authenticated call,
-or at minimum check `journalctl -u nasun-issuer` for the startup line and the absence of `mint_failed`.
-Roll back by installing the `.bak` file the same way.
+`/health` must report `"mint":true,"salt":true`. Since 2026-08-26 those fields mean what they say: the mint
+secret loaded, and a `SELECT 1` against Postgres answered within 2 seconds. `false` is therefore a real
+signal that the DB-backed routes are down while JWKS keeps serving. Roll back by installing the `.bak` file
+the same way.
+
+For a stronger check that still writes nothing, look up a salt for a sub that cannot exist. It exercises the
+bearer, the DB and the read path at once, and the lookup-only branch never inserts:
+
+```bash
+ssh "$BOX_SSH" 'SECRET=$(sudo systemd-creds decrypt --name=mint-secret /srv/nasun/issuer/secrets/mint-secret.cred -)
+  curl -s -X POST http://127.0.0.1:3210/zklogin/salt -H "content-type: application/json" \
+    -H "Authorization: Bearer $SECRET" -d "{\"provider\":\"google\",\"sub\":\"probe-does-not-exist\"}"'
+```
+
+It must answer `{"salt":null}`. Confirm `issuer.zklogin_users` did not grow if you want to be sure.
 
 Dependency changes additionally need `npm ci` in `/srv/nasun/issuer` on the box. Nothing in the workspace
 deploy path (`sync_box_workspace_deps`) reaches this directory.
 
-**Observed divergence, worth closing:** the sibling services deploy as `root:root 644` into a root-owned
-directory, but `/srv/nasun/issuer/` and its `server.mjs` are owned by `nasun:nasun`. The `sudo` above is
-therefore not actually required today, which is the problem: the unprivileged login account can rewrite the
-code of the service that holds the signing key. `secrets/` is correctly root-only, so this is not an
-immediate key exposure, but chowning the directory and `server.mjs` to `root:root` would bring the issuer up
-to the sibling posture. Not changed here, since it is a live change unrelated to putting the source under
-version control.
+**Ownership note.** `/srv/nasun/issuer/` and its `server.mjs` are owned by `nasun:nasun`, where the sibling
+services are `root:root`, so the `sudo` above is not strictly required. This looks like a hardening gap and
+is not one: the `nasun` account has `(ALL) NOPASSWD: ALL`, so it can become root at will and chowning the
+files to root would not deny it anything. The divergence is cosmetic, and the thing actually protecting the
+signing key is `secrets/` being root-only plus the credentials being encrypted to the host key.
 
 ## Credentials and the unit
 
@@ -127,24 +138,59 @@ decoration: a zkLogin address is derived from its salt, so an UPDATE to a stored
 live user's wallet to a different address. Both write paths use `ON CONFLICT DO NOTHING` so concurrent
 first-logins converge on one row instead of overwriting. See `deploy/grants.sql`.
 
-## Known defects (present in production, not yet fixed)
+## Defects found and fixed, 2026-08-26
 
-Found reviewing this file into version control on 2026-08-26. Nothing here is a regression: it is the
-behavior running today. They are recorded rather than patched because fixing them means deploying the
-issuer, which is the highest-blast-radius operation on the box and deserves its own deliberate change.
+Found while reviewing this file into version control, then fixed, verified and deployed the same day. Kept
+here because they describe how this service can fail, which is worth knowing before changing it.
 
-1. **`authorizedMint()` fails open on an empty credential** (`server.mjs:96`). If `mint-secret.cred` ever
-   decrypts to an empty or whitespace-only value, `Buffer.from('')` is truthy so the `if (!secret)` guard
-   does not fire, and `timingSafeEqual` of two zero-length buffers returns `true`. A request with **no**
-   `Authorization` header would then be authorized, which on `/mint` means minting a signed JWT for an
-   arbitrary `developerUserIdentifier`, i.e. impersonating any user. Not live today (the credential measures
-   64 bytes), and the nginx origin-lock is a second gate, but a botched credential rotation would silently
-   open the service. Fix: `if (!secret || secret.length === 0) return false;`.
-2. **`/health` overstates readiness** (`server.mjs:179`). `dbBacked` tests that the credential path strings
-   are set, which is always true under systemd, so it reports `true` while `/mint` returns 503 or 500. It
-   should test that the credentials actually loaded and that a trivial DB query succeeds.
-3. **Oversized bodies get a socket error instead of a 400** (`server.mjs:160`). `readBody` calls
-   `req.destroy()` before any response is written, so the caller sees a transport error, and the rejection is
-   also mislabelled `invalid_json` by the surrounding catch. Cap is 4096 bytes, so this is cosmetic.
-4. **Restart limit** (`deploy/nasun-issuer.service:11`). See the blast-radius section: consider
-   `StartLimitIntervalSec=0`, or accept the fail-fast behavior and keep `reset-failed` in the runbook.
+1. **`authorizedMint()` failed open on an empty credential.** If `mint-secret.cred` had ever decrypted to an
+   empty or whitespace-only value, a zero-length `Buffer` is truthy so the `if (!secret)` guard did not fire,
+   and `timingSafeEqual` of two zero-length buffers is `true`. A request carrying **no** `Authorization`
+   header was therefore authorized. Reproduced against the pre-fix file: `POST /mint` with no header reached
+   body validation and answered `400 developerUserIdentifier required`, meaning a well-formed body would have
+   minted a token for an arbitrary identity. Never live (the credential measures 64 bytes), but one botched
+   rotation away. `getMintSecret()` now treats an empty credential as absent, and `authorizedMint()` checks
+   the length as well.
+2. **A single request could kill the process.** `POST /mint` with the JSON body `null` read a property off
+   `null` outside any `try`, and the resulting TypeError rejected the handler promise with nobody listening,
+   which on Node ends the process. Reproduced: the server exited 1 and every later probe got ECONNREFUSED.
+   With `StartLimitBurst=5` that is a five-request total login outage, and nothing on the box would have
+   noticed. Bodies are now parsed in one place that rejects non-objects, and every route runs under a
+   top-level catch.
+3. **`/health` overstated readiness.** It reported `mint:true,salt:true` whenever the credential path strings
+   were set, which is always true under systemd, so it read healthy while `/mint` returned 500. It now
+   requires the secret to have loaded and a bounded `SELECT 1` to succeed.
+4. **Oversized bodies returned a socket error.** `readBody` destroyed the socket before writing a response,
+   so the caller saw `UND_ERR_SOCKET` and the rejection was mislabelled `invalid_json`. It now answers
+   `413 body_too_large` and closes after the response flushes.
+
+5. **Routing compared the raw request target.** `req.url === '/.well-known/jwks.json'` meant a cache-busting
+   query string, which nginx passes through, fell to the 404 and broke verification for that client. Routes
+   now match on the parsed pathname.
+6. **A half-specified salt create was answered as a lookup miss.** A body carrying `salt` but no `address`
+   (or the reverse) returned `{salt:null}` and persisted nothing, so the caller would hand back an undefined
+   address and derive a different one, i.e. a different wallet, on the next login. It is now a 400. A body
+   with neither still means lookup, unchanged.
+7. **The startup log repeated the derivation removed from `/health`.** It printed `mint=` from the credential
+   paths, on the very line the runbook tells operators to read. It now prints `mintSecret=`, which is what it
+   actually knows at boot.
+
+Not fixed, recorded: `/mint` writes the caller's `provider` into both `provider` and `cred_type`, and the two
+columns hold different vocabularies. Box-written rows are `accounts.google.com|accounts.google.com|login`
+where the migrated rows are `accounts.google.com|google|zklogin_join`, so grouping by `cred_type` splits
+Google users. Nothing in the serving path reads these columns (the only consumer is the one-off
+`load-issuer-identity-map.ts`), the table is append-only so existing rows cannot be corrected, and picking
+the intended vocabulary is a decision rather than a fix.
+
+Verified before deploying: a throwaway Postgres was built from `deploy/grants.sql` and the patched service
+was run against it, covering first-seen mint, repeat mint returning the same identityId, the minted token
+verifying against the served JWKS, salt create, salt lookup, and a second create with a different salt
+leaving the stored salt and address untouched. Then re-verified on the box with read-only probes, with the
+row counts unchanged either side.
+
+## Known gap: nothing watches this service
+
+The box runs watchdog timers for disk, prediction, news-feed and request-rate, and none of them look at the
+issuer. The host that ran `box-health-monitor.sh` was decommissioned with the AWS exit. So if this service
+does enter `failed`, every login stops and the first signal is a user complaint. That is the real reason the
+restart limit matters, and it is a gap in monitoring rather than in the restart policy.

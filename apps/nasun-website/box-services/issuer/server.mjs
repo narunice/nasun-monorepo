@@ -37,6 +37,7 @@ const KID = process.env.ISSUER_KID;
 // `<region>:<uuid>` ids the rest of the system already treats as opaque keys.
 const NEW_ID_PREFIX = process.env.ISSUER_NEW_IDENTITY_PREFIX || '';
 const MAX_BODY = 4096;
+const HEALTH_DB_TIMEOUT_MS = 2000;
 
 const credDir = process.env.CREDENTIALS_DIRECTORY;
 const KEY_FILE = process.env.ISSUER_KEY_FILE || (credDir ? `${credDir}/issuer-key` : null);
@@ -73,8 +74,15 @@ let mintSecretBuf = null;
 function getMintSecret() {
   if (mintSecretBuf) return mintSecretBuf;
   if (!MINT_SECRET_FILE) return null;
-  try { mintSecretBuf = Buffer.from(readFileSync(MINT_SECRET_FILE, 'utf8').trim()); return mintSecretBuf; }
-  catch { return null; }
+  try {
+    // An empty or whitespace-only credential must read as ABSENT, not as a zero-length secret: a zero-length
+    // Buffer is truthy and timingSafeEqual of two zero-length buffers is true, so treating it as present
+    // would authorize a request that carries no Authorization header at all.
+    const raw = readFileSync(MINT_SECRET_FILE, 'utf8').trim();
+    if (!raw) return null;
+    mintSecretBuf = Buffer.from(raw);
+    return mintSecretBuf;
+  } catch { return null; }
 }
 
 let sql = null;
@@ -87,10 +95,23 @@ function getSql() {
   return sql;
 }
 
+// Answers whether the DB the mint/salt routes need is actually reachable. Bounded, because /health must not
+// hang for the driver's connect timeout when Postgres is down.
+async function pingDb() {
+  const db = getSql();
+  if (!db) return false;
+  // Settle BOTH branches. A query that rejects after the timeout has already won would otherwise surface as
+  // an unhandled rejection, and on this service that means the process dies and every login stops.
+  const query = db`SELECT 1`.then(() => true, () => false);
+  const timeout = new Promise((resolve) => { setTimeout(() => resolve(false), HEALTH_DB_TIMEOUT_MS).unref(); });
+  return Promise.race([query, timeout]);
+}
+
 // Constant-time bearer check against the shared mint secret.
 function authorizedMint(req) {
   const secret = getMintSecret();
-  if (!secret) return false;
+  // Length is checked explicitly: see getMintSecret. Belt and braces, on the path that gates token minting.
+  if (!secret || secret.length === 0) return false;
   const header = req.headers['authorization'] || '';
   const presented = header.startsWith('Bearer ') ? Buffer.from(header.slice(7)) : Buffer.alloc(0);
   return presented.length === secret.length && timingSafeEqual(presented, secret);
@@ -135,7 +156,11 @@ async function resolveSalt(db, body) {
 
   const salt = typeof body.salt === 'string' ? body.salt.trim() : '';
   const address = typeof body.address === 'string' ? body.address.trim() : '';
-  if (!salt || !address) return { status: 200, body: { salt: null } }; // lookup-only: not yet created
+  if (!salt && !address) return { status: 200, body: { salt: null } }; // lookup-only: not yet created
+  // One without the other used to be answered as a lookup miss, persisting nothing while looking like a
+  // successful call. The caller would then hand back an undefined address and derive a different one on the
+  // next login, which for zkLogin means a different wallet.
+  if (!salt || !address) return { status: 400, body: { error: 'salt and address must be provided together' } };
 
   const attributes = {};
   for (const k of ['email', 'name', 'picture']) {
@@ -151,13 +176,18 @@ async function resolveSalt(db, body) {
   return { status: 200, body: { salt: row.salt, address: row.address, isNewUser: row.salt === salt } };
 }
 
+class BodyTooLarge extends Error {}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', (c) => {
       size += c.length;
-      if (size > MAX_BODY) { reject(new Error('body too large')); req.destroy(); return; }
+      // Stop reading, but do NOT destroy the socket here: nothing has been written to the response yet, so
+      // destroying turns the rejection into a transport error the caller cannot read. The handler answers,
+      // then closes.
+      if (size > MAX_BODY) { req.pause(); reject(new BodyTooLarge('body too large')); return; }
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
@@ -170,22 +200,58 @@ const send = (res, code, obj) => {
   res.end(JSON.stringify(obj));
 };
 
-const server = createServer(async (req, res) => {
-  if (req.method === 'GET' && req.url === '/.well-known/jwks.json') {
+// Parses a JSON object body, or answers the request itself and returns BODY_HANDLED. Non-object bodies are
+// rejected here rather than in each route: `JSON.parse('null')` is null, and reading a property off it threw
+// a TypeError outside any try, which failed the whole process instead of the request.
+const BODY_HANDLED = Symbol('body-handled');
+async function readJsonObject(req, res) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch (e) {
+    if (e instanceof BodyTooLarge) {
+      res.writeHead(413, { 'content-type': 'application/json', connection: 'close' });
+      res.end(JSON.stringify({ error: 'body_too_large' }), () => req.destroy());
+      return BODY_HANDLED;
+    }
+    send(res, 400, { error: 'invalid_body' });
+    return BODY_HANDLED;
+  }
+  let parsed;
+  try { parsed = JSON.parse(raw || '{}'); }
+  catch { send(res, 400, { error: 'invalid_json' }); return BODY_HANDLED; }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    send(res, 400, { error: 'invalid_json' });
+    return BODY_HANDLED;
+  }
+  return parsed;
+}
+
+async function route(req, res) {
+  // Match on the path only. Comparing the raw request target meant a cache-busting query string on the
+  // JWKS URL (`?_=123`, which nginx passes through) fell through to the 404 and broke verification for
+  // that client.
+  let path;
+  try { path = new URL(req.url, 'http://issuer.invalid').pathname; }
+  catch { return send(res, 400, { error: 'invalid_request_target' }); }
+
+  if (req.method === 'GET' && path === '/.well-known/jwks.json') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' });
     return res.end(jwksBody);
   }
-  if (req.method === 'GET' && req.url === '/health') {
-    const dbBacked = !!(getMintSecret() && PG_PASSWORD_FILE);
-    return send(res, 200, { status: 'ok', iss: NASUN_ISS, kid: KID, mint: dbBacked, salt: dbBacked });
+  if (req.method === 'GET' && path === '/health') {
+    // Report what /mint and /zklogin/salt actually need: the shared secret loaded, and the DB answering.
+    // This field used to be derived from the credential PATHS being set, which is always true under systemd,
+    // so it read healthy while both routes were failing. Nothing consumes the old meaning.
+    const ready = !!getMintSecret() && await pingDb();
+    return send(res, 200, { status: 'ok', iss: NASUN_ISS, kid: KID, mint: ready, salt: ready });
   }
-  if (req.method === 'POST' && req.url === '/mint') {
+  if (req.method === 'POST' && path === '/mint') {
     if (!authorizedMint(req)) return send(res, 401, { error: 'unauthorized' });
     const db = getSql();
     if (!db) return send(res, 503, { error: 'mint_unavailable' });
-    let body;
-    try { body = JSON.parse(await readBody(req) || '{}'); }
-    catch { return send(res, 400, { error: 'invalid_json' }); }
+    const body = await readJsonObject(req, res);
+    if (body === BODY_HANDLED) return;
     const developerUserIdentifier = typeof body.developerUserIdentifier === 'string'
       ? body.developerUserIdentifier.trim() : '';
     const provider = typeof body.provider === 'string' ? body.provider.trim() : null;
@@ -201,13 +267,12 @@ const server = createServer(async (req, res) => {
       return send(res, 500, { error: 'mint_failed' });
     }
   }
-  if (req.method === 'POST' && req.url === '/zklogin/salt') {
+  if (req.method === 'POST' && path === '/zklogin/salt') {
     if (!authorizedMint(req)) return send(res, 401, { error: 'unauthorized' });
     const db = getSql();
     if (!db) return send(res, 503, { error: 'salt_unavailable' });
-    let body;
-    try { body = JSON.parse(await readBody(req) || '{}'); }
-    catch { return send(res, 400, { error: 'invalid_json' }); }
+    const body = await readJsonObject(req, res);
+    if (body === BODY_HANDLED) return;
     try {
       const { status, body: out } = await resolveSalt(db, body);
       return send(res, status, out);
@@ -217,10 +282,23 @@ const server = createServer(async (req, res) => {
     }
   }
   send(res, 404, { error: 'not_found' });
+}
+
+// A throw anywhere in a route used to reject the handler promise with nobody listening, which on Node is a
+// process-level unhandled rejection. On this service that turns one bad request into a total login outage,
+// so a request-scoped bug is contained to its own request and answered as a 500.
+const server = createServer((req, res) => {
+  route(req, res).catch((e) => {
+    console.error('[issuer] unhandled request error:', e instanceof Error ? e.stack : e);
+    if (!res.headersSent) send(res, 500, { error: 'internal_error' });
+    else res.end();
+  });
 });
 
 server.listen(PORT, HOST, async () => {
-  console.log(`[issuer] listening http://${HOST}:${PORT} iss=${NASUN_ISS} kid=${KID} aud=${AUD} mint=${!!(getMintSecret() && PG_PASSWORD_FILE)}`);
+  // Reports whether the shared secret loaded, and says so. It deliberately does NOT claim readiness: the DB
+  // is opened lazily and is not touched at boot. Ask /health for that.
+  console.log(`[issuer] listening http://${HOST}:${PORT} iss=${NASUN_ISS} kid=${KID} aud=${AUD} mintSecret=${!!getMintSecret()}`);
   try {
     const token = await mint('startup-selfcheck');
     const remoteJWKS = createRemoteJWKSet(new URL(`http://${HOST}:${PORT}/.well-known/jwks.json`));
