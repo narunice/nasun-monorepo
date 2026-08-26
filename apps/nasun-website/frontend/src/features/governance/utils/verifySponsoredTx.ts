@@ -11,8 +11,17 @@ import { TransactionDataBuilder } from "@mysten/sui/transactions";
  * thing the user ever saw was a "Confirm Vote" dialog.
  *
  * So re-derive the kind from the returned bytes and require it to match ours
- * byte for byte, and require the sender to still be the voter. The gas object
- * and budget are the sponsor's to choose and are deliberately not constrained.
+ * byte for byte, require the sender to still be the voter, and require the gas
+ * to be charged to somebody other than the voter.
+ *
+ * That last check is not decoration. Constraining only the kind and the sender
+ * leaves a second way through: return the correct vote, correctly addressed, but
+ * set gasData.owner to the voter and gasData.budget high. The envelope then
+ * quietly stops being sponsored -- the voter's own signature authorizes the gas,
+ * the sponsor signature becomes irrelevant, the vote succeeds so nothing looks
+ * wrong, and the voter pays for a transaction the UI promised was free. Budget,
+ * price and payment stay unconstrained, which is safe once the payer is not the
+ * user.
  *
  * This is the client's own check. It does not depend on trusting the API,
  * which is the point.
@@ -31,6 +40,12 @@ export function assertSponsoredTxMatches(
 
   if (parsed.sender !== expectedSender) {
     throw new Error("Sponsor returned a transaction for a different sender. Vote aborted.");
+  }
+
+  // A missing owner is rejected too: an unsponsored envelope bills the sender.
+  const gasOwner = parsed.gasData?.owner;
+  if (!gasOwner || gasOwner === expectedSender) {
+    throw new Error("Sponsor returned a transaction that charges gas to the voter. Vote aborted.");
   }
 
   let reDerivedKind: Uint8Array;
