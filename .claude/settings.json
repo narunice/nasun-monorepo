@@ -2,8 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(python3 -c ' *)",
-      "Bash(env NODE_ENV=production pnpm cdk deploy:*)",
-      "Bash(env NODE_ENV=production pnpm cdk diff:*)",
       "Bash(bash -n scripts/deploy-explorer-api.sh)",
       "Bash(npx tsc *)",
       "Bash(echo \"tsc rc=$?\")",
