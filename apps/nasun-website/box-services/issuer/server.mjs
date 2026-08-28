@@ -136,8 +136,10 @@ const CREDENTIAL_TAXONOMY = {
 // inventing a fifth vocabulary silently is what created this problem in the first place.
 function classifyCredential(provider) {
   if (!provider) return { provider: null, credType: null };
-  const known = CREDENTIAL_TAXONOMY[provider];
-  if (known) return known;
+  // Object.hasOwn, not a bare lookup: `constructor`, `__proto__`, `toString` and friends are truthy on a
+  // plain object literal, so a bare lookup would skip the warning below and hand undefined to the INSERT,
+  // which postgres.js rejects. That turns the documented verbatim fallback into a silent 500.
+  if (Object.hasOwn(CREDENTIAL_TAXONOMY, provider)) return CREDENTIAL_TAXONOMY[provider];
   console.warn(`[issuer] unknown credential provider ${JSON.stringify(provider)}: storing it verbatim, cred_type null`);
   return { provider, credType: null };
 }
