@@ -138,10 +138,11 @@ decoration: a zkLogin address is derived from its salt, so an UPDATE to a stored
 live user's wallet to a different address. Both write paths use `ON CONFLICT DO NOTHING` so concurrent
 first-logins converge on one row instead of overwriting. See `deploy/grants.sql`.
 
-## Defects found and fixed, 2026-08-26
+## Defects found and fixed, 2026-08-26 and 2026-08-28
 
-Found while reviewing this file into version control, then fixed, verified and deployed the same day. Kept
-here because they describe how this service can fail, which is worth knowing before changing it.
+Found while reviewing this file into version control, then fixed, verified and deployed. Items 1 to 7 landed
+on 08-26, items 8 and 9 on 08-28. Kept here because they describe how this service can fail, which is worth
+knowing before changing it.
 
 1. **`authorizedMint()` failed open on an empty credential.** If `mint-secret.cred` had ever decrypted to an
    empty or whitespace-only value, a zero-length `Buffer` is truthy so the `if (!secret)` guard did not fire,
@@ -201,17 +202,48 @@ here because they describe how this service can fail, which is worth knowing bef
    `cred_type` and logged: inventing a fifth vocabulary silently is what caused this in the first place.
    Nothing in the serving path reads either column, so this is about forensics and reporting, not behavior.
 
-   The 6,450 rows already written in the box vocabulary are **not** corrected by this change. Normalising
-   them needs an UPDATE, which the issuer role deliberately does not have, so it would be a one-off owner
-   statement. `source` already distinguishes the eras (`login` against `lookup`/`zklogin_join`), so
-   normalising loses nothing, but it is a production write on the identity table and belongs behind an
-   explicit decision rather than inside a deploy.
+   The 6,450 rows already carrying the box vocabulary were normalised separately on 2026-08-28, as an owner
+   statement rather than through the service (the issuer role has no UPDATE, deliberately, and that ceiling
+   was not touched). 6,391 rows had `provider` corrected and 59 had `cred_type`. The statement carried its
+   own guards: it compared the row count and an md5 over `developer_user_identifier || identity_id` before
+   and after, and would have raised and rolled back had either moved, so the credential-to-identity mapping
+   is provably untouched. `source` still separates the eras (`login` against `lookup`/`zklogin_join`), so
+   nothing was lost by unifying the other two columns. The table now groups cleanly: `cred_type` is
+   sui/metamask/google/twitter and `provider` is nasun.io or accounts.google.com, with no row left where the
+   two are equal. The affected rows were dumped to `~/nasun-backups/box-issuer/2026-08-28/` first.
+
+   Should this ever need doing again, run it as the owner, never by widening the issuer role: the missing
+   UPDATE is what makes a stored zkLogin salt, and therefore a user's wallet address, immutable.
 
 Verified before deploying: a throwaway Postgres was built from `deploy/grants.sql` and the patched service
 was run against it, covering first-seen mint, repeat mint returning the same identityId, the minted token
 verifying against the served JWKS, salt create, salt lookup, and a second create with a different salt
 leaving the stored salt and address untouched. Then re-verified on the box with read-only probes, with the
 row counts unchanged either side.
+
+## Known gap: no minimum length on the mint secret
+
+The two hand-written siblings that copied this service's constant-time bearer check both added a floor the
+issuer never had: `nasun-identity/server.mjs` refuses to start unless `identity-bearer` is at least 16
+bytes, and `nasun-identity-compute` does the same for `compute-bearer`. Here an empty credential now reads
+as absent and fails closed, but a short non-empty one is still accepted, on the one service that holds the
+signing key. The credential is 64 bytes today. Adding the floor is worthwhile, though it cannot simply be a
+startup `fatal`: JWKS deliberately serves even when the secret is absent, so the check has to reject a
+present-but-too-short credential without failing an absent one.
+
+Worth being precise about why the issuer was the one that got this wrong, because the obvious answer is the
+wrong one. The codebase carries two independent defenses against an empty credential, and the issuer had
+neither:
+
+- **A startup length floor.** `nasun-identity/server.mjs:68` and `nasun-identity-compute/src/config.ts:54`
+  build their bearer with `Buffer.from(...)` exactly as the issuer did, so they are equally exposed to
+  `Buffer.from('')` being truthy. What saves them is refusing to start below 16 bytes.
+- **Testing the secret as a string.** `bug-report/src/auth.ts:20` and `referral/src/auth.ts:60` compare
+  strings and check truthiness before wrapping (`if (!provided || !ADMIN_SERVICE_KEY) return false`), so an
+  empty value is falsy and rejected. Different services and different secrets, but the same effect.
+
+Prefer the length floor when adding a bearer check. It holds regardless of whether the secret is carried as
+a string or a Buffer, and a Buffer-based check with only a truthiness test is precisely this bug.
 
 ## Known gap: nothing watches this service
 
