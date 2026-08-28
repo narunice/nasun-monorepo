@@ -182,12 +182,30 @@ here because they describe how this service can fail, which is worth knowing bef
    `200` with a real token, and the process exits faster too (897ms against 3394ms). The server now closes
    first, then drains, under a hard deadline so a stuck connection cannot outlast systemd's patience.
 
-Not fixed, recorded: `/mint` writes the caller's `provider` into both `provider` and `cred_type`, and the two
-columns hold different vocabularies. Box-written rows are `accounts.google.com|accounts.google.com|login`
-where the migrated rows are `accounts.google.com|google|zklogin_join`, so grouping by `cred_type` splits
-Google users. Nothing in the serving path reads these columns (the only consumer is the one-off
-`load-issuer-identity-map.ts`), the table is append-only so existing rows cannot be corrected, and picking
-the intended vocabulary is a decision rather than a fix.
+9. **`/mint` wrote the caller's one `provider` argument into both metadata columns.** Those columns carry a
+   vocabulary the Stage-1 migration established over 128k rows: `provider` is where the credential came from
+   (`accounts.google.com`, or `nasun.io` for credentials this system issues), `cred_type` is what it is
+   (`google`/`sui`/`metamask`/`twitter`). Copying one field into both minted a second vocabulary, and it
+   diverged in *both* columns depending on the login kind, so grouping by either split the same users:
+
+   | login | box wrote | vocabulary wants | rows |
+   |---|---|---|---|
+   | Google | `accounts.google.com` \| `accounts.google.com` | `accounts.google.com` \| `google` | 59 |
+   | Sui | `sui` \| `sui` | `nasun.io` \| `sui` | 6,163 |
+   | Twitter | `twitter` \| `twitter` | `nasun.io` \| `twitter` | 117 |
+   | MetaMask | `metamask` \| `metamask` | `nasun.io` \| `metamask` | 111 |
+
+   `CREDENTIAL_TAXONOMY` now maps the caller's provider to both columns. Its four keys are the complete set
+   the callers send (`handlers-google`, `handlers-twitter`, and `finishLogin` for the two wallet kinds), so
+   the table is closed rather than guessed. An unrecognised provider is stored verbatim with a null
+   `cred_type` and logged: inventing a fifth vocabulary silently is what caused this in the first place.
+   Nothing in the serving path reads either column, so this is about forensics and reporting, not behavior.
+
+   The 6,450 rows already written in the box vocabulary are **not** corrected by this change. Normalising
+   them needs an UPDATE, which the issuer role deliberately does not have, so it would be a one-off owner
+   statement. `source` already distinguishes the eras (`login` against `lookup`/`zklogin_join`), so
+   normalising loses nothing, but it is a production write on the identity table and belongs behind an
+   explicit decision rather than inside a deploy.
 
 Verified before deploying: a throwaway Postgres was built from `deploy/grants.sql` and the patched service
 was run against it, covering first-seen mint, repeat mint returning the same identityId, the minted token

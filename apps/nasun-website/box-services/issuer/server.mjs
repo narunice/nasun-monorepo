@@ -118,6 +118,30 @@ function authorizedMint(req) {
   return presented.length === secret.length && timingSafeEqual(presented, secret);
 }
 
+// The two metadata columns carry the vocabulary the Stage-1 migration seeded 128k rows with: `provider` is
+// where the credential came FROM (accounts.google.com for Google OIDC, nasun.io for credentials this system
+// issues itself) and `cred_type` is WHAT it is. /mint used to write the caller's single `provider` argument
+// into both, which minted a second vocabulary (sui|sui, metamask|metamask, twitter|twitter,
+// accounts.google.com|accounts.google.com), so grouping by either column split the same users across two
+// names. This table reproduces the migration's vocabulary; the four keys are the complete set of values the
+// callers send (handlers-google, handlers-twitter, and finishLogin for the two wallet kinds).
+const CREDENTIAL_TAXONOMY = {
+  'accounts.google.com': { provider: 'accounts.google.com', credType: 'google' },
+  sui: { provider: 'nasun.io', credType: 'sui' },
+  metamask: { provider: 'nasun.io', credType: 'metamask' },
+  twitter: { provider: 'nasun.io', credType: 'twitter' },
+};
+
+// An unrecognised provider is recorded verbatim with a null cred_type and logged, rather than guessed at:
+// inventing a fifth vocabulary silently is what created this problem in the first place.
+function classifyCredential(provider) {
+  if (!provider) return { provider: null, credType: null };
+  const known = CREDENTIAL_TAXONOMY[provider];
+  if (known) return known;
+  console.warn(`[issuer] unknown credential provider ${JSON.stringify(provider)}: storing it verbatim, cred_type null`);
+  return { provider, credType: null };
+}
+
 // Resolve the credential to a stable identityId (append-only): existing mapping wins; first-seen
 // credential gets a fresh id inserted. Never re-points an existing identifier (issuer role has no UPDATE).
 async function resolveIdentityId(db, developerUserIdentifier, provider) {
@@ -127,11 +151,12 @@ async function resolveIdentityId(db, developerUserIdentifier, provider) {
   if (row?.identity_id) return { identityId: row.identity_id, created: false };
 
   const identityId = `${NEW_ID_PREFIX}${randomUUID()}`;
+  const credential = classifyCredential(provider);
   // ON CONFLICT DO NOTHING guards a race between two concurrent first-logins of the same credential;
   // the loser re-reads the winner's row. (DO NOTHING needs only INSERT priv, not UPDATE.)
   await db`
     INSERT INTO issuer.identity_map (developer_user_identifier, identity_id, provider, cred_type, source)
-    VALUES (${developerUserIdentifier}, ${identityId}, ${provider || null}, ${provider || null}, 'login')
+    VALUES (${developerUserIdentifier}, ${identityId}, ${credential.provider}, ${credential.credType}, 'login')
     ON CONFLICT (developer_user_identifier) DO NOTHING`;
   const [confirmed] = await db`
     SELECT identity_id FROM issuer.identity_map
