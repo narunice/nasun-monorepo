@@ -174,6 +174,13 @@ here because they describe how this service can fail, which is worth knowing bef
 7. **The startup log repeated the derivation removed from `/health`.** It printed `mint=` from the credential
    paths, on the very line the runbook tells operators to read. It now prints `mintSecret=`, which is what it
    actually knows at boot.
+8. **Shutdown drained the pool while requests were still using it.** `sql.end()` ran alongside
+   `server.close()`, so postgres.js rejected queries the in-flight requests had not issued yet. `/mint` for a
+   first-seen credential runs SELECT, INSERT, SELECT, so a routine `systemctl restart` could answer a login
+   with 500 after having already written its identity row. Demonstrated by pausing Postgres to hold a request
+   mid-sequence and then sending SIGTERM: the old order answered `500 mint_failed`, the new order answers
+   `200` with a real token, and the process exits faster too (897ms against 3394ms). The server now closes
+   first, then drains, under a hard deadline so a stuck connection cannot outlast systemd's patience.
 
 Not fixed, recorded: `/mint` writes the caller's `provider` into both `provider` and `cred_type`, and the two
 columns hold different vocabularies. Box-written rows are `accounts.google.com|accounts.google.com|login`

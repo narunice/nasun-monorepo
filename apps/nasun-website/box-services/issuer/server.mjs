@@ -38,6 +38,7 @@ const KID = process.env.ISSUER_KID;
 const NEW_ID_PREFIX = process.env.ISSUER_NEW_IDENTITY_PREFIX || '';
 const MAX_BODY = 4096;
 const HEALTH_DB_TIMEOUT_MS = 2000;
+const SHUTDOWN_TIMEOUT_MS = 8000;
 
 const credDir = process.env.CREDENTIALS_DIRECTORY;
 const KEY_FILE = process.env.ISSUER_KEY_FILE || (credDir ? `${credDir}/issuer-key` : null);
@@ -311,5 +312,16 @@ server.listen(PORT, HOST, async () => {
   }
 });
 
-const shutdown = () => { if (sql) sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };
+// Stop accepting, let the requests already in flight finish, and only THEN drain the pool. Ending the pool
+// alongside server.close() rejected queries those requests had not issued yet: /mint for a first-seen
+// credential runs SELECT, INSERT, SELECT, so a restart landing mid-sequence could answer 500 having already
+// written the identity row. The hard deadline is there so one stuck connection cannot hold the restart open
+// past systemd's patience.
+const shutdown = () => {
+  server.close(() => {
+    (sql ? sql.end({ timeout: 5 }).catch(() => {}) : Promise.resolve()).then(() => process.exit(0));
+  });
+  server.closeIdleConnections();
+  setTimeout(() => process.exit(0), SHUTDOWN_TIMEOUT_MS).unref();
+};
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, shutdown);

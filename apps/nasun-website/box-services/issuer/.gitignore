@@ -1,3 +1,10 @@
+# This directory mirrors the box layout, where /srv/nasun/issuer/secrets/ holds the host-encrypted RS256
+# signing credential and /srv/nasun/issuer/node_modules/ is installed by npm. Neither belongs in a public
+# repository, and nothing above this file excluded them.
+secrets/
+*.cred
+node_modules/
+
 # Re-include this service's npm lockfile, which apps/nasun-website/.gitignore blanket-ignores to keep npm
 # lockfiles out of a pnpm workspace. That rule is correct everywhere except here: this directory is
 # deliberately outside the pnpm workspace, and the box installs /srv/nasun/issuer/node_modules with
