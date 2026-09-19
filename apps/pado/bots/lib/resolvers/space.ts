@@ -129,31 +129,77 @@ interface LL2Launch {
   net: string | null;
 }
 
-// Per-LaunchId caches to stay under LL2's unauthenticated 15 req/hr limit.
+// Per-LaunchId caches, plus a global request budget, to stay under LL2's
+// rate limit (15 req/hr unauthenticated, 35 req/hr with LL2_API_KEY, per
+// this file's own header comment). requestBudgetOk() is the hard limit --
+// it fails closed before any request that would cross the real ceiling, no
+// matter how many launchIds are being tracked or how the caches below are
+// tuned. terminalCache/recentCache exist only to avoid *needing* the budget
+// check in the common case; they are an efficiency layer, not a safety net.
 //
-//   terminalCache  — once a launch reaches a terminal status (Success/
-//                    Failure/Partial Failure), the response is frozen and
-//                    cached for the process lifetime. No further network
-//                    calls for that launch.
-//   recentCache    — non-terminal statuses (Go/TBD/Hold/In Flight/TBC) are
-//                    cached for RECENT_TTL_MS so a tick that touches the
-//                    same launch twice (e.g. mission_success + on_schedule
-//                    markets for the same NET) costs one HTTP call.
+//   terminalCache — once a launch reaches a terminal status (Success/
+//                   Failure/Partial Failure), cached for the process
+//                   lifetime; no further calls for that launch, ever.
+//   recentCache   — non-terminal statuses (Go/TBD/Hold/In Flight/TBC)
+//                   cached for RECENT_TTL_MS, to cut demand from one launch
+//                   before it ever reaches requestBudgetOk. 2026-09-19: a
+//                   TTL equal to the keeper's own poll tick meant this cache
+//                   never survived to the next tick, so a single tracked
+//                   launch alone produced ~60 req/hr against the shared
+//                   ceiling -- a week-long 429 loop. If this TTL is ever
+//                   misconfigured again, requestBudgetOk below still holds
+//                   the line; only resolution latency degrades, not quota.
+//   requestWindowStart/requestCountInWindow — see requestBudgetOk. Sized
+//                   for the launch count open today (one). If a second
+//                   SpaceX market is ever created before the first one
+//                   resolves, per-launch demand (RECENT_TTL_MS) leaves
+//                   little headroom for a second launch, especially
+//                   unauthenticated -- get a real LL2_API_KEY (35 req/hr)
+//                   before batch-creating another one while one is open.
 //
-// Exported for tests; production code only uses the resolver entry point.
 const TERMINAL_STATUS_IDS = new Set<number>([3, 4, 7]);
-const RECENT_TTL_MS = 60_000;
+const RECENT_TTL_MS = 5 * 60_000;
 const FAILURE_BACKOFF_MS = 5 * 60_000;
+const REQUEST_WINDOW_MS = 60 * 60_000;
+// Trimmed once here so a stray trailing newline/space from .env parsing
+// (a recurring hazard in this repo) can't read as a non-empty key while
+// LL2 itself rejects it -- the exact truthy-empty-string class of bug that
+// left this resolver running unauthenticated for the 2026-09-19 incident.
+const LL2_API_KEY = process.env.LL2_API_KEY?.trim() || undefined;
+const HOURLY_CEILING = LL2_API_KEY ? 35 : 15;
+// Headroom below HOURLY_CEILING. fetchLaunch is only ever reached
+// sequentially per launchId from prediction-keeper's tick loop, and a
+// terminal transition is cached before the next market in the same tick
+// can miss it, so same-launch calls never double up. The margin exists for
+// *other*, distinct launchIds warming their cache in the same tick.
+const SAFETY_MARGIN = 1;
 const terminalCache = new Map<string, LL2Launch>();
 const recentCache = new Map<string, { value: LL2Launch; ts: number }>();
 // Backoff per (launchId) after a 429/5xx so a burst of ticks does not
-// hammer the unauthenticated 15 req/hr limit further.
+// hammer the rate limit further.
 const failureBackoff = new Map<string, { until: number; reason: string }>();
+// Fixed-window counter of requests actually sent in the current
+// REQUEST_WINDOW_MS window, across all launchIds -- the shared-quota guard
+// described above. A launch-agnostic count is sufficient: the goal is only
+// to never exceed LL2's total ceiling, not to allocate it fairly.
+let requestWindowStart = 0;
+let requestCountInWindow = 0;
 
+// Exported for tests; production code only uses the resolver entry point.
 export function _clearSpaceCaches(): void {
   terminalCache.clear();
   recentCache.clear();
   failureBackoff.clear();
+  requestWindowStart = 0;
+  requestCountInWindow = 0;
+}
+
+function requestBudgetOk(now: number): boolean {
+  if (now - requestWindowStart >= REQUEST_WINDOW_MS) {
+    requestWindowStart = now;
+    requestCountInWindow = 0;
+  }
+  return requestCountInWindow < HOURLY_CEILING - SAFETY_MARGIN;
 }
 
 async function fetchLaunch(launchId: string): Promise<LL2Launch> {
@@ -168,12 +214,20 @@ async function fetchLaunch(launchId: string): Promise<LL2Launch> {
   if (backoff && now < backoff.until) {
     throw new Error(`LL2 backoff in effect: ${backoff.reason} (resumes in ${Math.ceil((backoff.until - now) / 1000)}s)`);
   }
+  if (!requestBudgetOk(now)) {
+    throw new Error(
+      `LL2 client-side hourly budget exhausted (${requestCountInWindow}/${HOURLY_CEILING} shared across all tracked launches)`,
+    );
+  }
 
   const base = process.env.LL2_BASE || 'https://ll.thespacedevs.com/2.2.0';
   const url = `${base}/launch/${encodeURIComponent(launchId)}/`;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  const apiKey = process.env.LL2_API_KEY;
-  if (apiKey) headers.Authorization = `Token ${apiKey}`;
+  if (LL2_API_KEY) headers.Authorization = `Token ${LL2_API_KEY}`;
+
+  // Count the attempt against the shared budget regardless of outcome --
+  // a failed or 429'd request still spent one of LL2's quota slots.
+  requestCountInWindow += 1;
 
   let res: Response;
   try {
