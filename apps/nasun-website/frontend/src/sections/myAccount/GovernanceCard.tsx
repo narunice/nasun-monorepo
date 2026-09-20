@@ -9,6 +9,7 @@ import { FC } from "react";
 import { Link } from "react-router-dom";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
+import { formatVotingPower } from "@/features/governance/utils/formatVotingPower";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
 import { OuterBox, Spinner } from "@/components/ui";
 import { StatCard } from "@/components/ui/StatCard";
@@ -22,10 +23,10 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
 
-  const { votingPower } = useVotingPower();
-  const { history, isLoading } = useVoteHistory(3);
+  const { votingPower, isLoading: isLoadingPower } = useVotingPower();
+  const { history, isLoading, error: historyError } = useVoteHistory(3);
 
-  const totalPower = votingPower?.totalVotingPower || 10;
+  const votingPowerLabel = formatVotingPower(votingPower, isLoadingPower);
 
   if (!isConnected) {
     return (
@@ -56,7 +57,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
       <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="mb-4">
-        <StatCard label="Voting Power" value={totalPower.toLocaleString()} className="!p-3" />
+        <StatCard label="Voting Power" value={votingPowerLabel} className="!p-3" />
       </div>
 
       {/* Recent Votes */}
@@ -80,7 +81,11 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
             ))}
           </div>
         ) : (
-          <p className="text-nasun-white/80">No votes yet</p>
+          <p className="text-nasun-white/80">
+            {historyError
+              ? "Could not load your votes. Try again shortly."
+              : "No votes yet"}
+          </p>
         )}
       </div>
 

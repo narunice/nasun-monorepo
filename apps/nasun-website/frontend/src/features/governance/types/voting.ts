@@ -13,9 +13,10 @@ export type ProposalType = "Governance" | "Poll";
 export interface VoteHistory {
   proposalId: string;
   proposalTitle: string;
+  // Both read from the proposal's on-chain VoteRecord, never inferred from the
+  // vote proof NFT, which carries no direction and no power.
   voteYes: boolean;
   votingPower: number;
-  timestamp: number;
   proposalStatus: "Active" | "Passed" | "Failed" | "Delisted";
 }
 

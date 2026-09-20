@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Link } from "react-router-dom";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
+import { formatVotingPower } from "@/features/governance/utils/formatVotingPower";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
 import { Spinner } from "@/components/ui";
 import { UjuCard, UjuSectionHeader, UjuStat } from "../../shared";
@@ -17,10 +18,10 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
 
-  const { votingPower } = useVotingPower();
-  const { history, isLoading } = useVoteHistory(3);
+  const { votingPower, isLoading: isLoadingPower } = useVotingPower();
+  const { history, isLoading, error: historyError } = useVoteHistory(3);
 
-  const totalPower = votingPower?.totalVotingPower || 10;
+  const votingPowerLabel = formatVotingPower(votingPower, isLoadingPower);
 
   if (!isConnected) {
     return (
@@ -62,7 +63,7 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
       <div className="mb-8">
         <UjuStat
           label="Voting Power"
-          value={totalPower.toLocaleString()}
+          value={votingPowerLabel}
           tone="cyan"
         />
         {votingPower?.breakdown && (
@@ -106,7 +107,11 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
             ))}
           </div>
         ) : (
-          <p className="text-uju-secondary py-2">No votes yet</p>
+          <p className="text-uju-secondary py-2">
+            {historyError
+              ? "Could not load your votes. Try again shortly."
+              : "No votes yet"}
+          </p>
         )}
       </div>
 

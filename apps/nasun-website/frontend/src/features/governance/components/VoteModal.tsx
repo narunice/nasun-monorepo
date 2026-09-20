@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useVotingPower } from "../hooks/useVotingPower";
+import { formatVotingPower } from "../utils/formatVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
 import { useDirectVote } from "../hooks/useDirectVote";
 import { splitVoteChoices } from "../utils/proposalHelpers";
@@ -45,7 +46,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   // Voting Power state
   const { votingPower, isLoading: isLoadingPower } = useVotingPower();
 
-  const totalVotingPower = votingPower?.totalVotingPower || 10;
+  const votingPowerLabel = formatVotingPower(votingPower, isLoadingPower);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -156,7 +157,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-nasun-white/60">Your Voting Power</span>
                 <span className="text-lg font-semibold text-nasun-nw4">
-                  {isLoadingPower ? "..." : totalVotingPower}
+                  {votingPowerLabel}
                 </span>
               </div>
 
@@ -222,7 +223,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                 <li className="flex items-start gap-2">
                   <span className="text-nasun-nw4">•</span>
                   <span>
-                    Voting power: <strong className="text-nasun-nw4">{totalVotingPower}</strong>
+                    Voting power: <strong className="text-nasun-nw4">{votingPowerLabel}</strong>
                   </span>
                 </li>
               </ul>
@@ -242,7 +243,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                   size="sm"
                   onClick={() => vote(confirmStep.voteYes!)}
                   className="flex-1 font-normal"
-                  disabled={isPending}
+                  disabled={votingDisable}
                 >
                   {isPending ? "Voting..." : "Confirm Vote"}
                 </ButtonV3>

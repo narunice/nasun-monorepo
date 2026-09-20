@@ -648,6 +648,40 @@ const MultiChoiceProposalDetail: FC<{
           </div>
         )}
 
+        {/* Plain-text Choice Selector.
+            Without this there is no way to pick a choice outside tweet mode, so
+            the Vote button in the sidebar opened a modal that rendered nothing. */}
+        {!isTweetMode && !isExpired && !hasVoted && (
+          <div className="mt-4 space-y-2">
+            {proposal.choices.map((choice, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() =>
+                  setSelectedChoice((prev) => (prev === idx ? null : idx))
+                }
+                aria-pressed={selectedChoice === idx}
+                className={`w-full flex items-center gap-3 p-3 rounded-sm border text-left transition-colors ${
+                  selectedChoice === idx
+                    ? "border-nasun-nw1/60 bg-nasun-nw1/10"
+                    : "border-nasun-white/10 bg-nasun-white/[0.04] hover:border-nasun-white/30"
+                }`}
+              >
+                <span
+                  className={`w-4 h-4 rounded-full border flex-shrink-0 ${
+                    selectedChoice === idx
+                      ? "border-nasun-nw1 bg-nasun-nw1"
+                      : "border-nasun-white/30"
+                  }`}
+                />
+                <span className="text-nasun-white/90 text-sm">
+                  {getChoiceLabel(choice, displayNames)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Vote Action (inline, below cards) */}
         {isTweetMode && !isExpired && !hasVoted && (
           <div className="flex justify-center py-10">
@@ -798,10 +832,11 @@ const MultiChoiceProposalDetail: FC<{
                 <Copy className="w-4 h-4" />
                 {t("detail.copyUrl")}
               </ButtonV3>
-              {!isExpired && !isTweetMode && (
+              {!isExpired && !isTweetMode && !hasVoted && (
                 <ButtonV3
                   variant="gradientDark"
                   onClick={() => setIsModalOpen(true)}
+                  disabled={selectedChoice === null}
                   className="w-full"
                 >
                   Vote

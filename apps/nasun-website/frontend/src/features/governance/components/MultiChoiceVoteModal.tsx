@@ -10,6 +10,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { toast } from "react-toastify";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useVotingPower } from "../hooks/useVotingPower";
+import { formatVotingPower } from "../utils/formatVotingPower";
 import { useMultiChoiceSponsoredVote } from "../hooks/useMultiChoiceSponsoredVote";
 import { useMultiChoiceDirectVote } from "../hooks/useMultiChoiceDirectVote";
 
@@ -48,8 +49,9 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
 
   const { votingPower, isLoading: isLoadingPower } = useVotingPower();
 
-  const totalVotingPower = votingPower?.totalVotingPower || 10;
-  const effectivePower = proposal.useEqualWeight ? 1 : totalVotingPower;
+  const effectivePowerLabel = proposal.useEqualWeight
+    ? "1 (Equal Weight)"
+    : formatVotingPower(votingPower, isLoadingPower);
 
   const selectedChoice = initialChoice ?? null;
 
@@ -176,11 +178,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
                       <div className="flex items-center justify-between text-nasun-white/60">
                         <span>Voting Power</span>
                         <span className="font-semibold text-nasun-nw4">
-                          {proposal.useEqualWeight
-                            ? "1 (Equal Weight)"
-                            : isLoadingPower
-                              ? "..."
-                              : effectivePower}
+                          {effectivePowerLabel}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-nasun-white/60">

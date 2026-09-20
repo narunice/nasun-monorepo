@@ -48,6 +48,8 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
   // Query dynamic field for proposal type
   // retry: false - missing entries should not be retried (proposal may predate the registry)
   // throwOnError: false - never crash the component for a missing type entry
+  const isFieldQueryEnabled = !!typesTableId && !!proposalId;
+
   const {
     data: dynamicFieldData,
     isPending: isFieldPending,
@@ -56,7 +58,7 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
     parentId: typesTableId || "",
     name: { type: "0x2::object::ID", value: proposalId },
   }, {
-    enabled: !!typesTableId && !!proposalId,
+    enabled: isFieldQueryEnabled,
     retry: false,
     throwOnError: false,
   });
@@ -72,8 +74,13 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
     }
   }
 
-  // Only consider loading if registry is configured and queries are actually pending
-  const isLoading = isRegistryConfigured && (isRegistryPending || isFieldPending);
+  // A disabled React Query never leaves status "pending", so isFieldPending
+  // stays true forever once the registry lookup fails and typesTableId is null.
+  // Only count it while the query can actually run, or the proposal card sits
+  // at "Loading..." with nothing to show for it.
+  const isLoading =
+    isRegistryConfigured &&
+    (isRegistryPending || (isFieldQueryEnabled && isFieldPending));
   const error = registryError || fieldError;
 
   return {

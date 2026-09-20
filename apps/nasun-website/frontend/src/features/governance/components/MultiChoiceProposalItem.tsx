@@ -18,7 +18,10 @@ import {
 } from "../utils/proposalHelpers";
 import { useTwitterDisplayNames } from "../hooks/useTwitterDisplayNames";
 
-// Colors for choice bars (up to 20 choices)
+// Colors for choice bars (up to 20 choices).
+// These must stay whole literals: Tailwind's JIT only emits classes it can find
+// verbatim in the source, so a runtime-composed variant like `${color}/40`
+// generates no CSS and renders an invisible bar.
 const CHOICE_COLORS = [
   "bg-nasun-nw1",
   "bg-nasun-nw4",
@@ -200,7 +203,7 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
                 className={`w-full h-1.5 rounded-full overflow-hidden ${isExpired ? "bg-nasun-white/5" : "bg-nasun-white/10"}`}
               >
                 <div
-                  className={`h-full transition-all ${isExpired ? `${CHOICE_COLORS[idx % CHOICE_COLORS.length]}/40` : CHOICE_COLORS[idx % CHOICE_COLORS.length]}`}
+                  className={`h-full transition-all ${CHOICE_COLORS[idx % CHOICE_COLORS.length]} ${isExpired ? "opacity-40" : ""}`}
                   style={{ width: `${percentages[idx]}%` }}
                 />
               </div>

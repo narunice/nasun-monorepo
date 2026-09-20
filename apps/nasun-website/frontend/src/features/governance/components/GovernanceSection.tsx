@@ -1,7 +1,8 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useQuery } from "@tanstack/react-query";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
-import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
+import { SuiObjectData } from "@mysten/sui/client";
+import { OwnedObjectsResult } from "../utils/ownedObjects";
 import { ProposalItem } from "./ProposalItem";
 import { MultiChoiceProposalItem } from "./MultiChoiceProposalItem";
 import { useVoteNfts } from "../hooks/useVoteNfts";
@@ -198,7 +199,7 @@ function getDashboardFields(data: SuiObjectData) {
   };
 }
 
-function extractVoteNfts(nftRes: PaginatedObjectsResponse | undefined) {
+function extractVoteNfts(nftRes: OwnedObjectsResult | undefined) {
   if (!nftRes?.data) return [];
 
   return nftRes.data.map((nftObject) => getVoteNft(nftObject.data));
