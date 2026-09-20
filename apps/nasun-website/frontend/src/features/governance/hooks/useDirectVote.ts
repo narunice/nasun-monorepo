@@ -21,6 +21,7 @@ import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
+import { assertVoteExecuted, readApiErrorMessage } from "../utils/voteExecution";
 
 const API_URL = import.meta.env.VITE_GOVERNANCE_API_URL;
 const PACKAGE_ID = import.meta.env.VITE_GOVERNANCE_PACKAGE_ID;
@@ -65,11 +66,9 @@ export function useDirectVote() {
       });
 
       if (!certResponse.ok) {
-        const err = await certResponse.json();
-        if (certResponse.status === 409) {
-          throw new Error("You have already voted on this proposal");
-        }
-        throw new Error(err.error || "Failed to get certificate");
+        throw new Error(
+          await readApiErrorMessage(certResponse, "Failed to get certificate")
+        );
       }
 
       const cert: VoteCertificate = await certResponse.json();
@@ -130,6 +129,10 @@ export function useDirectVote() {
       } else {
         throw new Error("No signing method available");
       }
+
+      // The RPC resolves for an aborted transaction too, and on this path the
+      // voter has already paid gas for it. Effects decide.
+      assertVoteExecuted(result);
 
       return {
         success: true,

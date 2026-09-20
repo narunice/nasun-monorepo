@@ -22,6 +22,7 @@ import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
+import { assertVoteExecuted, readApiErrorMessage } from "../utils/voteExecution";
 import { assertSponsoredTxMatches } from "../utils/verifySponsoredTx";
 
 const API_URL = import.meta.env.VITE_GOVERNANCE_API_URL;
@@ -67,11 +68,9 @@ export function useSponsoredVote() {
       });
 
       if (!certResponse.ok) {
-        const err = await certResponse.json();
-        if (certResponse.status === 409) {
-          throw new Error("You have already voted on this proposal");
-        }
-        throw new Error(err.error || "Failed to get certificate");
+        throw new Error(
+          await readApiErrorMessage(certResponse, "Failed to get certificate")
+        );
       }
 
       const cert: VoteCertificate = await certResponse.json();
@@ -118,11 +117,9 @@ export function useSponsoredVote() {
       });
 
       if (!sponsorResponse.ok) {
-        const err = await sponsorResponse.json();
-        if (sponsorResponse.status === 409) {
-          throw new Error("You have already voted on this proposal");
-        }
-        throw new Error(err.error || "Failed to sponsor transaction");
+        throw new Error(
+          await readApiErrorMessage(sponsorResponse, "Failed to sponsor transaction")
+        );
       }
 
       const { txBytes, sponsorSignature } = await sponsorResponse.json();
@@ -156,6 +153,9 @@ export function useSponsoredVote() {
         signature: [userSignature, sponsorSignature],
         options: { showEffects: true },
       });
+
+      // The RPC resolves for an aborted transaction too. Effects decide.
+      assertVoteExecuted(result);
 
       return {
         success: true,
