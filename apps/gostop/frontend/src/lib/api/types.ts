@@ -212,12 +212,20 @@ export interface RiskMetricsBlock {
    * `open_exposure`, surfaced via OpenExposureSnapshot. Pair with
    * `active_exposure_chain_status`: when 'dormant' the raw value is N/A
    * (v0.0.4 published but game contracts linkage-frozen to v0.0.2/v0.0.3,
-   * lockstep upgrade pending). The dashboard then renders a provisional
-   * placeholder rather than a misleading 0.
+   * lockstep upgrade pending), and when 'degraded' the reservation ledger has
+   * over-counted past pool.balance. Either way the dashboard renders a
+   * provisional placeholder rather than a misleading number.
    */
   active_exposure_raw: string;
-  /** 'live' = recent snapshot present; 'dormant' = no snapshot or stale. */
-  active_exposure_chain_status?: 'live' | 'dormant';
+  /**
+   * 'live' = recent snapshot present; 'dormant' = no snapshot or stale;
+   * 'degraded' = open_exposure exceeds pool.balance, so it is not usable as a
+   * liability figure. Either the reservation ledger leaked (some settlement
+   * paths release nothing, some release more than once) or the pool is
+   * genuinely over-committed, which nothing on chain prevents while no cap is
+   * configured; see the backend RiskMetricsResult docs.
+   */
+  active_exposure_chain_status?: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
   active_exposure_last_snapshot_ms?: number | null;
   /** active_exposure × 10_000 / pool.balance, basis points. */
