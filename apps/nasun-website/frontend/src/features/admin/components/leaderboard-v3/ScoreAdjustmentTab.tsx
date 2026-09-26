@@ -301,7 +301,6 @@ export function ScoreAdjustmentTab() {
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <Button
-                  variant="outline"
                   onClick={() => setShowConfirm(false)}
                   className="border-nasun-c5/45 text-nasun-white/85"
                 >

@@ -386,7 +386,6 @@ export function FeaturedFeedTab() {
             </p>
             <div className="flex justify-end gap-3">
               <Button
-                variant="outline"
                 onClick={() => setShowConfirm(false)}
                 className="border-nasun-c5/45 text-nasun-white/80"
               >

@@ -451,7 +451,7 @@ export function BugReportAdmin() {
                 )}
               </div>
               <div className="flex gap-3 justify-end pt-2">
-                <Button variant="outline" onClick={() => setShowConfirm(false)} className="border-nasun-c5/45 text-nasun-white/85">
+                <Button onClick={() => setShowConfirm(false)} className="border-nasun-c5/45 text-nasun-white/85">
                   Cancel
                 </Button>
                 <Button onClick={handleSubmit} className="bg-nasun-c4 hover:bg-nasun-c4/80 text-nasun-white">

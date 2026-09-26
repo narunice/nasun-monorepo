@@ -234,7 +234,7 @@ export function DevnetMetrics() {
                     />
                     <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
                     <Tooltip
-                      labelFormatter={formatChartDate}
+                      labelFormatter={(label) => formatChartDate(String(label))}
                       {...TOOLTIP_STYLE}
                     />
                     <Legend

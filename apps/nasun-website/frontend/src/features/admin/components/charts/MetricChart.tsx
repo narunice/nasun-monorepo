@@ -104,7 +104,7 @@ export function MetricChart({
             />
             <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
             <Tooltip
-              labelFormatter={formatChartDate}
+              labelFormatter={(label) => formatChartDate(String(label))}
               {...TOOLTIP_STYLE}
             />
             <Area
@@ -127,7 +127,7 @@ export function MetricChart({
             />
             <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
             <Tooltip
-              labelFormatter={formatChartDate}
+              labelFormatter={(label) => formatChartDate(String(label))}
               {...TOOLTIP_STYLE}
             />
             <Line
