@@ -6,6 +6,7 @@ function makeEntry(id: string): BonusFeedEntry {
   return {
     id,
     category: "ecosystem-bonus-leaderboard",
+    activityType: "leaderboard-rank",
     points: 100,
     awardedAt: new Date().toISOString(),
     metadata: {},

@@ -6,12 +6,17 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { QueryClient, type Query } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { queryPersistOptions } from "../queryPersist";
 
 const shouldPersist = queryPersistOptions.dehydrateOptions!.shouldDehydrateQuery!;
 
-function queryFor(queryKey: readonly unknown[], status: "success" | "error" = "success"): Query {
+type PersistableQuery = Parameters<typeof shouldPersist>[0];
+
+function queryFor(
+  queryKey: readonly unknown[],
+  status: "success" | "error" = "success",
+): PersistableQuery {
   const client = new QueryClient();
   const cache = client.getQueryCache();
   const query = cache.build(client, { queryKey });
@@ -20,7 +25,7 @@ function queryFor(queryKey: readonly unknown[], status: "success" | "error" = "s
   } else {
     query.setState({ status: "error", error: new Error("boom") } as never);
   }
-  return query as Query;
+  return query as unknown as PersistableQuery;
 }
 
 describe("queryPersistOptions.shouldDehydrateQuery", () => {

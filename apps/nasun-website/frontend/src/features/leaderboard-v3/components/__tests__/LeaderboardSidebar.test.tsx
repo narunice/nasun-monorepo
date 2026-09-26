@@ -37,7 +37,7 @@ describe("LeaderboardSidebar", () => {
   it("renders all components", () => {
     render(
       <QueryClientProvider client={queryClient}>
-        <LeaderboardSidebar seasonId="season1" onUserSelect={() => {}} />
+        <LeaderboardSidebar seasonId="season1" />
       </QueryClientProvider>
     );
 
@@ -49,7 +49,7 @@ describe("LeaderboardSidebar", () => {
   it("does not render MyRankCard when seasonId is missing", () => {
     render(
       <QueryClientProvider client={queryClient}>
-        <LeaderboardSidebar seasonId={undefined} onUserSelect={() => {}} />
+        <LeaderboardSidebar seasonId={undefined} />
       </QueryClientProvider>
     );
 

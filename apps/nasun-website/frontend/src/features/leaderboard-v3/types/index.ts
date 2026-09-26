@@ -239,7 +239,8 @@ export interface RankHistoryResponse {
   data?: RankHistoryData;
   error?: string;
   seasonId?: string;
-  calculatedAt: string;
+  /** Absent on the synthesized empty response for a user with no history. */
+  calculatedAt?: string;
 }
 
 // Date range labels for UI

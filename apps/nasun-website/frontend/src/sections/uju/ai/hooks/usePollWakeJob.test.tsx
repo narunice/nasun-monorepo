@@ -272,10 +272,10 @@ describe('usePollWakeJob 401 expired', () => {
 
 describe('usePollWakeJob unmount abort', () => {
   it('does not setState after unmount (no warning)', async () => {
-    let resolve: ((v: WakePollResponse) => void) | null = null;
+    const deferred: { resolve: ((v: WakePollResponse) => void) | null } = { resolve: null };
     getStatusSpy.mockReturnValue(
       new Promise<WakePollResponse>((r) => {
-        resolve = r;
+        deferred.resolve = r;
       }),
     );
     const { unmount } = renderHook(() =>
@@ -288,7 +288,7 @@ describe('usePollWakeJob unmount abort', () => {
     );
     unmount();
     // Resolve after unmount — the hook's `cancelled` flag must swallow it.
-    resolve?.(pendingResponse(JOB_ID));
+    deferred.resolve?.(pendingResponse(JOB_ID));
     await flushPromises();
     // No assertion needed beyond "no test error". The act/console.error
     // chatter would surface if a setState happened post-unmount.

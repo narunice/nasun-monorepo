@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { UserSearchBoxV3 } from "../UserSearchBoxV3";
@@ -68,7 +68,7 @@ const mockAccounts = [
 ];
 
 describe("UserSearchBoxV3", () => {
-  let onUserSelect: ReturnType<typeof vi.fn>;
+  let onUserSelect: Mock<(username: string, rank?: number) => void>;
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
