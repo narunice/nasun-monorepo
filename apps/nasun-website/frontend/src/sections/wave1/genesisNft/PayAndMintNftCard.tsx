@@ -92,7 +92,6 @@ function PayAndMintNftCardComponent({ tierData, tier, currentSupply, isSupplyLoa
         <PriceConverter usdPrice={tierData.USD_PRICE} />
 
         <Button
-          variant="default"
           onClick={handleMint}
           disabled={isPending || isSupplyLoading || isSoldOut || isSupplyUnknown}
           className="w-full"

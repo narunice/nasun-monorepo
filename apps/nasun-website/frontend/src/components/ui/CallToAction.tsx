@@ -28,7 +28,7 @@ export default function CallToActionSection({
             {description}
           </p>
 
-          <Button variant="sunshine" size="lg" onClick={onButtonClick}>
+          <Button size="lg" onClick={onButtonClick}>
             {buttonText}
           </Button>
         </div>

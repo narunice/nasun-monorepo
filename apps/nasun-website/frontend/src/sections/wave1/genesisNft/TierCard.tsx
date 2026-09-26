@@ -56,7 +56,6 @@ function TierCardComponent({ nftData }: { nftData: NFTTierItem }) {
               const targetId = `tier-section-${nftData.tier.toLowerCase()}`;
               document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
             }}
-            variant="default"
             size="default"
             className="w-full"
             aria-label={`Go to mint ${t(`tiers.tier${nftData.tier}.name`)}`}
