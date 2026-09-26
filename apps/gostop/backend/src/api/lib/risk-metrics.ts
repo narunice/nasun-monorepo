@@ -31,7 +31,6 @@ import { createHash } from 'node:crypto';
 import { reader } from '../../db/client.js';
 import { bankrollPnl, type DataQuality } from './bankroll-pnl.js';
 import {
-  computeTvl,
   computeCumulativeLpDist,
   computeUtilizationBps,
 } from './bankroll-pool-math.js';
@@ -101,16 +100,51 @@ export interface RiskMetricsResult {
    * Pair with `active_exposure_chain_status` before rendering: when status
    * is 'dormant' the raw value is meaningless (v0.0.4 published but game
    * contracts still linkage-frozen to v0.0.2/v0.0.3) and the UI must show a
-   * provisional placeholder rather than 0 NUSDC.
+   * provisional placeholder rather than 0 NUSDC. When status is 'degraded'
+   * the ledger has over-counted and the value is an upper bound on nothing
+   * in particular; see below.
    */
   active_exposure_raw: string;
   /**
-   * 'live'    → recent OpenExposureSnapshot event present, raw value usable.
-   * 'dormant' → no snapshot or stale (>1h). Treat the raw value as N/A.
+   * 'live'     → recent OpenExposureSnapshot event present, raw value usable.
+   * 'dormant'  → no snapshot or stale (>1h). Treat the raw value as N/A.
+   * 'degraded' → open_exposure exceeds pool.balance, which the reservation
+   *              model cannot produce honestly.
+   *
+   *              collect_bet reserves cap.max_single_payout and pay_winner /
+   *              refund_bet each release that same unit, so the ledger is
+   *              only meaningful while every reserve is matched by exactly
+   *              one release. That invariant does not hold, and it fails in
+   *              both directions:
+   *
+   *              Under-release (drifts up): rounds settling without calling
+   *              either. wheel `if (payout > 0)`, scratchcard's losing cards,
+   *              crash's non-cashout entries, and mines on a mine hit, where
+   *              reveal_cell does not even take &mut BankrollPool and so
+   *              cannot release.
+   *
+   *              Over-release (drifts down): scratchcard's bulk path calls
+   *              collect_bet once for all `count` cards but pay_winner once
+   *              per winning card, so any bulk with two or more winners
+   *              releases more than it reserved.
+   *
+   *              numbermatch is the only game with one collect_bet and one
+   *              unconditional pay_winner. The observed total has both risen
+   *              and fallen over time; what it is not is a measure of
+   *              liability. Treat it as N/A exactly like 'dormant'.
    */
-  active_exposure_chain_status: 'live' | 'dormant';
+  active_exposure_chain_status: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
   active_exposure_last_snapshot_ms: number | null;
+  /**
+   * True when the exposure snapshot and the chain balance were read close
+   * enough in time for a 'degraded' excess to be real rather than a sampling
+   * artifact. Consumers must not assert an on-chain accounting defect while
+   * this is false — the excess may simply be a balance that dropped after the
+   * snapshot was taken. Withholding the value does not depend on it; only the
+   * explanation does.
+   */
+  exposure_excess_commensurate: boolean;
   /**
    * utilization_ratio_bps = active_exposure × 10_000 / pool.balance.
    * Returned in basis points (matches on-chain cap units). 0 when balance=0.
@@ -189,6 +223,64 @@ function worstQuality(a: DataQuality, b: DataQuality): DataQuality {
   return order[Math.max(order.indexOf(a), order.indexOf(b))]!;
 }
 
+/**
+ * Downgrade a 'live' exposure reading to 'degraded' when the reservation
+ * ledger has over-counted past the balance backing it.
+ *
+ * open_exposure is a reservation against pool.balance, so exceeding that
+ * balance is not a risk signal to be alerted on — it is proof the ledger has
+ * stopped tracking liability at all (see the per-game leak paths documented
+ * on RiskMetricsResult.active_exposure_chain_status). It also means no cap is
+ * enablable, since Move's MAX_CAP_BPS is 10_000 and collect_bet compares
+ * against this same balance.
+ *
+ * Withholding is unconditional once exposure exceeds balance. The two sides
+ * are not read at the same instant — exposure is the newest indexed
+ * OpenExposureSnapshot, balance is a live chain read — so the excess may be an
+ * artifact of a balance that dropped after the snapshot (an LP redemption, or
+ * a payout: pay_winner never streams into bankroll_event, so it cannot be
+ * added back). That changes which explanation is true, not whether the number
+ * is publishable: a figure larger than the pool backing it is not a liability
+ * measure under either reading, and utilization built on it is not a risk
+ * ratio. Gating the withholding on freshness would republish the broken value
+ * as 'live' for 55 of every 60 minutes.
+ *
+ * What freshness does gate is the claim, which lives in the alert copy and the
+ * UI hint rather than here: `exposure_excess_commensurate` says the two
+ * readings were close enough in time for the excess to be real rather than a
+ * sampling artifact. Callers must not assert a contract defect without it.
+ *
+ * Note the excess does not by itself prove the ledger leaked. collect_bet's
+ * cumulative check runs only when cap_bps > 0, and no cap is configured, so a
+ * correctly-paired ledger can also legitimately reserve past the balance.
+ * 'degraded' therefore means "not usable as a liability figure", not "the
+ * contract is broken".
+ *
+ * 'dormant' passes through untouched: it already means "no usable reading",
+ * and layering a second reason on top would only obscure the first.
+ *
+ * `chainBalance` null means the chain read failed — nothing to compare, and
+ * data_quality is already 'unreliable'. A balance of exactly zero is a real
+ * reading, not a missing one: a drained pool still carrying reservations is
+ * the starkest form of the condition.
+ */
+function classifyExposureStatus(
+  base: ActiveExposure['status'],
+  exposureRaw: bigint,
+  chainBalance: bigint | null,
+  snapshotAgeMs: number | null,
+): {
+  status: RiskMetricsResult['active_exposure_chain_status'];
+  commensurate: boolean;
+} {
+  const commensurate =
+    snapshotAgeMs !== null && snapshotAgeMs <= EXPOSURE_COMMENSURATE_MAX_AGE_MS;
+  if (base !== 'live') return { status: base, commensurate };
+  if (chainBalance === null) return { status: base, commensurate };
+  const exceeds = chainBalance === 0n ? exposureRaw > 0n : exposureRaw > chainBalance;
+  return { status: exceeds ? 'degraded' : 'live', commensurate };
+}
+
 function matviewQuality(ageMs: number): DataQuality {
   if (ageMs <= MATVIEW_FRESH_MS) return 'fresh';
   if (ageMs <= MATVIEW_LAGGING_MS) return 'lagging';
@@ -234,6 +326,15 @@ async function latestUtilizationCapBps(): Promise<number | null> {
  * in-flight house liability".
  */
 const DORMANT_THRESHOLD_MS = 60 * 60_000; // 1h since last OpenExposureSnapshot
+
+/**
+ * Max age of the exposure snapshot for it to be commensurate with a live
+ * `pool.balance` read. Matches the risk-alert poll interval, so a real
+ * over-count is still caught on the tick after the snapshot that shows it,
+ * while an hour-old snapshot is never compared against a balance that has
+ * moved since. See classifyExposureStatus.
+ */
+const EXPOSURE_COMMENSURATE_MAX_AGE_MS = 5 * 60_000;
 
 interface ActiveExposure {
   raw: bigint;
@@ -526,35 +627,50 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
     topLp5(),
   ]);
 
-  // TVL + cumulative LP yield reuse the 7d bankrollPnl chain read.
-  // share_price_current_scaled = pool.balance × 1e9 / total_shares.
-  // We don't have direct chain pool.balance back from bankrollPnl (it only
-  // returns the derived pps), so we recover balance from pps × shares.
-  // total_shares isn't directly returned either — but cumulative_lp_dist
-  // is the only metric that needs it. For TVL we'd ideally pass the raw
-  // chain read through; v1 trade-off: derive TVL via a single second
-  // bankroll-event read for total_shares (very cheap) + the returned pps.
+  // TVL is pool.balance, read from chain by the 7d bankrollPnl call and
+  // passed through verbatim.
   //
-  // Simpler v1: skip a redundant chain call — use latest reconciled
-  // total_shares from bankroll_event (which the reconciler keeps current
-  // after PR-A) and pps from bankrollPnl 7d call.
-  const sharesRow = await reader()<{ shares: string | null }[]>`
-    SELECT total_shares_after::text AS shares
-    FROM gostop.bankroll_event
-    WHERE total_shares_after IS NOT NULL
-    ORDER BY timestamp_ms DESC, id DESC
-    LIMIT 1
-  `;
-  const totalShares = BigInt(sharesRow[0]?.shares ?? '0');
+  // It used to be reconstructed as `pps x total_shares`, taking pps from
+  // chain and total_shares from the reconciled bankroll_event tail. That
+  // identity holds only while both sides agree. On 2026-09-13 the DB tail
+  // carried 17,603,748,855,652 shares against the chain's 6,418,628,255,535,
+  // so the public transparency page published a 36.31M NUSDC TVL against a
+  // real pool balance of 13.24M — 2.74x, with no guard anywhere. Meanwhile
+  // /api/gostop/lp/apy read pool.balance directly and never had the bug, so
+  // the two endpoints simply disagreed. One source now, so they cannot drift
+  // apart again.
+  // Null when the chain read failed — kept distinct from a real zero balance
+  // so classifyExposureStatus can decline rather than misreport. tvl_raw and
+  // the ratios below fall back to 0, which data_quality 'unreliable' already
+  // marks as unusable.
+  const chainBalanceOrNull = pnl7d.pool_balance_raw !== null
+    ? BigInt(pnl7d.pool_balance_raw)
+    : null;
+  const chainBalance = chainBalanceOrNull ?? 0n;
+  const chainShares = pnl7d.chain_total_shares !== null
+    ? BigInt(pnl7d.chain_total_shares)
+    : 0n;
   const ppsScaled = BigInt(pnl7d.share_price_current_scaled);
-  const tvlRaw = computeTvl(ppsScaled, totalShares);
 
-  // Cumulative LP distributions ≈ (pps - 1.0) × total_shares / SCALE.
-  // Negative when the pool is underwater; clamped to 0 in UI but kept signed
-  // here so the API is honest.
-  const cumulativeLpDist = computeCumulativeLpDist(ppsScaled, totalShares);
+  // Cumulative LP distributions = (pps - 1.0) x total_shares / SCALE. Same
+  // chain read as pps, for the same reason as TVL above: this metric was
+  // inflated by the identical 2.74x. Negative when the pool is underwater;
+  // clamped to 0 in the UI but kept signed here so the API stays honest.
+  const cumulativeLpDist = computeCumulativeLpDist(ppsScaled, chainShares);
 
-  const utilizationBps = computeUtilizationBps(exposure.raw, tvlRaw);
+  // Utilization denominator is pool.balance, matching
+  // bankroll_pool::collect_bet exactly — it compares the new reservation
+  // against balance::value(&pool.balance). Dashboard and contract now derive
+  // the same ratio; the inflated TVL previously made this read ~2.7x lower
+  // than what the on-chain cap check would have seen.
+  const utilizationBps = computeUtilizationBps(exposure.raw, chainBalance);
+
+  const exposureClass = classifyExposureStatus(
+    exposure.status,
+    exposure.raw,
+    chainBalanceOrNull,
+    exposure.last_snapshot_ms === null ? null : now - exposure.last_snapshot_ms,
+  );
 
   const mvQuality = matviewQuality(mv.ageMs);
   const aggQuality = worstQuality(
@@ -563,14 +679,15 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
   );
 
   return {
-    tvl_raw: tvlRaw.toString(),
+    tvl_raw: chainBalance.toString(),
     pnl: {
       '24h': { window_ms: PNL_WINDOWS['24h'], net_pnl_raw: pnl24h.net_pnl, data_quality: pnl24h.data_quality },
       '7d':  { window_ms: PNL_WINDOWS['7d'],  net_pnl_raw: pnl7d.net_pnl,  data_quality: pnl7d.data_quality },
       '30d': { window_ms: PNL_WINDOWS['30d'], net_pnl_raw: pnl30d.net_pnl, data_quality: pnl30d.data_quality },
     },
     active_exposure_raw: exposure.raw.toString(),
-    active_exposure_chain_status: exposure.status,
+    active_exposure_chain_status: exposureClass.status,
+    exposure_excess_commensurate: exposureClass.commensurate,
     active_exposure_last_snapshot_ms: exposure.last_snapshot_ms,
     utilization_ratio_bps: utilizationBps,
     utilization_cap_bps: cap,
@@ -593,4 +710,9 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
 }
 
 // Test-only exports.
-export { worstQuality, matviewQuality };
+export { worstQuality, matviewQuality, classifyExposureStatus };
+
+export const _RISK_METRICS_CONSTANTS = {
+  DORMANT_THRESHOLD_MS,
+  EXPOSURE_COMMENSURATE_MAX_AGE_MS,
+};

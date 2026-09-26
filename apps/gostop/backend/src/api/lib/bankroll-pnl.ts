@@ -94,6 +94,19 @@ export interface BankrollPnlResult {
   cursor_lag_ms: number;
   /** Bankroll_event rows in window where reconciler has not yet snapshotted. */
   unreconciled_rows: number;
+  /**
+   * Chain-authoritative `pool.balance` (NUSDC raw units) from the same
+   * `sui_getObject` read that produced `share_price_current_scaled`. Null when
+   * that read failed, in which case `data_quality` is already 'unreliable'.
+   *
+   * Consumers needing TVL MUST use this instead of reconstructing it as
+   * `share_price_current_scaled x total_shares`. The pps above is a chain
+   * quantity; pairing it with a DB-sourced share count silently rescales TVL
+   * by whatever drift exists between the two (2.74x on 2026-09-13).
+   */
+  pool_balance_raw: string | null;
+  /** Chain-authoritative `pool.total_shares` from that same read. Null likewise. */
+  chain_total_shares: string | null;
 }
 
 /**
@@ -257,6 +270,8 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
     data_quality: dataQuality,
     cursor_lag_ms: cursorLagMs,
     unreconciled_rows: unreconciled,
+    pool_balance_raw: chain ? chain.balance.toString() : null,
+    chain_total_shares: chain ? chain.shares.toString() : null,
   };
 }
 

@@ -57,13 +57,6 @@ export function computeApyPct(netPnl: bigint, tvl: bigint, windowDays: number): 
 }
 
 /**
- * TVL_raw = (pps_scaled * total_shares) / SCALE.
- */
-export function computeTvl(ppsScaled: bigint, totalShares: bigint): bigint {
-  return (ppsScaled * totalShares) / SHARE_PRICE_SCALE;
-}
-
-/**
  * Cumulative LP distributions ≈ (pps - 1.0) × total_shares / SCALE.
  * Signed — negative when the pool is underwater. UI clamps to zero;
  * the API stays honest.

@@ -195,6 +195,7 @@ transparencyRoutes.get('/transparency', async (c) => {
       active_exposure_raw: '0',
       active_exposure_chain_status: 'dormant',
       active_exposure_last_snapshot_ms: null,
+      exposure_excess_commensurate: false,
       utilization_ratio_bps: 0,
       utilization_cap_bps: null,
       largest_single_payout_raw: '0',

@@ -19,7 +19,6 @@ import {
   calcSharePriceScaled,
   computeNetPnl,
   computeApyPct,
-  computeTvl,
   computeCumulativeLpDist,
   computeUtilizationBps,
   computeRedeemQuoteRaw,
@@ -96,21 +95,6 @@ describe('computeApyPct', () => {
   });
 });
 
-describe('computeTvl', () => {
-  it('TVL = pps * shares / SCALE (1.0 pps)', () => {
-    expect(computeTvl(SHARE_PRICE_SCALE, 1_000n)).toBe(1_000n);
-  });
-
-  it('TVL truncates at 1.5 pps × 10 shares', () => {
-    // (1.5e9 * 10) / 1e9 = 15
-    expect(computeTvl(1_500_000_000n, 10n)).toBe(15n);
-  });
-
-  it('returns 0 when totalShares is 0', () => {
-    expect(computeTvl(SHARE_PRICE_SCALE, 0n)).toBe(0n);
-  });
-});
-
 describe('computeCumulativeLpDist', () => {
   it('returns 0 at exact 1.0 pps', () => {
     expect(computeCumulativeLpDist(SHARE_PRICE_SCALE, 100n)).toBe(0n);
@@ -176,21 +160,18 @@ describe('computeRedeemQuoteRaw', () => {
  * composition order, the atomic tests still pass but these will catch
  * the cascade behavior drift.
  */
-describe('cascade: tvl=0 → utilization=0', () => {
-  it('empty pool yields 0% utilization regardless of exposure', () => {
-    const tvl = computeTvl(SHARE_PRICE_SCALE, 0n);
-    expect(tvl).toBe(0n);
-    expect(computeUtilizationBps(100n, tvl)).toBe(0);
-    expect(computeUtilizationBps(10_000_000n, tvl)).toBe(0);
+describe('cascade: empty pool → utilization=0', () => {
+  it('a zero balance yields 0% utilization regardless of exposure', () => {
+    // TVL is now pool.balance straight from chain, so the empty-pool case is
+    // a bare 0n rather than a pps x shares product.
+    expect(computeUtilizationBps(100n, 0n)).toBe(0);
+    expect(computeUtilizationBps(10_000_000n, 0n)).toBe(0);
   });
 });
 
-describe('cascade: 1.0 pps → cumulativeLpDist=0 + TVL=shares', () => {
-  it('exactly at 1.0 pps the pool has distributed nothing and TVL=shares (base units)', () => {
-    const pps = SHARE_PRICE_SCALE;
-    const shares = 1_000n;
-    expect(computeCumulativeLpDist(pps, shares)).toBe(0n);
-    expect(computeTvl(pps, shares)).toBe(shares);
+describe('cascade: 1.0 pps → cumulativeLpDist=0', () => {
+  it('exactly at 1.0 pps the pool has distributed nothing', () => {
+    expect(computeCumulativeLpDist(SHARE_PRICE_SCALE, 1_000n)).toBe(0n);
   });
 });
 
