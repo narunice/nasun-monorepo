@@ -1,4 +1,4 @@
-29
+11
 # Allowed `tsc -b --noEmit` error count. Enforced by typecheck_frontend in
 # scripts/_common.sh: the deploy fails above this number.
 #

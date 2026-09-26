@@ -14,18 +14,15 @@ import {
   SuiClientProvider,
   WalletProvider as SuiDappWalletProvider,
 } from "@mysten/dapp-kit";
-import { useQueryClient } from "@tanstack/react-query";
 import { networkConfig } from "../config/suiNetworkConfig";
 
 export function NasunProvider({ children }: { children: ReactNode }) {
   // Share the same QueryClient with SuiClientProvider to prevent query isolation issues
-  const queryClient = useQueryClient();
 
   return (
     <SuiClientProvider
       networks={networkConfig}
       defaultNetwork="nasundevnet"
-      queryClient={queryClient}
     >
       {/* autoConnect=false: prototype policy is to never silently connect
           external chain wallets. The user must click "Open Wallet" to trigger

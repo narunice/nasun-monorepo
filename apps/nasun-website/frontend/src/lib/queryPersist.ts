@@ -21,7 +21,6 @@
  */
 
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import type { Query } from "@tanstack/react-query";
 import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";
 
 export const QUERY_CACHE_STORAGE_KEY = "nasun-rq-cache";
@@ -77,7 +76,7 @@ export const queryPersistOptions: Omit<PersistQueryClientOptions, "queryClient">
   // ReferenceError that would take down every importer of this module.
   buster: typeof __BUILD_TIMESTAMP__ === "string" ? __BUILD_TIMESTAMP__ : "dev",
   dehydrateOptions: {
-    shouldDehydrateQuery: (query: Query) =>
+    shouldDehydrateQuery: (query) =>
       query.state.status === "success" &&
       PERSISTED_KEY_ROOTS.has(String(query.queryKey[0])),
   },

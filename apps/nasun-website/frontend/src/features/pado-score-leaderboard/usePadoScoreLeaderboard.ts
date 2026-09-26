@@ -49,14 +49,14 @@ async function fetchWeeklyScoreLeaderboard(
 ): Promise<ScoreLeaderboardResponse> {
   const baseUrl = getChatHttpUrl();
   if (!baseUrl) {
-    return { scope: 'weekly', weekId, traders: [], updatedAt: 0, totalTraders: 0 };
+    return { scope: 'weekly', weekId, traders: [], updatedAt: 0, totalTraders: 0, totalParticipants: 0 };
   }
 
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   const res = await fetch(`${baseUrl}/api/pado/leaderboard/score/weekly/${weekId}?${params}`);
 
   if (res.status === 404) {
-    return { scope: 'weekly', weekId, traders: [], updatedAt: 0, totalTraders: 0 };
+    return { scope: 'weekly', weekId, traders: [], updatedAt: 0, totalTraders: 0, totalParticipants: 0 };
   }
 
   if (!res.ok) {

@@ -208,7 +208,7 @@ export async function getEcosystemLeaderboard(
   if (!API_BASE) {
     return {
       data: [],
-      meta: { weekId: weekId ?? "", weekStart: 0, limit, offset, total: 0, cappedAt: 0, updatedAt: 0 },
+      meta: { weekId: weekId ?? "", weekStart: 0, limit, offset, total: 0, prevTotal: 0, cappedAt: 0, updatedAt: 0 },
     };
   }
 
