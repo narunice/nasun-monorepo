@@ -1,7 +1,6 @@
 import React from "react";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { ChevronRight, ChevronLeft, ChevronDown } from "lucide-react";
-import type { TFunction } from "i18next";
 import { StaggerContainer, StaggerItem } from "../animations";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { flowStepsDark } from "./flowSteps";
@@ -11,7 +10,7 @@ function FlowCard({
   t,
 }: {
   step: (typeof flowStepsDark)[number];
-  t: TFunction;
+  t: NasunI18n.TFunction;
 }) {
   const { key, icon: Icon, color } = step;
   return (
@@ -31,7 +30,7 @@ function FlowCard({
   );
 }
 
-function FlowRow({ items, t }: { items: typeof flowStepsDark; t: TFunction }) {
+function FlowRow({ items, t }: { items: typeof flowStepsDark; t: NasunI18n.TFunction }) {
   return (
     <div className="flex items-stretch gap-1">
       {items.map((step, i) => (

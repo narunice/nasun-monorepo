@@ -1,6 +1,5 @@
 // src/config/routesConfig.ts
 import { EnhancedRouteConfigBuilder } from "../types/routes.d";
-import { TFunction } from "i18next";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import LegacyHome2026MayPageEager from "../pages/legacy/Home2026MayPage";
 
@@ -702,7 +701,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   },
 };
 
-export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
+export const getNavItemsV2 = (t: NasunI18n.TFunction) => {
   return Object.values(routesV2)
     .filter((route) => route.navItem && !route.navItem.hidden)
     .map((route) => ({
