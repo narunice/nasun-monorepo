@@ -59,7 +59,7 @@ export function ScrollSnapContainer({
         let closestSection: Element | null = null;
         let minDistance = Infinity;
 
-        sections.forEach((section) => {
+        for (const section of sections) {
           const rect = section.getBoundingClientRect();
           const sectionTop = currentScroll + rect.top;
           const distance = Math.abs(currentScroll - sectionTop);
@@ -68,7 +68,7 @@ export function ScrollSnapContainer({
             minDistance = distance;
             closestSection = section;
           }
-        });
+        }
 
         // 섹션 경계 ±10% 범위 내면 강제 스냅
         if (

@@ -74,7 +74,7 @@ const FeaturedNftDetailModal: FC<{
       ? `${collectionName} - ${edition.name}`
       : `${collectionName} #${tid}`;
 
-  const description = nft.description || edition?.description || "";
+  const description = nft.description || "";
   const shortAddress = `${nft.contractAddress.slice(0, 6)}...${nft.contractAddress.slice(-4)}`;
 
   // Auto-play video when modal opens

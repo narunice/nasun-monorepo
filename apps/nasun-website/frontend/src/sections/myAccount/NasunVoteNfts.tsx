@@ -1,5 +1,6 @@
 import { FC, useMemo } from "react";
 import { useSuiClientQueries } from "@mysten/dapp-kit";
+import type { SuiObjectResponse } from "@mysten/sui/client";
 import { ExternalLink } from "lucide-react";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { useWallet, useZkLogin } from "@nasun/wallet";
@@ -32,9 +33,7 @@ interface VoteNftItem {
 
 type ExtractedNft = Omit<VoteNftItem, "owner">;
 
-function extractNfts(
-  data: { data?: { content?: { dataType: string; fields: Record<string, unknown> }; objectId?: string } }[] | undefined,
-): ExtractedNft[] {
+function extractNfts(data: SuiObjectResponse[] | undefined): ExtractedNft[] {
   if (!data) return [];
   return data
     .map((obj) => {
