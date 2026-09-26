@@ -17,7 +17,8 @@ import {
 import { networkConfig } from "../config/suiNetworkConfig";
 
 export function NasunProvider({ children }: { children: ReactNode }) {
-  // Share the same QueryClient with SuiClientProvider to prevent query isolation issues
+  // dapp-kit's SuiClientProvider takes no queryClient of its own and creates no
+  // QueryClientProvider, so it uses the ambient client from the app root.
 
   return (
     <SuiClientProvider

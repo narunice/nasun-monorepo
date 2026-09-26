@@ -110,6 +110,14 @@ export const buttonVariants = cva(
         // Ghost: 기존 유지
         ghost: "text-nasun-white hover:bg-nasun-c1/20",
 
+        // Emits nothing. For buttons that style themselves entirely through
+        // className. Needed because cva resolves `variant || defaultVariant`:
+        // an unrecognised value is truthy, so it yields no classes, while
+        // omitting the prop falls through to defaultVariants ("c1", solid
+        // amber). Several call sites had been relying on the former by passing
+        // a variant name that no longer exists.
+        none: "",
+
         // Link
         link: "text-nasun-white/80 underline-offset-4 underline hover:text-white ",
 

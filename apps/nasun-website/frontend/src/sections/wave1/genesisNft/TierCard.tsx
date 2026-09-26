@@ -52,6 +52,7 @@ function TierCardComponent({ nftData }: { nftData: NFTTierItem }) {
 
         <div className="mt-auto pt-1">
           <Button
+            variant="none"
             onClick={() => {
               const targetId = `tier-section-${nftData.tier.toLowerCase()}`;
               document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
