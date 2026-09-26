@@ -11,7 +11,7 @@ export interface NasunWalletState {
   /** True when displayAddress matches the user profile wallet (should not be removable) */
   isProfileWallet: boolean;
   additionalWallets: { walletAddress: string }[];
-  showAsConnected: boolean | "" | null;
+  showAsConnected: boolean;
   hasLinkedWallet: boolean;
   /** Ref for auto-register dedup; exposed so callers can reset on manual Register */
   autoRegisterAttemptedRef: React.MutableRefObject<string | null>;
@@ -45,7 +45,7 @@ export function useNasunWalletState(
   const isConnectedButDismissed = isNasunConnected && nasunWalletAddress &&
     !walletReg.isCurrentWalletRegistered && !walletReg.isLoading &&
     sessionStorage.getItem('nasun:dismissed-wallet') === nasunWalletAddress.toLowerCase();
-  const showAsConnected = isNasunConnected && nasunWalletAddress && !isConnectedButDismissed;
+  const showAsConnected = isNasunConnected && !!nasunWalletAddress && !isConnectedButDismissed;
 
   // Primary registered wallet: prefer the wallet matching profile (linkedWalletAddress)
   // so that the displayed address stays consistent with ProfileHeroCard.

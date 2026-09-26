@@ -10,7 +10,7 @@ export interface UjuNasunWalletState {
   isPrimaryRegistered: boolean;
   isProfileWallet: boolean;
   additionalWallets: { walletAddress: string }[];
-  showAsConnected: boolean | "" | null;
+  showAsConnected: boolean;
   hasLinkedWallet: boolean;
   autoRegisterAttemptedRef: React.MutableRefObject<string | null>;
 }
@@ -40,7 +40,7 @@ export function useUjuNasunWalletState(
   const isConnectedButDismissed = isNasunConnected && nasunWalletAddress &&
     !walletReg.isCurrentWalletRegistered && !walletReg.isLoading &&
     sessionStorage.getItem('nasun:dismissed-wallet') === nasunWalletAddress.toLowerCase();
-  const showAsConnected = isNasunConnected && nasunWalletAddress && !isConnectedButDismissed;
+  const showAsConnected = isNasunConnected && !!nasunWalletAddress && !isConnectedButDismissed;
 
   const primaryRegisteredWallet = (() => {
     if (!walletReg.registeredWallets.length) return null;
