@@ -109,8 +109,7 @@ export function useDirectVote() {
       let result;
       if (isZkConnected && zkSignTransaction) {
         const txBytes = await tx.build({ client: suiClient });
-        const sig = await zkSignTransaction(txBytes);
-        const signature = typeof sig === "string" ? sig : sig.signature;
+        const signature = await zkSignTransaction(txBytes);
         result = await suiClient.executeTransactionBlock({
           transactionBlock: txBytes,
           signature: [signature],

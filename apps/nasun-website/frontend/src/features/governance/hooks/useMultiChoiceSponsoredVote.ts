@@ -133,8 +133,7 @@ export function useMultiChoiceSponsoredVote() {
       let userSignature: string;
 
       if (isZkConnected && zkSignTransaction) {
-        const sig = await zkSignTransaction(txBytesArray);
-        userSignature = typeof sig === "string" ? sig : sig.signature;
+        userSignature = await zkSignTransaction(txBytesArray);
       } else if (status === "unlocked" && account) {
         const keypair = getKeypair();
         if (!keypair) {
