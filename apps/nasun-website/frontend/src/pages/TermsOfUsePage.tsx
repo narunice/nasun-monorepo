@@ -6,8 +6,9 @@ import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { PageTitle } from "../components/ui/PageTitle";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { AlertTriangle } from "lucide-react";
+import type { TermsDocument } from "@/types/legal";
 
-const TERMS_CONTENT = {
+const TERMS_CONTENT: TermsDocument = {
   title: "Terms of Use",
   lastUpdated: "Last Updated: March 3, 2026",
   disclaimer: {

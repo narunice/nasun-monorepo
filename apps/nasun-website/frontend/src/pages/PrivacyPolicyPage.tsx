@@ -6,8 +6,9 @@ import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { PageTitle } from "../components/ui/PageTitle";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { AlertTriangle } from "lucide-react";
+import type { PrivacyDocument } from "@/types/legal";
 
-const PRIVACY_CONTENT = {
+const PRIVACY_CONTENT: PrivacyDocument = {
   title: "Privacy Policy",
   lastUpdated: "Last Updated: March 3, 2026",
   devnetNotice: {
