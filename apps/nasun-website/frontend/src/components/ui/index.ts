@@ -13,7 +13,6 @@ export * from "./Loading";
 export * from "./KeyPointsBox";
 export * from "./GlassCard";
 export * from "./FadeInUp";
-export * from "./CallToAction";
 export * from "./CtaBox";
 export * from "./DashboardCard";
 export * from "./Shared";

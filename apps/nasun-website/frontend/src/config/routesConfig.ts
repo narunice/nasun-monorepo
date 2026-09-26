@@ -59,7 +59,6 @@ export const Pages = {
   ),
   Grants: lazyWithRetry(() => import("../pages/AwardsPage")),
   Founders: lazyWithRetry(() => import("../pages/about/FoundersPage")),
-  GenesisNft: lazyWithRetry(() => import("../pages/GenesisNftPage")),
   Web3: lazyWithRetry(() => import("../pages/protocol/ProposalPage")),
   ProposalDetail: lazyWithRetry(
     () => import("../pages/protocol/ProposalDetailPage"),
@@ -514,12 +513,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.LeaderboardInfo,
           hidden: true,
         },
-        // {
-        //   name: "navigation.genesisEvent",
-        //   path: "/wave1/frontiers-event",
-        //   element: Pages.GenesisNft,
-        //   disabled: true,
-        // },
         // {
         //   name: "navigation.contests",
         //   path: "/wave1/contests",

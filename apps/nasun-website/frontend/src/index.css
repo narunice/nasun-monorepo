@@ -150,7 +150,10 @@
   src: url("/fonts/pirulen/pirulen-regular.woff2") format("woff2");
 }
 
-/* FoundersGrotesk Font Family (Medium only - used in GenesisNftHeroSection) */
+/* FoundersGrotesk (Medium only). No current consumer in this app — the
+   `font-founders` token lives in the shared packages/tailwind-config, so the
+   face is kept here to back it if a surface asks for it again. Its last user
+   was the Genesis NFT hero, deleted 2026-09-26. */
 @font-face {
   font-family: "Founders Grotesk";
   src: url("./assets/FoundersGroteskFontFamily/TestFoundersGrotesk-Medium-BF66175e9723b7a.otf")
