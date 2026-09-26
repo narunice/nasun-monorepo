@@ -84,7 +84,7 @@ export function SeasonManagementTab() {
 
   const handleModalSubmit = async (data: CreateSeasonRequest) => {
     if (editingSeason) {
-      await updateSeason({ seasonId: editingSeason.seasonId, ...data });
+      await updateSeason({ ...data });
     } else {
       await createSeason(data);
     }

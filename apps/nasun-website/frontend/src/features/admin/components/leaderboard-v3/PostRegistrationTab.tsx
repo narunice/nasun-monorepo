@@ -63,7 +63,7 @@ export function PostRegistrationTab() {
   // Sort seasons: active first, then upcoming, then ended
   const sortedSeasons = useMemo(() => {
     if (!seasons) return [];
-    const order: Record<SeasonStatus, number> = { active: 0, upcoming: 1, ended: 2, archived: 3 };
+    const order: Record<SeasonStatus, number> = { active: 0, paused: 1, upcoming: 2, ended: 3, archived: 4 };
     return [...seasons]
       .filter((s) => s.status !== "archived")
       .sort((a, b) => order[a.status] - order[b.status]);

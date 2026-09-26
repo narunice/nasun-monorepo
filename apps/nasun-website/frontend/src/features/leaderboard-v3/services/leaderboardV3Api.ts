@@ -268,7 +268,7 @@ export async function getRankHistory(params: {
   if (!response.ok) {
     // 404 = user not in leaderboard, return empty data instead of throwing
     if (response.status === 404) {
-      return { data: null };
+      return { success: true };
     }
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to get rank history: ${response.status}`);

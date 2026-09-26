@@ -1,6 +1,7 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { listUsers, getUserDetail, searchUsers } from '../services/userManagementApi';
-import type { ListUsersParams, SearchUsersParams } from '../services/userManagementApi';
+import type { ListUsersParams } from '../services/userManagementApi';
+import type { SearchUsersParams } from '../types';
 
 export function useUserList(
   cognitoToken: string | null,

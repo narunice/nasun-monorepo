@@ -2,11 +2,11 @@ import { Button } from '@/components/ui/button';
 import { OuterBox } from '@/components/ui/OuterBox';
 import { Spinner } from '@/components/ui';
 import type { ProposalSummary } from '@/features/admin/types';
-import type { VoterInfo } from '@/features/admin/hooks/useProposalVoters';
+import type { VoterRecord } from '@/features/admin/types';
 
 interface VoterDetailsPanelProps {
   proposal: ProposalSummary;
-  voters: VoterInfo[];
+  voters: VoterRecord[];
   isLoading: boolean;
   isExporting: boolean;
   onExport: () => void;

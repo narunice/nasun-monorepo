@@ -79,7 +79,7 @@ export function AllianceNftAdmin() {
   } = useAllianceImageCounts();
 
   const fields = data?.data?.content?.dataType === "moveObject"
-    ? (data.data.content.fields as RegistryFields)
+    ? (data.data.content.fields as unknown as RegistryFields)
     : null;
 
   const totalMinted = fields ? Number(fields.total_minted) : 0;
