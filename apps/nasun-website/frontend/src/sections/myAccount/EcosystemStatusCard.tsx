@@ -16,8 +16,12 @@ interface EcosystemStatusCardProps {
 }
 
 export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps) {
-  const { user, cognitoToken } = useAuth();
-  const { getActivation } = useEcosystemStatus(cognitoToken ?? undefined);
+  const { user } = useAuth();
+  // The token lives on the user, not on the context. Destructuring it from
+  // useAuth() yielded undefined, which useEcosystemStatus treats as "not
+  // signed in" (`enabled: isConfigured && !!cognitoToken`), so this card's
+  // activation lookups never ran.
+  const { getActivation } = useEcosystemStatus(user?.cognitoToken);
   const { score, isLoading: loading, isError } = useEcosystemScore(user?.identityId);
 
   const multiplier = score?.multiplier ?? 1.0;
