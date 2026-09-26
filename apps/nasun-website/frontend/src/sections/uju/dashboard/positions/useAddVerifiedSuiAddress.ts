@@ -111,13 +111,7 @@ export function useAddVerifiedSuiAddress(): UseAddVerifiedSuiAddressApi {
         // trusted account; if that account is already linked, fail fast
         // with a message that names the offending address so the user can
         // spot it in the extension UI and switch.
-        const sui = useUserStore.getState().user?.linkedAccounts?.sui as
-          | {
-              walletAddress?: string;
-              additionalAddresses?: Array<{ walletAddress: string }>;
-              manualEntry?: boolean;
-            }
-          | undefined;
+        const sui = useUserStore.getState().user?.linkedAccounts?.sui;
         const linked = new Set<string>();
         if (sui && sui.manualEntry !== true) {
           if (sui.walletAddress) linked.add(sui.walletAddress.toLowerCase());

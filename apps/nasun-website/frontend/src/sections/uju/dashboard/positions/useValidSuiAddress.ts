@@ -34,17 +34,9 @@ export interface VerifiedSuiAddressEntry {
   isPrimary: boolean;
 }
 
-interface SuiLinkedShape {
-  walletAddress?: string;
-  manualEntry?: boolean;
-  verifiedAt?: number;
-  additionalAddresses?: Array<{ walletAddress: string; verifiedAt?: number; label?: string }>;
-  appBindings?: Record<string, string>;
-}
-
 export function useValidSuiAddress(): string | null {
   const sui = useUserStore(
-    (s) => s.user?.linkedAccounts?.sui as SuiLinkedShape | undefined,
+    (s) => s.user?.linkedAccounts?.sui,
   );
   return useMemo(() => {
     if (!sui) return null;
@@ -60,7 +52,7 @@ export function useValidSuiAddress(): string | null {
  */
 export function useValidSuiAddressForApp(appId: string): string | null {
   const sui = useUserStore(
-    (s) => s.user?.linkedAccounts?.sui as SuiLinkedShape | undefined,
+    (s) => s.user?.linkedAccounts?.sui,
   );
   return useMemo(() => {
     if (!sui) return null;
@@ -90,7 +82,7 @@ export function useValidSuiAddressForApp(appId: string): string | null {
 /** All verified Sui addresses; primary first. Empty when no link. */
 export function useVerifiedSuiAddresses(): VerifiedSuiAddressEntry[] {
   const sui = useUserStore(
-    (s) => s.user?.linkedAccounts?.sui as SuiLinkedShape | undefined,
+    (s) => s.user?.linkedAccounts?.sui,
   );
   return useMemo(() => {
     if (!sui || sui.manualEntry === true) return [];

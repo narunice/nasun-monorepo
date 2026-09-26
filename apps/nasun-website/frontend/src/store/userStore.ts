@@ -41,6 +41,27 @@ export interface LinkedSolanaAccount {
   linkedAt?: string;
 }
 
+/**
+ * SUI counterpart to LinkedSolanaAccount, written by the auth-sui-additional
+ * Lambda on the user's first personal-message verify. Every field is optional
+ * because the record is built up across verifies, and `manualEntry === true`
+ * marks legacy paste-only entries that selectors treat as unverified.
+ */
+export interface LinkedSuiAccount {
+  walletAddress?: string;
+  verifiedAt?: number;
+  manualEntry?: boolean;
+  additionalAddresses?: VerifiedAdditionalSuiAddress[];
+  appBindings?: Record<string, string>;
+  linkedAt?: string;
+}
+
+export interface VerifiedAdditionalSuiAddress {
+  walletAddress: string;
+  verifiedAt?: number;
+  label?: string;
+}
+
 // Linked account information
 export interface LinkedAccount {
   identityId?: string;
@@ -100,6 +121,7 @@ export interface UserData {
     twitter?: LinkedAccount;
     metamask?: LinkedAccount;
     solana?: LinkedSolanaAccount;
+    sui?: LinkedSuiAccount;
     'nasun wallet'?: LinkedAccount;
   };
 }
