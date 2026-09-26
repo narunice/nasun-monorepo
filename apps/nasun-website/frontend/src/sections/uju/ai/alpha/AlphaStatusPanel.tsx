@@ -344,7 +344,7 @@ export function AlphaStatusPanel({ walletAddress, status: external }: Props) {
 function renderNone(args: {
   status: AlphaStatusResponse;
   signer: ReturnType<typeof useSigner>['signer'];
-  pending: 'join' | 'leave' | null;
+  pending: 'join' | 'leave' | 'resume' | null;
   actionError: string | null;
   onJoin: () => void;
 }) {

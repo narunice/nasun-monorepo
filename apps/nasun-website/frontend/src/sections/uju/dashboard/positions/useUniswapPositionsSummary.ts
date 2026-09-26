@@ -76,9 +76,9 @@ export function useUniswapPositionsSummary(): UniswapPositionsSummary {
           args: [owner, BigInt(i)],
         })),
       });
-      const tokenIds = tokenIdResults
-        .filter((r): r is { status: "success"; result: bigint } => r.status === "success")
-        .map((r) => r.result);
+      const tokenIds = tokenIdResults.flatMap((r) =>
+        r.status === "success" ? [r.result as bigint] : [],
+      );
 
       if (tokenIds.length === 0) {
         return { activeCount: 0, totalCount: total, truncated };

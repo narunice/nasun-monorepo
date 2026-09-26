@@ -131,7 +131,9 @@ export function AgentStateControl({
       const tx = buildDeactivateAgentTransaction(profileId);
       tx.setSender(signer.address);
       const txBytes = await tx.build({ client: suiClient });
-      const { signature } = await signer.sign(txBytes);
+      const adapter = signer.signer;
+      if (!adapter) throw new Error('No signer available');
+      const { signature } = await adapter.sign(txBytes);
       const result = await suiClient.executeTransactionBlock({
         transactionBlock: txBytes,
         signature,

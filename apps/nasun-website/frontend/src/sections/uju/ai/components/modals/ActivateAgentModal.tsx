@@ -27,7 +27,9 @@ interface ActivateAgentModalProps {
   agentId: string;
   agentAddress: string;
   agentName: string;
-  capabilityId: string;
+  /** May be null for an agent whose on-chain capability was never minted;
+   *  the submit handler reports that rather than proceeding. */
+  capabilityId: string | null;
   walletAddress: string;
   onActivated: () => void;
   onClose: () => void;

@@ -17,7 +17,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import type { Signer } from '@nasun/wallet';
+import type { SignerAdapter } from '@nasun/wallet';
 import { getSuiClient } from '@nasun/wallet';
 import { BARAM } from '@nasun/devnet-config';
 
@@ -25,7 +25,7 @@ const SUI_OBJECT_ID_RE = /^0x[0-9a-fA-F]{64}$/;
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{1,64}$/;
 
 export async function authorizeAgentOnChain(
-  signer: Signer,
+  signer: SignerAdapter,
   walletAddress: string,
   capabilityId: string,
   agentAddress: string,

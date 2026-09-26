@@ -19,7 +19,10 @@ const ALL_TABS = [
 const AI_TAB_IDS = new Set(["agents", "ai-chat"]);
 const TABS = ALL_TABS.filter((t) => !AI_TAB_IDS.has(t.id) || NASUN_AI_ENABLED);
 
-type TabId = typeof ALL_TABS[number]["id"];
+// Includes "ai-chat", which ALL_TABS deliberately omits (see above): the tab is
+// hidden from the nav but still reachable by URL, so it can be the active one
+// while this component renders no button for it.
+type TabId = typeof ALL_TABS[number]["id"] | "ai-chat";
 
 interface UjuNavigationProps {
   activeTab: TabId;

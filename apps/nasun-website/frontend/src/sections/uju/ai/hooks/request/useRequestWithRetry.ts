@@ -10,7 +10,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useExecutors, selectExecutorWeightedRandom, type ExecutorInfo } from '../useExecutors';
-import { useCreateRequest, type RequestResult, type CreateRequestCapability } from './useCreateRequest';
+import { useCreateRequest, type RequestResult, type RequestStatus, type CreateRequestCapability } from './useCreateRequest';
 import { useAttestation, type AttestationState } from './useAttestation';
 import {
   EXECUTOR_SELECTION,
@@ -74,7 +74,7 @@ export interface UseRequestWithRetryReturn {
   isProcessing: boolean;
   error: string | null;
   selectedExecutor: ExecutorInfo | null;
-  requestStatus: string;
+  requestStatus: RequestStatus;
   result: RequestResult | null;
   executorsLoading: boolean;
   executorsError: string | null;

@@ -24,7 +24,7 @@ export const usePayAndMintSuiNFT = () => {
   const isConnected = (status === "unlocked" && !!account) || isZkConnected;
   const walletAddress = account?.address || zkState?.address;
 
-  const toastId = useRef<string | number>();
+  const toastId = useRef<string | number | undefined>(undefined);
 
   const fetchRandomImage = useCallback(async (tier: NFTTiers): Promise<string> => {
     const tierKey = `TIER${tier}` as NFTTiers;
