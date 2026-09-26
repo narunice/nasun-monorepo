@@ -56,9 +56,7 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
   // other. Defaults to expanded so first-time viewers see the rules.
   const [selfDetailsOpen, setSelfDetailsOpen] = useState(true);
   const [referrerDetailsOpen, setReferrerDetailsOpen] = useState(true);
-  const { handleLinkTwitter, isLinking } = useAccountLinking({
-    user: user as never,
-  });
+  const { handleLinkTwitter, isLinking } = useAccountLinking({ user });
   const xLinked = Boolean(user?.twitterId);
 
   useEffect(() => {
