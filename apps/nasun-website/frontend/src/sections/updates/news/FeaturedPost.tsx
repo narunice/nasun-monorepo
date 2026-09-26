@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { ArrowRight } from "lucide-react";
-import { Post } from "../../types/post.d";
+import type { Post } from "@/types/post";
 import { stripHtmlTags } from "../../../utils/wordpressContent";
 import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";

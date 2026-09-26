@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearPendingZkLoginFlow } from "@nasun/wallet";
 import logger from "@/lib/logger";
-import { User } from "@/types/user";
+import type { UserData } from "@/store/userStore";
 import { buildGoogleAuthUrl } from "@/features/auth/utils/googleAuthUrl";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { VOTING_POWER_QUERY_KEY } from "@/features/governance/hooks/useVotingPower";
 
 interface UseAccountLinkingProps {
-  user: User | null;
+  user: UserData | null;
 }
 
 export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {

@@ -1,6 +1,6 @@
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { CheckCircle, CircleDot, Circle } from "lucide-react";
-import type { RoadmapStatus } from "../../../types/roadmap";
+import type { RoadmapStatus } from "@/types/roadmap";
 
 interface StatusBadgeProps {
   status: RoadmapStatus;

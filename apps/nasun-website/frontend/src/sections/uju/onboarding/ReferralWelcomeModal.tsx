@@ -12,6 +12,7 @@
 
 import { FC, useState, useCallback } from "react";
 import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking";
+import type { UserData } from "@/store/userStore";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export const REFERRAL_MODAL_DISMISSED_KEY = "referralModalDismissedAt";
@@ -19,7 +20,7 @@ export const REFERRAL_MODAL_DISMISSED_KEY = "referralModalDismissedAt";
 interface ReferralWelcomeModalProps {
   open: boolean;
   onClose: () => void;
-  user: { identityId?: string; cognitoToken?: string; twitterId?: string } | null;
+  user: UserData | null;
 }
 
 export const ReferralWelcomeModal: FC<ReferralWelcomeModalProps> = ({
@@ -28,9 +29,7 @@ export const ReferralWelcomeModal: FC<ReferralWelcomeModalProps> = ({
   user,
 }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
-  // Cast: useAccountLinking expects User from @/types/user; the structural
-  // shape we pass matches at runtime (identityId + cognitoToken).
-  const { handleLinkTwitter, isLinking } = useAccountLinking({ user: user as never });
+  const { handleLinkTwitter, isLinking } = useAccountLinking({ user });
   const xLinked = Boolean(user?.twitterId);
 
   const closeModal = useCallback(() => {
