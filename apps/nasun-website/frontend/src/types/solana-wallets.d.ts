@@ -2,9 +2,12 @@
 // Phantom (window.phantom.solana) and Solflare (window.solflare) both inject
 // these shapes; we ignore the rest to keep the type surface minimal.
 //
-// IMPORTANT: Do NOT add `import` or `export` to this file — it becomes a module
-// and `interface Window` augmentation stops merging. `declare global {}` makes
-// the intent explicit even if someone later refactors the file.
+// IMPORTANT: Do NOT add `import` or `export` to this file. It is a global
+// script declaration file, so `interface Window` below merges with the DOM lib
+// directly. Adding either turns it into a module, at which point the merge
+// stops and the augmentation needs a `declare global {}` wrapper to come back.
+// Note the converse, which cost us these types once already: that wrapper in a
+// script file is not an error and not a merge either — it just does nothing.
 
 interface SolanaWalletPublicKey {
   toString(): string;
@@ -30,9 +33,7 @@ interface SolanaWalletAdapter {
   signMessage?(message: Uint8Array, encoding?: string): Promise<SolanaSignedMessage>;
 }
 
-declare global {
-  interface Window {
-    phantom?: { solana?: SolanaWalletAdapter };
-    solflare?: SolanaWalletAdapter;
-  }
+interface Window {
+  phantom?: { solana?: SolanaWalletAdapter };
+  solflare?: SolanaWalletAdapter;
 }
