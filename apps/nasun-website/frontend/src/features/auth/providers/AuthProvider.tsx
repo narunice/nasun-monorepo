@@ -205,14 +205,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearError();
     window.history.replaceState({}, document.title, window.location.pathname);
 
+    // Declared outside the try because the catch below needs the secondary
+    // identity to build the link-transfer confirmation payload. They were
+    // previously scoped to the try, so that catch referenced three names that
+    // did not exist there: the ReferenceError was swallowed by its own inner
+    // catch and every 409 fell through to the generic linking_failed redirect,
+    // meaning the "transfer this OAuth identity" prompt could never appear.
+    let identityId: string | undefined;
+    let userInfo: { name: string; email?: string } | undefined;
+    let twitterData: { twitterHandle?: string; originalTwitterHandle?: string; twitterId?: string; profileImageUrl?: string } | null = null;
+
     try {
       logger.debug(`OAuth Redirect: provider=${provider}, linking=${isLinkingFlow}`);
 
       // Dispatch to provider-specific handlers
-      let identityId: string;
-      let userInfo: { name: string; email?: string };
-      let twitterData: { twitterHandle?: string; originalTwitterHandle?: string; twitterId?: string; profileImageUrl?: string } | null = null;
-
       if (provider === "Google") {
         const result = await handleGoogleOAuthRedirect(url);
         identityId = result.identityId;
@@ -237,6 +243,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         identityId = result.identityId;
         userInfo = result.userInfo;
         twitterData = result;
+      }
+
+      if (!identityId || !userInfo) {
+        throw new Error(`${provider} OAuth returned no identity`);
       }
 
       // Handle account linking flow
@@ -325,7 +335,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // payload + the secondary identity so MyAccount can prompt the user
         // to confirm transferring the OAuth identity to this wallet, then
         // re-call linkAccounts with confirmTransfer: true.
-        if (err instanceof LinkNeedsConfirmError && (provider === "Google" || provider === "Twitter")) {
+        // identityId/userInfo are unset only when the failure happened before the
+        // provider handler returned, in which case there is no secondary
+        // identity to offer transferring; fall through to the generic message.
+        if (
+          err instanceof LinkNeedsConfirmError
+          && (provider === "Google" || provider === "Twitter")
+          && identityId
+          && userInfo
+        ) {
           try {
             const cachedProfile = cachedProfileRaw ? JSON.parse(cachedProfileRaw) : null;
             const targetPrimaryId = cachedProfile?.identityId;
@@ -334,10 +352,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               JSON.stringify({
                 provider,
                 primaryIdentityId: targetPrimaryId,
-                secondaryIdentityId: identityId!,
+                secondaryIdentityId: identityId,
                 secondaryInfo: {
-                  username: userInfo!.name,
-                  email: userInfo!.email,
+                  username: userInfo.name,
+                  email: userInfo.email,
                   ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
                   ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
                   ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
