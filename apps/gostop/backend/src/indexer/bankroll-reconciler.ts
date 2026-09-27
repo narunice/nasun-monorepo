@@ -62,6 +62,7 @@ export function applySharesDelta(
     case 'treasury_deposited':
     case 'withdraw_requested':
     case 'cap_updated':
+    case 'open_exposure_snapshot':
       return currentShares;
     default:
       return currentShares;
@@ -86,6 +87,14 @@ export function eventTypePriority(eventType: string): number {
     case 'shares_seeded':      return 4;
     case 'withdraw_requested': return 5;
     case 'cap_updated':        return 6;
+    // Share-neutral like the four above it, and by far the highest-volume type:
+    // bankroll_pool emits one per collect_bet / pay_winner / refund_bet. It was
+    // missing here, so isKnownEventType called it unknown and the scan logged a
+    // warning for every row it filled. That reached 7,127 of 7,236 lines in the
+    // indexer error log, 98.5% noise, which is how 94 consecutive Telegram
+    // rejections sat in the same file unnoticed. Position within a timestamp is
+    // arbitrary for a carry-forward type; what matters is not warning.
+    case 'open_exposure_snapshot': return 7;
     default:                   return 99;
   }
 }
@@ -146,6 +155,7 @@ export async function reconcileBankrollSnapshots(): Promise<number> {
                    WHEN 'shares_seeded'      THEN 4
                    WHEN 'withdraw_requested' THEN 5
                    WHEN 'cap_updated'        THEN 6
+                   WHEN 'open_exposure_snapshot' THEN 7
                    ELSE 99
                  END ASC,
                  id ASC

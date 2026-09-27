@@ -142,3 +142,31 @@ describe('bankroll watermark (in-memory)', () => {
     expect(getBankrollWatermarkMs()).toBe(2_000n);
   });
 });
+
+describe('open_exposure_snapshot recognition', () => {
+  it('is a known type, so filling its rows logs no warning', () => {
+    // bankroll_pool emits one per collect_bet / pay_winner / refund_bet, making
+    // it the highest-volume row the scan touches. Left out of the priority
+    // table it fell to 99, isKnownEventType called it unknown, and the scan
+    // warned once per row: 7,127 of 7,236 lines in the indexer error log, which
+    // is how 94 consecutive Telegram rejections sat in the same file unnoticed.
+    expect(eventTypePriority('open_exposure_snapshot')).toBeLessThan(99);
+  });
+
+  it('carries shares forward, so recognising it changes no arithmetic', () => {
+    expect(applySharesDelta(100n, 'open_exposure_snapshot', 500n)).toBe(100n);
+    expect(applySharesDelta(0n, 'open_exposure_snapshot', 0n)).toBe(0n);
+  });
+
+  it('still sorts after every share-affecting type within a timestamp', () => {
+    // Its position is arbitrary for a carry-forward type, but it must not cut
+    // ahead of the types whose order the file header exists to pin down.
+    for (const t of ['treasury_deposited', 'bet_refunded', 'liquidity_provided',
+                     'liquidity_redeemed', 'shares_seeded', 'withdraw_requested',
+                     'cap_updated']) {
+      expect(eventTypePriority('open_exposure_snapshot')).toBeGreaterThan(
+        eventTypePriority(t),
+      );
+    }
+  });
+});
