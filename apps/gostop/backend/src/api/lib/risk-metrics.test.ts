@@ -15,6 +15,7 @@ import {
   maskAddress,
   walletHash,
   classifyExposureStatus,
+  exposureExceedsBalance,
   _RISK_METRICS_CONSTANTS,
 } from './risk-metrics.js';
 
@@ -103,71 +104,70 @@ describe('walletHash (frontend self-match key)', () => {
 });
 
 describe('classifyExposureStatus', () => {
-  // Fresh enough for the excess to be attributable rather than a sampling
-  // artifact. Withholding does not depend on this; only the claim does.
-  const FRESH = 60_000;
-  const STALE = _RISK_METRICS_CONSTANTS.EXPOSURE_COMMENSURATE_MAX_AGE_MS + 1;
-
-  it('leaves a normal live reading alone', () => {
-    expect(classifyExposureStatus('live', 100n, 1_000n, FRESH).status).toBe('live');
+  it('withholds every live reading while the reservation ledger does not pair', () => {
+    // The defect is a property of the deployed packages, not of the value, so
+    // the status does not track the number. Withholding only above the balance
+    // published a ~91x overstatement whenever the overstatement happened to
+    // stay under it, and flipped the public page between a figure and a
+    // placeholder as the two drifted past each other.
+    expect(classifyExposureStatus('live', 100n, 1_000n)).toBe('degraded');
+    expect(classifyExposureStatus('live', 1_000n, 1_000n)).toBe('degraded');
+    expect(classifyExposureStatus('live', 1_001n, 1_000n)).toBe('degraded');
+    expect(classifyExposureStatus('live', 0n, 0n)).toBe('degraded');
+    expect(classifyExposureStatus('live', 1_000n, null)).toBe('degraded');
   });
 
-  it('treats exposure exactly equal to the balance as still live', () => {
-    // Equality is full utilization, not excess: the ledger is consistent with
-    // a pool that has reserved every last unit it holds.
-    expect(classifyExposureStatus('live', 1_000n, 1_000n, FRESH).status).toBe('live');
-  });
-
-  it("downgrades to 'degraded' the moment exposure exceeds the balance", () => {
-    expect(classifyExposureStatus('live', 1_001n, 1_000n, FRESH).status).toBe('degraded');
-    // Production reading on 2026-09-13 that motivated this gate.
+  it('withholds the production reading that is well below its balance', () => {
+    // 2026-09-27: exposure 13,720,500 against a 14,181,332 balance, so the
+    // old exceeds-the-balance gate called this 'live' and published it. True
+    // in-flight liability at that moment was at most 150,000.
     expect(
-      classifyExposureStatus('live', 14_489_000_000_000n, 13_244_136_481_922n, FRESH).status,
+      classifyExposureStatus('live', 13_720_500_000_000n, 14_181_332_551_413n),
     ).toBe('degraded');
   });
 
-  it('withholds regardless of snapshot age — staleness changes the cause, not the usability', () => {
-    // Gating the withholding on freshness would republish the broken value as
-    // 'live' for 55 of every 60 minutes.
-    expect(classifyExposureStatus('live', 1_001n, 1_000n, STALE).status).toBe('degraded');
-    expect(classifyExposureStatus('live', 1_001n, 1_000n, null).status).toBe('degraded');
-  });
-
-  it('reports commensurability separately from the status', () => {
-    expect(classifyExposureStatus('live', 1_001n, 1_000n, FRESH).commensurate).toBe(true);
-    expect(classifyExposureStatus('live', 1_001n, 1_000n, STALE).commensurate).toBe(false);
-    expect(classifyExposureStatus('live', 1_001n, 1_000n, null).commensurate).toBe(false);
-  });
-
-  it('marks the exact freshness boundary as commensurate', () => {
-    expect(
-      classifyExposureStatus(
-        'live',
-        1_001n,
-        1_000n,
-        _RISK_METRICS_CONSTANTS.EXPOSURE_COMMENSURATE_MAX_AGE_MS,
-      ).commensurate,
-    ).toBe(true);
-  });
-
   it("never overrides 'dormant' — one reason for an unusable value is enough", () => {
-    expect(classifyExposureStatus('dormant', 1_001n, 1_000n, FRESH).status).toBe('dormant');
-    expect(classifyExposureStatus('dormant', 0n, 1_000n, FRESH).status).toBe('dormant');
+    expect(classifyExposureStatus('dormant', 1_001n, 1_000n)).toBe('dormant');
+    expect(classifyExposureStatus('dormant', 0n, 1_000n)).toBe('dormant');
   });
 
-  it('declines when the chain balance is unreadable rather than calling it an excess', () => {
+  it('keeps the pairing flag false so the gate cannot be flipped by accident', () => {
+    // Flipping this is a claim about redeployed contracts plus a reset
+    // open_exposure, which needs a bankroll_pool upgrade. Locking it here
+    // makes that an explicit edit rather than a silent one.
+    expect(_RISK_METRICS_CONSTANTS.RESERVATION_LEDGER_PAIRS_EXACTLY).toBe(false);
+  });
+});
+
+describe('exposureExceedsBalance', () => {
+  // Gated out of classifyExposureStatus by the pairing flag today, so it is
+  // tested directly. It becomes the live check the moment that flag flips.
+  it('is false below and at the balance', () => {
+    expect(exposureExceedsBalance(100n, 1_000n)).toBe(false);
+    // Equality is full utilization, not an excess: consistent with a pool that
+    // has reserved every unit it holds.
+    expect(exposureExceedsBalance(1_000n, 1_000n)).toBe(false);
+  });
+
+  it('is true one unit above the balance', () => {
+    expect(exposureExceedsBalance(1_001n, 1_000n)).toBe(true);
+    // 2026-09-13 production reading that first surfaced the condition.
+    expect(exposureExceedsBalance(14_489_000_000_000n, 13_244_136_481_922n)).toBe(true);
+  });
+
+  it('declines an unreadable balance rather than calling it an excess', () => {
     // A failed chain read arrives as null and already shows up as
     // data_quality='unreliable'; it must not masquerade as an excess.
-    expect(classifyExposureStatus('live', 1_000n, null, FRESH).status).toBe('live');
+    expect(exposureExceedsBalance(1_000n, null)).toBe(false);
+    expect(exposureExceedsBalance(0n, null)).toBe(false);
   });
 
-  it("calls a drained pool that still carries reservations 'degraded'", () => {
-    // Zero is a real reading, not a missing one. Nothing backs the
-    // reservations at all.
-    expect(classifyExposureStatus('live', 1_000n, 0n, FRESH).status).toBe('degraded');
+  it('treats a drained pool carrying any reservation as an excess', () => {
+    expect(exposureExceedsBalance(1n, 0n)).toBe(true);
+    expect(exposureExceedsBalance(1_000n, 0n)).toBe(true);
   });
 
   it('leaves a genuinely empty pool alone when nothing is reserved against it', () => {
-    expect(classifyExposureStatus('live', 0n, 0n, FRESH).status).toBe('live');
+    expect(exposureExceedsBalance(0n, 0n)).toBe(false);
   });
 });

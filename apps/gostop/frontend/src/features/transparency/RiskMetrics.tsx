@@ -70,19 +70,14 @@ export function RiskMetrics({ risk }: Props) {
   // contracts are still linkage-frozen to v0.0.2/v0.0.3. The raw value will
   // be 0 (or stale) and must not be rendered as if it were a chain reading.
   const exposureDormant = risk.active_exposure_chain_status === 'dormant';
-  // chain_status='degraded' means the reservation ledger has drifted past
-  // pool.balance, which the reserve/release model cannot do while its pairing
-  // holds. See the backend enum docs for the paths that break it in each
-  // direction. The number is still a chain reading, it just is not a
-  // liability any more.
+  // chain_status='degraded' means open_exposure is not a liability figure, so it
+  // is withheld. It covers every live reading rather than only those above
+  // pool.balance, because the reserve/release pairing is broken in the deployed
+  // contracts. The copy therefore names that defect and not an excess: the
+  // reserved total sits either side of the balance from hour to hour, so any
+  // wording about exceeding it would be wrong much of the time. See
+  // RESERVATION_LEDGER_PAIRS_EXACTLY in the backend for the measured counts.
   const exposureDegraded = risk.active_exposure_chain_status === 'degraded';
-  // The backend reports whether the two readings were close enough in time for
-  // the excess to be attributable. When they were not, the snapshot may simply
-  // predate a balance drop, so the copy says the reading is unusable without
-  // asserting the reserved total really is above the balance. An absent field
-  // (older API) counts as not attributable — the weaker claim is the safe one
-  // on a public page.
-  const excessAttributable = risk.exposure_excess_commensurate === true;
   // Utilization divides by pool.balance but its numerator is this same
   // exposure figure, so it inherits the same unusability.
   const exposureUsable = !exposureDormant && !exposureDegraded;
@@ -91,18 +86,14 @@ export function RiskMetrics({ risk }: Props) {
   // the tooltip still described a working measurement would leave the dash
   // unexplained, which is the failure mode this panel exists to avoid.
   const utilHint = exposureDegraded
-    ? excessAttributable
-      ? 'Not currently measurable. Utilization is open exposure over pool balance, and open exposure currently exceeds that balance, so the ratio does not describe house risk. Restored once the reserved total is back under the pool balance.'
-      : 'Not currently measurable. The latest exposure reading is above the pool balance, but the two were not read close enough together to tell a real excess from a balance that changed after the reading was taken. Either way the ratio does not describe house risk right now.'
+    ? 'Not currently measurable. Utilization is open exposure over pool balance, and the exposure figure is not a liability measure right now, so the ratio does not describe house risk. Restored once the reservation accounting is corrected on chain.'
     : exposureDormant
       ? 'Not currently measurable. Utilization is open exposure over pool balance, and no recent on-chain exposure reading is available, so there is no numerator to divide. Restored once the dependent game contracts are rebound to bankroll_pool v0.0.4.'
       : 'Pending round commitments as a share of pool balance. Live commitments include rounds awaiting resolution or claim.';
   const exposureLabel = exposureDormant
     ? 'Open exposure (provisional)'
     : exposureDegraded
-      ? excessAttributable
-        ? 'Open exposure (unavailable)'
-        : 'Open exposure (stale)'
+      ? 'Open exposure (unavailable)'
       : 'Open exposure (max liability)';
   const exposureDisplay = unreliable || !exposureUsable
     ? '—'
@@ -110,9 +101,7 @@ export function RiskMetrics({ risk }: Props) {
   const exposureHint = exposureDormant
     ? 'Awaiting v0.0.4 lockstep upgrade across dependent game contracts. The on-chain open_exposure dynamic field has not yet been initialized, so this number is provisional and rendered as a placeholder rather than a misleading 0 NUSDC. Will reflect chain truth once each game contract is rebound to bankroll_pool v0.0.4.'
     : exposureDegraded
-      ? excessAttributable
-        ? 'Withheld rather than shown as a liability it does not represent. Each bet reserves the game maximum payout against the pool and releases it when the round settles, and the reserved total currently exceeds the pool balance, so it is not a measure of house liability either way. Player funds and payouts are unaffected: every payout is independently bounded by the pool balance check in pay_winner.'
-        : 'Withheld pending a current reading. Each bet reserves the game maximum payout against the pool and releases it when the round settles. The latest reserved total came in above the pool balance, but the two figures were not read close enough together to say whether that is a real excess or a balance that moved after the reading. Player funds and payouts are unaffected: every payout is independently bounded by the pool balance check in pay_winner.'
+      ? 'Withheld rather than shown as a liability it does not represent. Each bet reserves that game\u2019s maximum payout against the pool and is meant to release it when the round settles, but several settlement paths release nothing and one releases more than once, so the running total no longer tracks what the house actually owes and drifts in both directions. Correcting it needs a contract change. Player funds and payouts are unaffected: every payout is independently bounded by the pool balance check in pay_winner.'
       : 'Chain-authoritative reading of bankroll_pool.open_exposure: sum of max_single_payout reserved across all in-flight rounds. Released back when each round settles via pay_winner or refund_bet. This is true max house liability, not a proxy.';
   const largestPayoutDisplay = unreliable ? '—' : `${fmtUsdc(risk.largest_single_payout_raw)} NUSDC`;
   const lpDistDisplay = unreliable ? '—' : `${fmtUsdcSigned(risk.cumulative_lp_distributions_raw)} NUSDC`;

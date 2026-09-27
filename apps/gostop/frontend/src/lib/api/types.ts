@@ -219,23 +219,16 @@ export interface RiskMetricsBlock {
   active_exposure_raw: string;
   /**
    * 'live' = recent snapshot present; 'dormant' = no snapshot or stale;
-   * 'degraded' = open_exposure exceeds pool.balance, so it is not usable as a
-   * liability figure. Either the reservation ledger leaked (some settlement
-   * paths release nothing, some release more than once) or the pool is
-   * genuinely over-committed, which nothing on chain prevents while no cap is
-   * configured; see the backend RiskMetricsResult docs.
+   * 'degraded' = open_exposure is not usable as a liability figure, so it is
+   * withheld. The reservation ledger does not pair reserves with releases:
+   * several settlement paths release nothing and one releases more than once,
+   * which overstates in-flight liability by a wide margin. This covers every
+   * live reading, not only those above pool.balance. See the backend
+   * RiskMetricsResult docs for the measured per-game counts.
    */
   active_exposure_chain_status?: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
   active_exposure_last_snapshot_ms?: number | null;
-  /**
-   * True when the exposure snapshot and the pool balance were read close enough
-   * in time for a 'degraded' excess to be real rather than a sampling artifact.
-   * The snapshot can be up to an hour old, so when this is false the excess may
-   * simply be a balance that dropped after it was taken. The UI withholds the
-   * number either way; only the explanation may differ.
-   */
-  exposure_excess_commensurate?: boolean;
   /** active_exposure × 10_000 / pool.balance, basis points. */
   utilization_ratio_bps: number;
   /**

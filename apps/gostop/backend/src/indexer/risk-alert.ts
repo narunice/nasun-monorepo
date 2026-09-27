@@ -1,11 +1,19 @@
 /**
  * Risk-alert tick — Tier 1.3 utilization watch (v1).
  *
- * Polls `riskMetrics()` every RISK_ALERT_INTERVAL_MS and fires a Telegram
- * message when `utilization_ratio_bps > UTILIZATION_THRESHOLD_BPS` — but only
- * while `active_exposure_chain_status` is 'live'. 'degraded' means the ratio's
- * numerator is known-broken, and we report that instead of thresholding it;
- * 'dormant' means there is no recent numerator at all, and we stay silent.
+ * Polls `riskMetrics()` every RISK_ALERT_INTERVAL_MS and, when
+ * `active_exposure_chain_status` is 'live', fires a Telegram message on
+ * `utilization_ratio_bps > UTILIZATION_THRESHOLD_BPS`. 'degraded' means the
+ * ratio's numerator is not a liability, and we report that instead of
+ * thresholding it; 'dormant' means there is no recent numerator at all, and we
+ * stay silent.
+ *
+ * Note that 'live' is currently unreachable: risk-metrics classifies every live
+ * reading as 'degraded' while RESERVATION_LEDGER_PAIRS_EXACTLY is false, so the
+ * threshold rule below is dormant by construction rather than by cadence. That
+ * is the intended state. There is no actionable utilization threshold while the
+ * instrument producing the numerator is broken, and the branch is kept so it
+ * resumes with the same wording once the reservation accounting is fixed.
  * v1 ships only the utilization rule (HG2-anchored policy decision); drawdown and
  * 3-sigma volatility alerts are deferred to v1.1 once `bankroll_daily_pnl`
  * has 30+ post-LP-launch days of history to calibrate thresholds against.
@@ -153,29 +161,27 @@ export async function runRiskAlertOnce(): Promise<void> {
 
   const now = Date.now();
 
-  // Open exposure exceeds the balance backing it, so utilization_ratio_bps is
-  // still arithmetically correct but its numerator is not a liability and the
-  // 60% threshold has nothing to say about it. Report the unusable instrument
-  // rather than alerting on its readings.
+  // utilization_ratio_bps stays arithmetically correct but its numerator is not
+  // a liability, so the 60% threshold has nothing to say about it. Report the
+  // unusable instrument rather than alerting on its readings.
   //
-  // Two explanations fit, and the alert must not pick one for the reader.
-  // Either the reservation ledger has leaked (reserve/release is unpaired in
-  // both directions — see the per-game paths on
-  // RiskMetricsResult.active_exposure_chain_status), or the pool is genuinely
-  // over-committed, which nothing on chain prevents: collect_bet's cumulative
-  // check runs only when cap_bps > 0 and no cap is configured. The second is a
-  // solvency condition, not an accounting artifact, so asserting "contract
-  // defect" would bury it.
+  // The reservation ledger being unpaired is settled by event counts rather
+  // than inferred from the value, so the body may state it (see
+  // RESERVATION_LEDGER_PAIRS_EXACTLY). What the counts do not settle is whether
+  // the pool is *also* genuinely over-committed: collect_bet's cumulative check
+  // runs only when cap_bps > 0 and no cap is configured, so nothing on chain
+  // prevents that, and it is a solvency condition rather than an accounting
+  // artifact. The body therefore attributes the "not a solvency problem"
+  // reading to the dated measurement instead of asserting it of the present.
   if (risk.active_exposure_chain_status === 'degraded') {
     if (shouldFire('utilization_unmeasurable', now)) {
-      // Ratio divides by pool.balance, so a drained pool yields 0% — printing
-      // that beside "exceeds the balance" would contradict the body.
+      // State the ratio without characterising it. It sits either side of 100%
+      // from hour to hour, and the reason for withholding is the ledger defect
+      // rather than any particular value, so an "over 100%" style gloss would
+      // be wrong about as often as it was right.
       const ratioLine = risk.tvl_raw === '0'
         ? 'Ratio: *n/a* (pool balance is zero — nothing backs the reservations)'
-        : `Ratio: *${fmtBpsPct(risk.utilization_ratio_bps)}* (over 100%)`;
-      const causeLine = risk.exposure_excess_commensurate
-        ? 'Both readings are current, so the excess is real rather than a sampling artifact.'
-        : 'The exposure snapshot is older than the balance read, so part or all of the excess may be a balance that dropped after the snapshot. Confirm against a fresh snapshot before treating it as an accounting defect.';
+        : `Ratio: *${fmtBpsPct(risk.utilization_ratio_bps)}* (not a risk ratio, see below)`;
       const text = [
         '*GoStop Bankroll — utilization not measurable*',
         '',
@@ -183,13 +189,13 @@ export async function runRiskAlertOnce(): Promise<void> {
         `Pool balance:  \`${risk.tvl_raw}\` NUSDC raw`,
         ratioLine,
         '',
-        'Open exposure exceeds the pool balance, so it is not usable as a house-liability figure. ' + causeLine,
+        'open_exposure is not a house-liability figure and utilization built on it is not a risk ratio. Each reservation needs exactly one matching release and does not get one. Counted over the retained window on 2026-09-27: scratchcard 972,476 reserve against 1,192,865 release, mines 90,217 against 58,135, wheel 229,730 against 103,588, numbermatch 941,009 against 941,009. Releases outnumbering reserves is not something a liability can do.',
         '',
-        'Two causes fit and they need different responses. (1) The reservation ledger has leaked: each reserve needs exactly one matching release and does not get one — wheel, scratchcard, crash and mines all have settlement paths that release nothing, while scratchcard bulk reserves once per purchase but releases once per winning card, so it drifts both ways. (2) The pool is genuinely over-committed: collect_bet only enforces the cumulative check when cap_bps > 0, and no cap is set, so this is not prevented on chain. Check whether open_exposure tracks in-flight rounds before assuming (1).',
+        'Scale at that same measurement: true in-flight liability was at most 150,000 NUSDC (75 live mines sessions at a 2,000 max payout; wheel, scratchcard and numbermatch settle in one transaction and hold nothing at rest; crash has had no round since 2026-05-08) against an open_exposure of 13,720,500, about 91x higher. *On that date the gap was accounting, not solvency.* Nothing recomputes it, so treat it as the last known reading rather than the current one: the counts prove the ledger is unusable, not that the pool is solvent today. Re-measure before relying on it. Payouts stay bounded independently by the pool balance check in pay_winner.',
         '',
-        '*Do NOT set a utilization cap while this holds.* MAX_CAP_BPS is 10000, so no admissible cap value clears the current ratio and every bet on every game would abort with EUtilizationCapExceeded.',
+        '*Do NOT set a utilization cap.* The ratio crosses 100% from hour to hour, and above it no admissible cap exists at all since MAX_CAP_BPS is 10000. Below it a cap still has to clear both the current ratio and each game max_single_payout as a share of balance, or that game aborts on its first bet.',
         '',
-        'If it is (1), clearing it needs a bankroll_pool upgrade — there is no admin reset for open_exposure. Utilization alerting resumes automatically once exposure is back under the balance.',
+        'Clearing this needs the games redeployed with the pairing fixed and open_exposure reset, which takes a bankroll_pool upgrade since it has no admin reset. This alert stands until then; it does not track the value.',
         '',
         `Cooldown ${Math.round(cooldownFor('utilization_unmeasurable') / 3_600_000)} h before re-fire.`,
       ].join('\n');

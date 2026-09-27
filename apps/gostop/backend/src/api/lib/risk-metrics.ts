@@ -97,19 +97,23 @@ export interface RiskMetricsResult {
    * all in-flight rounds (those whose collect_bet has fired but whose
    * pay_winner / refund_bet has not yet).
    *
+   * The equality above is what the ledger is supposed to maintain, not what it
+   * does; see `active_exposure_chain_status` below.
+   *
    * Pair with `active_exposure_chain_status` before rendering: when status
    * is 'dormant' the raw value is meaningless (v0.0.4 published but game
    * contracts still linkage-frozen to v0.0.2/v0.0.3) and the UI must show a
-   * provisional placeholder rather than 0 NUSDC. When status is 'degraded'
-   * the ledger has over-counted and the value is an upper bound on nothing
-   * in particular; see below.
+   * provisional placeholder rather than 0 NUSDC. When status is 'degraded' the
+   * value is not a liability figure at all and must be withheld likewise.
    */
   active_exposure_raw: string;
   /**
    * 'live'     → recent OpenExposureSnapshot event present, raw value usable.
    * 'dormant'  → no snapshot or stale (>1h). Treat the raw value as N/A.
-   * 'degraded' → open_exposure exceeds pool.balance, which the reservation
-   *              model cannot produce honestly.
+   * 'degraded' → not usable as a house-liability figure, so consumers must
+   *              withhold it. This does not name a value range; while
+   *              RESERVATION_LEDGER_PAIRS_EXACTLY is false it is every 'live'
+   *              reading, whether above or below pool.balance.
    *
    *              collect_bet reserves cap.max_single_payout and pay_winner /
    *              refund_bet each release that same unit, so the ledger is
@@ -129,22 +133,15 @@ export interface RiskMetricsResult {
    *              releases more than it reserved.
    *
    *              numbermatch is the only game with one collect_bet and one
-   *              unconditional pay_winner. The observed total has both risen
-   *              and fallen over time; what it is not is a measure of
-   *              liability. Treat it as N/A exactly like 'dormant'.
+   *              unconditional pay_winner. Measured counts and the resulting
+   *              ~91x overstatement are on RESERVATION_LEDGER_PAIRS_EXACTLY.
+   *              While that is false this is every 'live' reading, not only
+   *              the ones exceeding the balance. Treat it as N/A exactly like
+   *              'dormant'.
    */
   active_exposure_chain_status: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
   active_exposure_last_snapshot_ms: number | null;
-  /**
-   * True when the exposure snapshot and the chain balance were read close
-   * enough in time for a 'degraded' excess to be real rather than a sampling
-   * artifact. Consumers must not assert an on-chain accounting defect while
-   * this is false — the excess may simply be a balance that dropped after the
-   * snapshot was taken. Withholding the value does not depend on it; only the
-   * explanation does.
-   */
-  exposure_excess_commensurate: boolean;
   /**
    * utilization_ratio_bps = active_exposure × 10_000 / pool.balance.
    * Returned in basis points (matches on-chain cap units). 0 when balance=0.
@@ -224,61 +221,99 @@ function worstQuality(a: DataQuality, b: DataQuality): DataQuality {
 }
 
 /**
- * Downgrade a 'live' exposure reading to 'degraded' when the reservation
- * ledger has over-counted past the balance backing it.
+ * Whether the deployed contracts pair every `open_exposure` reservation with
+ * exactly one release. That pairing is the only thing that makes the field a
+ * liability measure, and it does not hold.
  *
- * open_exposure is a reservation against pool.balance, so exceeding that
- * balance is not a risk signal to be alerted on — it is proof the ledger has
- * stopped tracking liability at all (see the per-game leak paths documented
- * on RiskMetricsResult.active_exposure_chain_status). It also means no cap is
- * enablable, since Move's MAX_CAP_BPS is 10_000 and collect_bet compares
- * against this same balance.
+ * Measured 2026-09-27 over the whole retained window of
+ * gostop.bankroll_event (event_type='open_exposure_snapshot', reason_code
+ * 0=reserve / 1=release):
  *
- * Withholding is unconditional once exposure exceeds balance. The two sides
- * are not read at the same instant — exposure is the newest indexed
- * OpenExposureSnapshot, balance is a live chain read — so the excess may be an
- * artifact of a balance that dropped after the snapshot (an LP redemption, or
- * a payout: pay_winner never streams into bankroll_event, so it cannot be
- * added back). That changes which explanation is true, not whether the number
- * is publishable: a figure larger than the pool backing it is not a liability
- * measure under either reading, and utilization built on it is not a risk
- * ratio. Gating the withholding on freshness would republish the broken value
- * as 'live' for 55 of every 60 minutes.
+ *   scratchcard   972,476 reserve / 1,192,865 release   net -220,389
+ *   numbermatch   941,009 reserve /   941,009 release   net        0
+ *   mines          90,217 reserve /    58,135 release   net  +32,082
+ *   wheel         229,730 reserve /   103,588 release   net +126,142
  *
- * What freshness does gate is the claim, which lives in the alert copy and the
- * UI hint rather than here: `exposure_excess_commensurate` says the two
- * readings were close enough in time for the excess to be real rather than a
- * sampling artifact. Callers must not assert a contract defect without it.
+ * scratchcard's bulk path calls collect_bet once per purchase but pay_winner
+ * once per winning card, so it over-releases; wheel's zero-multiplier
+ * segments, scratchcard's losing cards and mines on a mine hit all release
+ * nothing. numbermatch is the only exact pairing. Releases outnumbering
+ * reserves is something a liability cannot do, which settles the question: the
+ * figure is not one, at any value.
  *
- * Note the excess does not by itself prove the ledger leaked. collect_bet's
- * cumulative check runs only when cap_bps > 0, and no cap is configured, so a
- * correctly-paired ledger can also legitimately reserve past the balance.
- * 'degraded' therefore means "not usable as a liability figure", not "the
- * contract is broken".
+ * Scale, same moment: true in-flight liability is at most 150,000 NUSDC, being
+ * 75 live MinesSession objects times a 2,000 max_single_payout, because wheel,
+ * scratchcard and numbermatch settle inside a single transaction and hold
+ * nothing at rest, and crash has had no round since 2026-05-08. open_exposure
+ * read 13,720,500 against a 14,181,332 balance. It overstates by ~91x. There
+ * is no solvency problem in that reading, only a broken instrument.
+ *
+ * Typed `boolean` rather than left to literal inference so the comparison
+ * below stays compiled while this is false. Flip to true only once the games
+ * are redeployed with the pairing fixed AND open_exposure has been reset,
+ * which needs a bankroll_pool upgrade since there is no admin reset for it.
+ */
+const RESERVATION_LEDGER_PAIRS_EXACTLY: boolean = false;
+
+/**
+ * Downgrade a 'live' exposure reading to 'degraded' when `open_exposure` is not
+ * usable as a house-liability figure.
+ *
+ * While RESERVATION_LEDGER_PAIRS_EXACTLY is false that is every reading, not
+ * just the ones exceeding the balance. The defect is a property of the
+ * deployed packages, so it does not come and go with the value: withholding
+ * only above the balance would publish a ~91x overstatement for as long as the
+ * overstatement happened to stay under it, and would flip the public page
+ * between a number and a placeholder as the two drifted past each other, which
+ * is what it did between 2026-09-26 and 2026-09-27.
+ *
+ * The balance comparison is kept for when the pairing is fixed. It is the
+ * right residual check then: a correctly-paired ledger reserving past the
+ * balance is still not publishable, since collect_bet only enforces its
+ * cumulative check when cap_bps > 0 and no cap is configured, so nothing on
+ * chain prevents it.
+ *
+ * 'degraded' means "not usable as a liability figure". It does not by itself
+ * name a cause, which is why the alert copy and the UI hint carry the
+ * measurement above rather than inferring one from the value.
  *
  * 'dormant' passes through untouched: it already means "no usable reading",
  * and layering a second reason on top would only obscure the first.
  *
- * `chainBalance` null means the chain read failed — nothing to compare, and
- * data_quality is already 'unreliable'. A balance of exactly zero is a real
- * reading, not a missing one: a drained pool still carrying reservations is
- * the starkest form of the condition.
+ * `chainBalance` null means the chain read failed, so there is nothing to
+ * compare and data_quality is already 'unreliable'. A balance of exactly zero
+ * is a real reading, not a missing one: a drained pool still carrying
+ * reservations is the starkest form of the condition.
  */
 function classifyExposureStatus(
   base: ActiveExposure['status'],
   exposureRaw: bigint,
   chainBalance: bigint | null,
-  snapshotAgeMs: number | null,
-): {
-  status: RiskMetricsResult['active_exposure_chain_status'];
-  commensurate: boolean;
-} {
-  const commensurate =
-    snapshotAgeMs !== null && snapshotAgeMs <= EXPOSURE_COMMENSURATE_MAX_AGE_MS;
-  if (base !== 'live') return { status: base, commensurate };
-  if (chainBalance === null) return { status: base, commensurate };
-  const exceeds = chainBalance === 0n ? exposureRaw > 0n : exposureRaw > chainBalance;
-  return { status: exceeds ? 'degraded' : 'live', commensurate };
+): RiskMetricsResult['active_exposure_chain_status'] {
+  if (base !== 'live') return base;
+  if (!RESERVATION_LEDGER_PAIRS_EXACTLY) return 'degraded';
+  return exposureExceedsBalance(exposureRaw, chainBalance) ? 'degraded' : 'live';
+}
+
+/**
+ * Residual publishability check for once the pairing is fixed: a reservation
+ * total above the balance backing it is still not a liability figure, since
+ * collect_bet only enforces its cumulative check when cap_bps > 0 and no cap is
+ * configured.
+ *
+ * Split out from classifyExposureStatus so it stays under test while
+ * RESERVATION_LEDGER_PAIRS_EXACTLY gates the caller. Untested logic that
+ * activates on a future flag flip is the thing to avoid here.
+ *
+ * A null balance means the chain read failed, so there is nothing to compare
+ * and data_quality is already 'unreliable'. Zero is a real reading rather than
+ * a missing one: a drained pool still carrying reservations is the starkest
+ * form of the condition, so any reservation at all counts.
+ */
+function exposureExceedsBalance(exposureRaw: bigint, chainBalance: bigint | null): boolean {
+  if (chainBalance === null) return false;
+  if (chainBalance === 0n) return exposureRaw > 0n;
+  return exposureRaw > chainBalance;
 }
 
 function matviewQuality(ageMs: number): DataQuality {
@@ -326,15 +361,6 @@ async function latestUtilizationCapBps(): Promise<number | null> {
  * in-flight house liability".
  */
 const DORMANT_THRESHOLD_MS = 60 * 60_000; // 1h since last OpenExposureSnapshot
-
-/**
- * Max age of the exposure snapshot for it to be commensurate with a live
- * `pool.balance` read. Matches the risk-alert poll interval, so a real
- * over-count is still caught on the tick after the snapshot that shows it,
- * while an hour-old snapshot is never compared against a balance that has
- * moved since. See classifyExposureStatus.
- */
-const EXPOSURE_COMMENSURATE_MAX_AGE_MS = 5 * 60_000;
 
 interface ActiveExposure {
   raw: bigint;
@@ -665,11 +691,10 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
   // than what the on-chain cap check would have seen.
   const utilizationBps = computeUtilizationBps(exposure.raw, chainBalance);
 
-  const exposureClass = classifyExposureStatus(
+  const exposureStatus = classifyExposureStatus(
     exposure.status,
     exposure.raw,
     chainBalanceOrNull,
-    exposure.last_snapshot_ms === null ? null : now - exposure.last_snapshot_ms,
   );
 
   const mvQuality = matviewQuality(mv.ageMs);
@@ -686,8 +711,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
       '30d': { window_ms: PNL_WINDOWS['30d'], net_pnl_raw: pnl30d.net_pnl, data_quality: pnl30d.data_quality },
     },
     active_exposure_raw: exposure.raw.toString(),
-    active_exposure_chain_status: exposureClass.status,
-    exposure_excess_commensurate: exposureClass.commensurate,
+    active_exposure_chain_status: exposureStatus,
     active_exposure_last_snapshot_ms: exposure.last_snapshot_ms,
     utilization_ratio_bps: utilizationBps,
     utilization_cap_bps: cap,
@@ -710,9 +734,9 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
 }
 
 // Test-only exports.
-export { worstQuality, matviewQuality, classifyExposureStatus };
+export { worstQuality, matviewQuality, classifyExposureStatus, exposureExceedsBalance };
 
 export const _RISK_METRICS_CONSTANTS = {
   DORMANT_THRESHOLD_MS,
-  EXPOSURE_COMMENSURATE_MAX_AGE_MS,
+  RESERVATION_LEDGER_PAIRS_EXACTLY,
 };
