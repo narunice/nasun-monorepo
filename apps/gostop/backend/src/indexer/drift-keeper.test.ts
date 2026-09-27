@@ -8,11 +8,11 @@
  * the two numeric thresholds.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   _DRIFT_KEEPER_CONSTANTS,
   _confirmDivergence,
-  type DbDriftStats,
+  _clearPendingDivergence,
 } from './drift-keeper.js';
 import { applySharesDelta } from './bankroll-reconciler.js';
 
@@ -83,48 +83,54 @@ describe('chain-divergence share-affecting scope', () => {
 });
 
 describe('chain-divergence confirmation', () => {
-  // The DB and chain sides are read at different instants, so a share event
-  // already on chain but not yet inserted looks identical to real divergence.
-  // The DB is the lagging side, so confirmation re-reads the DB — re-reading
-  // the chain would just return the same new value and confirm its own false
-  // positive.
-  const db = (over: Partial<DbDriftStats> = {}): DbDriftStats => ({
-    unreconciledRows: 0,
-    unreconciledShareRows: 0,
-    oldestUnreconciledAgeMs: 0,
-    latestReconciledTotalShares: 100n,
-    ...over,
+  // The lagging side is the DB: an event applied on chain may not be inserted
+  // into bankroll_event yet, which the backlog gate cannot see because a row
+  // that does not exist counts for nothing. An immediate re-read lands
+  // milliseconds later and returns the same tail, so confirmation is by time —
+  // the same gap has to survive one interval.
+  beforeEach(() => {
+    _clearPendingDivergence();
   });
 
-  it('does not confirm once the DB tail has caught up to the chain', async () => {
-    expect(
-      await _confirmDivergence(250n, async () => db({ latestReconciledTotalShares: 250n })),
-    ).toBe(false);
+  it('does not page on the first sighting, only arms', () => {
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
   });
 
-  it('confirms when the tail still disagrees on the second look', async () => {
-    expect(
-      await _confirmDivergence(250n, async () => db({ latestReconciledTotalShares: 100n })),
-    ).toBe(true);
+  it('pages when the identical gap is still there on the next tick', () => {
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
+    expect(_confirmDivergence(250n, 100n)).toBe(true);
   });
 
-  it('does not confirm while a share-affecting row is in flight', async () => {
-    expect(
-      await _confirmDivergence(250n, async () => db({ unreconciledShareRows: 1 })),
-    ).toBe(false);
+  it('re-arms instead of paging when the DB has caught up', () => {
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
+    // Indexer inserted and the reconciler filled the tail: no longer a gap, so
+    // runRiskKeeperOnce clears the latch rather than calling in again.
+    _clearPendingDivergence();
+    expect(_confirmDivergence(250n, 250n)).toBe(false);
   });
 
-  it('does not confirm when the re-read finds no reconciled tail', async () => {
-    expect(
-      await _confirmDivergence(250n, async () => db({ latestReconciledTotalShares: null })),
-    ).toBe(false);
+  it('re-arms when the chain moved between ticks', () => {
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
+    // An active pool: this is a different observation, not a confirmation.
+    expect(_confirmDivergence(300n, 100n)).toBe(false);
+    expect(_confirmDivergence(300n, 100n)).toBe(true);
   });
 
-  it('does not confirm when the re-read throws — defer rather than page blind', async () => {
-    expect(
-      await _confirmDivergence(250n, async () => {
-        throw new Error('db down');
-      }),
-    ).toBe(false);
+  it('re-arms when the DB moved between ticks', () => {
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
+    expect(_confirmDivergence(250n, 180n)).toBe(false);
+  });
+
+  it('clearing the latch means the next gap has to arm again', () => {
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
+    _clearPendingDivergence();
+    expect(_confirmDivergence(250n, 100n)).toBe(false);
+    expect(_confirmDivergence(250n, 100n)).toBe(true);
+  });
+
+  it('confirmation needs a full interval, which exceeds any indexer poll', () => {
+    // Documents the property the two-tick rule buys: the window the DB gets to
+    // catch up is the keeper interval, not the microseconds a re-read allowed.
+    expect(_DRIFT_KEEPER_CONSTANTS.DRIFT_KEEPER_INTERVAL_MS).toBe(5 * 60_000);
   });
 });

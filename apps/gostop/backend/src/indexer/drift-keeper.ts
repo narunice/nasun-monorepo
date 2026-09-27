@@ -154,46 +154,58 @@ async function fetchChainTotalShares(): Promise<bigint | null> {
 }
 
 /**
- * Second look after a mismatch, to separate a real gap from a share event that
- * landed between this tick's DB and chain reads.
- *
- * The DB is re-read, not the chain. In the race the DB is the lagging side:
- * the event is already on chain and the indexer has not inserted it yet, so a
- * second chain read returns the same new value and would confirm its own
- * false positive. Only the DB catching up distinguishes the two.
- *
- * Returns false when the DB tail has since reached the chain value, or when a
- * share-affecting row has since appeared in the backlog (reconciliation now
- * demonstrably in flight) — either way the gap was transient. A failed re-read
- * also returns false: with no confirmation we do not page, and the next tick
- * tries again.
+ * The gap this tick observed, held so the next tick can decide whether it was
+ * real. Null when the previous tick saw no gap.
  */
-async function confirmDivergence(
-  chainTotalShares: bigint,
-  readDb: () => Promise<DbDriftStats> = fetchDbDriftStats,
-): Promise<boolean> {
-  let recheck: DbDriftStats;
-  try {
-    recheck = await readDb();
-  } catch (err) {
-    console.warn(
-      `[drift-keeper] divergence re-read failed; deferring to next tick: ${String(err)}`,
+let pendingDivergence: { chain: bigint; db: bigint } | null = null;
+
+/**
+ * Require a divergence to survive one full interval before paging.
+ *
+ * The two sides are read at different instants, and the lagging side is the DB:
+ * an event already applied on chain has not necessarily been inserted into
+ * bankroll_event yet. That case is invisible to the backlog gate above, because
+ * a row that does not exist contributes nothing to `unreconciledShareRows`.
+ *
+ * An immediate second read cannot separate the two — it lands milliseconds
+ * later while the indexer polls on a multi-second cycle, so it returns the same
+ * tail and confirms its own false positive. What does separate them is time:
+ * indexer lag closes within an interval, a missed event or a cursor reset does
+ * not. So the first sighting only arms, and the alert fires when the next tick
+ * sees the identical pair.
+ *
+ * Comparing the pair, not just "still mismatched", matters: if either side
+ * moved between ticks the pool was active and the reading is a different
+ * observation, not a confirmation of this one.
+ *
+ * Known limit: `pendingDivergence` is in-process, so an indexer restart between
+ * the two ticks disarms and the gap needs another interval to re-confirm. That
+ * costs latency on a real divergence, never a false page, which is the right
+ * direction for an alert whose text is "manual investigation required".
+ */
+function confirmDivergence(chainTotalShares: bigint, dbTotalShares: bigint): boolean {
+  const prev = pendingDivergence;
+  pendingDivergence = { chain: chainTotalShares, db: dbTotalShares };
+  if (prev === null) {
+    console.log(
+      '[drift-keeper] divergence armed, awaiting confirmation next tick '
+        + `(chain=${chainTotalShares} db=${dbTotalShares})`,
     );
     return false;
   }
-  if (recheck.unreconciledShareRows > 0) {
-    console.log('[drift-keeper] divergence not confirmed — share-affecting row now in flight');
-    return false;
-  }
-  if (recheck.latestReconciledTotalShares === null) {
-    console.log('[drift-keeper] divergence not confirmed — no reconciled tail on re-read');
-    return false;
-  }
-  if (recheck.latestReconciledTotalShares === chainTotalShares) {
-    console.log('[drift-keeper] divergence not confirmed — DB tail caught up');
+  if (prev.chain !== chainTotalShares || prev.db !== dbTotalShares) {
+    console.log('[drift-keeper] divergence not confirmed — both sides moved, re-arming');
     return false;
   }
   return true;
+}
+
+/** Clear the latch once the two sides agree again. */
+function clearPendingDivergence(): void {
+  if (pendingDivergence !== null) {
+    console.log('[drift-keeper] divergence cleared — chain and DB agree');
+    pendingDivergence = null;
+  }
 }
 
 export interface DbDriftStats {
@@ -310,22 +322,20 @@ export async function runDriftKeeperOnce(): Promise<void> {
   }
 
   // 3. Chain divergence — meaningful once no share-affecting row is still in
-  //    flight, since only those can explain a share-count gap.
-  //
-  //    The two sides are read at different instants (DB first, then chain), so
-  //    a provide_liquidity landing in between is on chain but not yet in the
-  //    DB tail, which looks exactly like divergence. Re-read the DB before
-  //    paging: a gap that was merely in flight has closed by then, while a
-  //    real one has not. Confirming costs one extra query on the rare mismatch
-  //    path, and declining to confirm is strictly better than burning the
-  //    30-min cooldown on a race — this alert says "manual investigation
-  //    required".
-  if (
+  //    flight, since only those can explain a share-count gap, and once the gap
+  //    has outlived one interval. See confirmDivergence for why an immediate
+  //    re-read cannot tell indexer lag from a real gap.
+  const chainDbGap =
     chainTotalShares !== null &&
     db.latestReconciledTotalShares !== null &&
     db.unreconciledShareRows === 0 &&
-    chainTotalShares !== db.latestReconciledTotalShares &&
-    await confirmDivergence(chainTotalShares)
+    chainTotalShares !== db.latestReconciledTotalShares;
+  if (!chainDbGap) clearPendingDivergence();
+  if (
+    chainDbGap &&
+    chainTotalShares !== null &&
+    db.latestReconciledTotalShares !== null &&
+    confirmDivergence(chainTotalShares, db.latestReconciledTotalShares)
   ) {
     if (shouldFire('chain_divergence', now)) {
       const text = [
@@ -335,6 +345,7 @@ export async function runDriftKeeperOnce(): Promise<void> {
         `DB latest reconciled: \`${db.latestReconciledTotalShares.toString()}\``,
         `Delta: \`${(chainTotalShares - db.latestReconciledTotalShares).toString()}\``,
         `Backlog: ${db.unreconciledShareRows} share-affecting / ${db.unreconciledRows} total`,
+        `Persisted across two checks ${Math.round(DRIFT_KEEPER_INTERVAL_MS / 60_000)} min apart.`,
         '',
         'DB ≠ chain with no share-affecting row in flight to explain it. Possible missed event, cursor reset, or chain rollback. Manual investigation required.',
       ].join('\n');
@@ -382,5 +393,5 @@ export const _DRIFT_KEEPER_CONSTANTS = {
   SHARE_AFFECTING_EVENT_TYPES,
 };
 
-/** Test-only — divergence confirmation, chain read injectable. */
-export { confirmDivergence as _confirmDivergence };
+/** Test-only — two-tick divergence latch and its reset. */
+export { confirmDivergence as _confirmDivergence, clearPendingDivergence as _clearPendingDivergence };
