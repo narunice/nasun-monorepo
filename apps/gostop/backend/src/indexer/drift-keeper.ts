@@ -50,14 +50,13 @@
  * to keep channel signal-to-noise high.
  */
 
-import { env } from '../env.js';
+import { alertingEnabled, sendTelegram } from './telegram.js';
 import { reader } from '../db/client.js';
 import { rpcCall } from '../rpc.js';
 import { BANKROLL_POOL } from '../config/contracts.js';
 
 const DRIFT_KEEPER_INTERVAL_MS = 5 * 60_000;
 const DRIFT_KEEPER_COOLDOWN_MS = 30 * 60_000;
-const TELEGRAM_TIMEOUT_MS = 5_000;
 
 /** Unreconciled row count over this triggers reconciler_stall_severe. */
 const DRIFT_RECONCILER_STALL_THRESHOLD = 500;
@@ -89,41 +88,7 @@ type AlertKey =
 const lastFired = new Map<AlertKey, number>();
 let intervalHandle: NodeJS.Timeout | null = null;
 
-function alertingEnabled(): boolean {
-  return Boolean(env.alerts.telegramBotToken && env.alerts.telegramChatId);
-}
 
-async function sendTelegram(text: string): Promise<boolean> {
-  if (!alertingEnabled()) return false;
-  const url = `https://api.telegram.org/bot${env.alerts.telegramBotToken}/sendMessage`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TELEGRAM_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: env.alerts.telegramChatId,
-        text,
-        parse_mode: 'Markdown',
-        disable_web_page_preview: true,
-      }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.warn(`[drift-keeper] telegram non-ok ${res.status}: ${body.slice(0, 200)}`);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[drift-keeper] telegram fetch failed: ${msg}`);
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function shouldFire(key: AlertKey, now: number): boolean {
   const last = lastFired.get(key);
@@ -289,14 +254,14 @@ export async function runDriftKeeperOnce(): Promise<void> {
   if (db.unreconciledRows > DRIFT_RECONCILER_STALL_THRESHOLD) {
     if (shouldFire('reconciler_stall_severe', now)) {
       const text = [
-        '*GoStop Bankroll — reconciler stall*',
+        'GoStop Bankroll — reconciler stall',
         '',
-        `Unreconciled rows: *${db.unreconciledRows.toLocaleString('en-US')}* (threshold ${DRIFT_RECONCILER_STALL_THRESHOLD})`,
+        `Unreconciled rows: ${db.unreconciledRows.toLocaleString('en-US')} (threshold ${DRIFT_RECONCILER_STALL_THRESHOLD})`,
         `Oldest unreconciled age: ${Math.round(db.oldestUnreconciledAgeMs / 60_000)} min`,
         '',
         'Check indexer logs for repeated RPC failures or watermark gating issues.',
       ].join('\n');
-      if (await sendTelegram(text)) {
+      if (await sendTelegram('drift-keeper', text)) {
         lastFired.set('reconciler_stall_severe', now);
         console.log(`[drift-keeper] reconciler_stall_severe fired (${db.unreconciledRows} rows)`);
       }
@@ -307,14 +272,14 @@ export async function runDriftKeeperOnce(): Promise<void> {
   if (db.oldestUnreconciledAgeMs > DRIFT_OLDEST_ROW_AGE_MS) {
     if (shouldFire('cursor_lag_severe', now)) {
       const text = [
-        '*GoStop Bankroll — cursor lag severe*',
+        'GoStop Bankroll — cursor lag severe',
         '',
-        `Oldest unreconciled row: *${Math.round(db.oldestUnreconciledAgeMs / 60_000)} min* old (threshold ${Math.round(DRIFT_OLDEST_ROW_AGE_MS / 60_000)} min)`,
+        `Oldest unreconciled row: ${Math.round(db.oldestUnreconciledAgeMs / 60_000)} min old (threshold ${Math.round(DRIFT_OLDEST_ROW_AGE_MS / 60_000)} min)`,
         `Unreconciled count: ${db.unreconciledRows}`,
         '',
         'A PnL stream watermark is wedged. Inspect indexer_cursor table + recent stream tick failures.',
       ].join('\n');
-      if (await sendTelegram(text)) {
+      if (await sendTelegram('drift-keeper', text)) {
         lastFired.set('cursor_lag_severe', now);
         console.log(`[drift-keeper] cursor_lag_severe fired (${db.oldestUnreconciledAgeMs}ms)`);
       }
@@ -339,17 +304,17 @@ export async function runDriftKeeperOnce(): Promise<void> {
   ) {
     if (shouldFire('chain_divergence', now)) {
       const text = [
-        '*GoStop Bankroll — chain divergence*',
+        'GoStop Bankroll — chain divergence',
         '',
-        `Chain total_shares: \`${chainTotalShares.toString()}\``,
-        `DB latest reconciled: \`${db.latestReconciledTotalShares.toString()}\``,
-        `Delta: \`${(chainTotalShares - db.latestReconciledTotalShares).toString()}\``,
+        `Chain total_shares: ${chainTotalShares.toString()}`,
+        `DB latest reconciled: ${db.latestReconciledTotalShares.toString()}`,
+        `Delta: ${(chainTotalShares - db.latestReconciledTotalShares).toString()}`,
         `Backlog: ${db.unreconciledShareRows} share-affecting / ${db.unreconciledRows} total`,
         `Persisted across two checks ${Math.round(DRIFT_KEEPER_INTERVAL_MS / 60_000)} min apart.`,
         '',
         'DB ≠ chain with no share-affecting row in flight to explain it. Possible missed event, cursor reset, or chain rollback. Manual investigation required.',
       ].join('\n');
-      if (await sendTelegram(text)) {
+      if (await sendTelegram('drift-keeper', text)) {
         lastFired.set('chain_divergence', now);
         console.log(
           `[drift-keeper] chain_divergence fired (chain=${chainTotalShares} db=${db.latestReconciledTotalShares})`,

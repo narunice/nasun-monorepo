@@ -39,7 +39,7 @@
  *   must set both on node-3 .env before enabling on prod.
  */
 
-import { env } from '../env.js';
+import { alertingEnabled, sendTelegram } from './telegram.js';
 import { riskMetrics } from '../api/lib/risk-metrics.js';
 
 /** Threshold: utilization above this triggers an alert. HG2-derived policy. */
@@ -74,9 +74,6 @@ const COOLDOWN_OVERRIDE_MS: Partial<Record<AlertKey, number>> = {
   utilization_unmeasurable: 24 * 3_600_000,
 };
 
-/** Telegram HTTP timeout. Short — outage should not back up the indexer. */
-const TELEGRAM_TIMEOUT_MS = 5_000;
-
 type AlertKey =
   | 'utilization_high'
   | 'utilization_unmeasurable'
@@ -86,42 +83,7 @@ const lastFired = new Map<AlertKey, number>();
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
-function alertingEnabled(): boolean {
-  return Boolean(env.alerts.telegramBotToken && env.alerts.telegramChatId);
-}
 
-async function sendTelegram(text: string): Promise<boolean> {
-  if (!alertingEnabled()) return false;
-
-  const url = `https://api.telegram.org/bot${env.alerts.telegramBotToken}/sendMessage`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TELEGRAM_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: env.alerts.telegramChatId,
-        text,
-        parse_mode: 'Markdown',
-        disable_web_page_preview: true,
-      }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.warn(`[risk-alert] telegram non-ok ${res.status}: ${body.slice(0, 200)}`);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[risk-alert] telegram fetch failed: ${msg}`);
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function cooldownFor(key: AlertKey): number {
   return COOLDOWN_OVERRIDE_MS[key] ?? RISK_ALERT_COOLDOWN_MS;
@@ -180,27 +142,27 @@ export async function runRiskAlertOnce(): Promise<void> {
       // rather than any particular value, so an "over 100%" style gloss would
       // be wrong about as often as it was right.
       const ratioLine = risk.tvl_raw === '0'
-        ? 'Ratio: *n/a* (pool balance is zero — nothing backs the reservations)'
-        : `Ratio: *${fmtBpsPct(risk.utilization_ratio_bps)}* (not a risk ratio, see below)`;
+        ? 'Ratio: n/a (pool balance is zero — nothing backs the reservations)'
+        : `Ratio: ${fmtBpsPct(risk.utilization_ratio_bps)} (not a risk ratio, see below)`;
       const text = [
-        '*GoStop Bankroll — utilization not measurable*',
+        'GoStop Bankroll — utilization not measurable',
         '',
-        `Open exposure: \`${risk.active_exposure_raw}\` NUSDC raw`,
-        `Pool balance:  \`${risk.tvl_raw}\` NUSDC raw`,
+        `Open exposure: ${risk.active_exposure_raw} NUSDC raw`,
+        `Pool balance:  ${risk.tvl_raw} NUSDC raw`,
         ratioLine,
         '',
         'open_exposure is not a house-liability figure and utilization built on it is not a risk ratio. Each reservation needs exactly one matching release and does not get one. Counted over the retained window on 2026-09-27: scratchcard 972,476 reserve against 1,192,865 release, mines 90,217 against 58,135, wheel 229,730 against 103,588, numbermatch 941,009 against 941,009. Releases outnumbering reserves is not something a liability can do.',
         '',
-        'Scale at that same measurement: true in-flight liability was at most 150,000 NUSDC (75 live mines sessions at a 2,000 max payout; wheel, scratchcard and numbermatch settle in one transaction and hold nothing at rest; crash has had no round since 2026-05-08) against an open_exposure of 13,720,500, about 91x higher. *On that date the gap was accounting, not solvency.* Nothing recomputes it, so treat it as the last known reading rather than the current one: the counts prove the ledger is unusable, not that the pool is solvent today. Re-measure before relying on it. Payouts stay bounded independently by the pool balance check in pay_winner.',
+        'Scale at that same measurement: true in-flight liability was at most 150,000 NUSDC (75 live mines sessions at a 2,000 max payout; wheel, scratchcard and numbermatch settle in one transaction and hold nothing at rest; crash has had no round since 2026-05-08) against an open_exposure of 13,720,500, about 91x higher. On that date the gap was accounting, not solvency. Nothing recomputes it, so treat it as the last known reading rather than the current one: the counts prove the ledger is unusable, not that the pool is solvent today. Re-measure before relying on it. Payouts stay bounded independently by the pool balance check in pay_winner.',
         '',
-        '*Do NOT set a utilization cap.* The ratio crosses 100% from hour to hour, and above it no admissible cap exists at all since MAX_CAP_BPS is 10000. Below it a cap still has to clear both the current ratio and each game max_single_payout as a share of balance, or that game aborts on its first bet.',
+        'Do NOT set a utilization cap. The ratio crosses 100% from hour to hour, and above it no admissible cap exists at all since MAX_CAP_BPS is 10000. Below it a cap still has to clear both the current ratio and each game max_single_payout as a share of balance, or that game aborts on its first bet.',
         '',
         'Clearing this needs the games redeployed with the pairing fixed and open_exposure reset, which takes a bankroll_pool upgrade since it has no admin reset. This alert stands until then; it does not track the value.',
         '',
         `Cooldown ${Math.round(cooldownFor('utilization_unmeasurable') / 3_600_000)} h before re-fire.`,
       ].join('\n');
 
-      const ok = await sendTelegram(text);
+      const ok = await sendTelegram('risk-alert', text);
       if (ok) {
         lastFired.set('utilization_unmeasurable', now);
         console.log(
@@ -227,22 +189,22 @@ export async function runRiskAlertOnce(): Promise<void> {
       // that game's very first bet abort, so the floor has to travel with the
       // suggestion.
       const capLine = risk.utilization_cap_bps === null
-        ? '_No on-chain cap configured._ Any cap must sit above both this ratio and the largest game max_single_payout as a share of pool balance, or that game aborts on every bet.'
+        ? 'No on-chain cap configured. Any cap must sit above both this ratio and the largest game max_single_payout as a share of pool balance, or that game aborts on every bet.'
         : risk.utilization_cap_bps === 0
-          ? '_On-chain cap is currently disabled (cap_bps=0)._'
-          : `On-chain cap: *${fmtBpsPct(risk.utilization_cap_bps)}*`;
+          ? 'On-chain cap is currently disabled (cap_bps=0).'
+          : `On-chain cap: ${fmtBpsPct(risk.utilization_cap_bps)}`;
       const text = [
-        '*GoStop Bankroll — utilization high*',
+        'GoStop Bankroll — utilization high',
         '',
-        `Utilization ratio: *${fmtBpsPct(risk.utilization_ratio_bps)}* (threshold ${fmtBpsPct(UTILIZATION_THRESHOLD_BPS)})`,
-        `Open exposure: \`${risk.active_exposure_raw}\` NUSDC raw`,
-        `Pool balance:  \`${risk.tvl_raw}\` NUSDC raw`,
+        `Utilization ratio: ${fmtBpsPct(risk.utilization_ratio_bps)} (threshold ${fmtBpsPct(UTILIZATION_THRESHOLD_BPS)})`,
+        `Open exposure: ${risk.active_exposure_raw} NUSDC raw`,
+        `Pool balance:  ${risk.tvl_raw} NUSDC raw`,
         capLine,
         '',
         `Cooldown ${Math.round(RISK_ALERT_COOLDOWN_MS / 60_000)} min before re-fire.`,
       ].join('\n');
 
-      const ok = await sendTelegram(text);
+      const ok = await sendTelegram('risk-alert', text);
       if (ok) {
         lastFired.set('utilization_high', now);
         console.log(`[risk-alert] utilization_high fired at ${fmtBpsPct(risk.utilization_ratio_bps)}`);
@@ -260,9 +222,9 @@ export async function runRiskAlertOnce(): Promise<void> {
     if (shouldFire('lp_concentration_extreme', now)) {
       const c = risk.lp_concentration;
       const text = [
-        '*GoStop Bankroll — single-LP concentration EXTREME*',
+        'GoStop Bankroll — single-LP concentration EXTREME',
         '',
-        `Rank-1 LP holds: *${fmtBpsPct(c.top1_share_pct_bps)}* of all LP shares`,
+        `Rank-1 LP holds: ${fmtBpsPct(c.top1_share_pct_bps)} of all LP shares`,
         `Total positive LP wallets: ${c.lp_count}`,
         '',
         'Risk: this LP\'s withdraw can materially move share_price; on-chain pool resilience depends on a single counterparty.',
@@ -270,7 +232,7 @@ export async function runRiskAlertOnce(): Promise<void> {
         `Cooldown ${Math.round(RISK_ALERT_COOLDOWN_MS / 60_000)} min before re-fire.`,
       ].join('\n');
 
-      const ok = await sendTelegram(text);
+      const ok = await sendTelegram('risk-alert', text);
       if (ok) {
         lastFired.set('lp_concentration_extreme', now);
         console.log(`[risk-alert] lp_concentration_extreme fired at top1=${fmtBpsPct(c.top1_share_pct_bps)}`);
