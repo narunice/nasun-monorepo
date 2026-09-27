@@ -168,15 +168,26 @@ lpRoutes.get('/apy', async (c) => {
   // varying. Once LP deposits start landing, this approximation degrades
   // and we should switch to time-weighted average from the bankroll_event
   // running balance (deferred to v1.x).
-  const poolFields = await fetchPoolFields();
-  const tvl = poolFields?.balance ? BigInt(String(poolFields.balance)) : 0n;
+  //
+  // The balance comes from the chain read `bankrollPnl` already performed, so
+  // this route issues one sui_getObject per request rather than two.
+  //
+  // A null means that read failed. `apy_pct` goes null for it, but
+  // `tvl_approx` still serializes as '0' because the field is a string and the
+  // catch branch above already reports '0' on total failure; the distinction
+  // between a failed read and a drained pool lives in `data_quality`, which is
+  // 'unreliable' in exactly that case. Consumers must read data_quality before
+  // tvl_approx. Note this also means a transient RPC failure now reports 0
+  // where the previous second read could have returned the real balance; that
+  // is the cost of dropping the duplicate call, and data_quality flags it.
+  const tvl = pnl.pool_balance_raw !== null ? BigInt(pnl.pool_balance_raw) : null;
   const netPnl = BigInt(pnl.net_pnl);
 
   // Annualized APY as percent with two-decimal precision. The arithmetic
   // lives in bankroll-pool-math::computeApyPct; the route owns the upstream
   // data-quality gate so a 'lagging' or 'unreliable' pnl never leaks an
   // APY estimate the user could anchor on.
-  const apyPct = pnl.data_quality === 'fresh'
+  const apyPct = pnl.data_quality === 'fresh' && tvl !== null
     ? computeApyPct(netPnl, tvl, APY_WINDOW_DAYS)
     : null;
 
@@ -184,7 +195,7 @@ lpRoutes.get('/apy', async (c) => {
     window_days: APY_WINDOW_DAYS,
     apy_pct: apyPct,
     net_pnl: pnl.net_pnl,
-    tvl_approx: tvl.toString(),
+    tvl_approx: tvl !== null ? tvl.toString() : '0',
     data_quality: pnl.data_quality,
     cursor_lag_ms: pnl.cursor_lag_ms,
     note: 'apy_pct uses current TVL as window mean approximation; v1 only.',
