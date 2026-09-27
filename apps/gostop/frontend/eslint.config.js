@@ -10,9 +10,10 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 // universal outage, where a hook below an early return in OrderConfirmModal
 // shipped because vite build does not run react-hooks rules.
 export default defineConfig([
-  // src/archive/ holds removed-feature code kept for reference. Vite
-  // tree-shakes it out of prod; its stale violations must not gate deploys.
-  globalIgnores(['dist', 'src/archive/**']),
+  // Only build output. pado additionally ignores src/archive/**, which gostop
+  // has no equivalent of; carrying that glob over would pre-exempt a future
+  // path from the rules-of-hooks gate this config exists to enforce.
+  globalIgnores(['dist']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
