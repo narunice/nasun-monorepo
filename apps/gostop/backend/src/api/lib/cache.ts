@@ -34,14 +34,16 @@ function evictIfFull(): void {
   if (firstKey !== undefined) store.delete(firstKey);
 }
 
-export function cacheGet<T>(key: string): { value: T; etag: string } | null {
+export function cacheGet<T>(
+  key: string,
+): { value: T; etag: string; expiresAt: number } | null {
   const hit = store.get(key) as Entry<T> | undefined;
   if (!hit) return null;
   if (hit.expiresAt <= Date.now()) {
     store.delete(key);
     return null;
   }
-  return { value: hit.value, etag: hit.etag };
+  return { value: hit.value, etag: hit.etag, expiresAt: hit.expiresAt };
 }
 
 export function cacheSet<T>(key: string, value: T, ttlSeconds: number): string {

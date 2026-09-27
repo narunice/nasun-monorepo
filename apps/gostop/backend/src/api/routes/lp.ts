@@ -33,6 +33,11 @@ const APY_TTL_SECONDS = 60;
 /** Negative cache for a failed chain read: bounds the stale '0' without
  *  letting an RPC outage turn every request into a fresh CTE + retry chain. */
 const APY_FAILED_READ_TTL_SECONDS = 5;
+
+/** Seconds a cache entry still has to live, floored at 0. */
+function remainingMaxAge(expiresAt: number): number {
+  return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+}
 const APY_WINDOW_DAYS = 7;
 const APY_WINDOW_MS = APY_WINDOW_DAYS * 86_400_000;
 const WINDOW_QUANTUM_MS = 30_000;
@@ -141,7 +146,11 @@ lpRoutes.get('/apy', async (c) => {
       return c.body(null, 304);
     }
     c.header('ETag', cached.etag);
-    c.header('Cache-Control', `public, max-age=${APY_TTL_SECONDS}`);
+    // Remaining life, not the nominal TTL: a failed chain read is stored under
+    // APY_FAILED_READ_TTL_SECONDS, and echoing the 60s figure would let
+    // Cloudflare and browsers hold that entry's tvl_approx '0' for a full
+    // minute, undoing the negative cache downstream.
+    c.header('Cache-Control', `public, max-age=${remainingMaxAge(cached.expiresAt)}`);
     return c.json(cached.value);
   }
 
