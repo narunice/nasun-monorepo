@@ -45,7 +45,6 @@ import {
   tickCrashRoundRefunded,
 } from './streams/crash.js';
 import { maybeRefreshMatviews } from './matview-refresh.js';
-import { reconcileBankrollSnapshots } from './bankroll-reconciler.js';
 import { startRiskAlertLoop } from './risk-alert.js';
 import { startDriftKeeperLoop } from './drift-keeper.js';
 
@@ -112,17 +111,6 @@ async function tick(): Promise<void> {
       console.warn(`[indexer] reconcileLottery failed: ${msg}`);
     }
 
-    // BankrollPool total_shares snapshot fill. Watermark-gated: only acts
-    // once every PnL stream has reported (in-memory MIN). Bounded 1000 rows
-    // per tick across 20 mini-transactions; statement_timeout safe.
-    try {
-      const r = await reconcileBankrollSnapshots();
-      if (r > 0) console.log(`[indexer] reconcileBankrollSnapshots touched=${r}`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[indexer] reconcileBankrollSnapshots failed: ${msg}`);
-    }
-
     // Matview refresh. Cadence-aware; advisory-locked so deploy bounces
     // don't double-fire concurrent REFRESH CONCURRENTLY.
     try {
@@ -159,15 +147,16 @@ function installShutdownHandlers(): void {
 }
 
 /**
- * Boot-time guard for bankroll-reconciler's UPDATE columns. schema-audit
- * only scans INSERT column lists (db/schema-audit.test.ts:16 scope note),
- * so a column rename in a future migration would slip through and surface
- * as a runtime crash later. Fail fast at boot instead.
+ * Boot-time guard for migration 008's checkpoint table. schema-audit only scans
+ * INSERT column lists (db/schema-audit.test.ts:16 scope note), so a missing
+ * migration would otherwise surface as drift-keeper warning on every tick while
+ * data_quality silently reported fresh. Fail fast at boot instead.
  */
-async function assertReconcilerColumns(): Promise<void> {
+async function assertSharesCheckpointTable(): Promise<void> {
   const sql = reader();
   // Probe with LIMIT 0 so the optimizer skips the table scan.
-  await sql`SELECT total_shares_after FROM gostop.bankroll_event LIMIT 0`;
+  await sql`SELECT pool_object_id, chain_shares, last_event_id, observed_at
+            FROM gostop.bankroll_shares_checkpoint LIMIT 0`;
 }
 
 async function main(): Promise<void> {
@@ -178,7 +167,7 @@ async function main(): Promise<void> {
     matviewIntervalMin: env.matview.intervalMin,
   });
   try {
-    await assertReconcilerColumns();
+    await assertSharesCheckpointTable();
   } catch (err) {
     console.error('[indexer] reconciler column probe failed — migration 004 may be missing', err);
     throw err;

@@ -9,8 +9,8 @@
  *     they are derived from game_round (game_id IN 2..6) per
  *     apps/gostop/docs/lp-gap-analysis.md §5.1 (1:1 byte-equivalence).
  *
- * Reconciler in ../bankroll-reconciler.ts fills `total_shares_after` after
- * the in-memory watermark (../bankroll-watermark.ts) confirms all PnL
+ * Share divergence is checked incrementally from
+ * gostop.bankroll_shares_checkpoint; the retired reconciler and its watermark
  * streams have caught up past a given timestamp.
  *
  * Plan: ~/.claude/plans/tier1-chunk2-bankroll-pnl-sot.md v3 §3.
@@ -21,7 +21,6 @@
 import { STREAMS, type StreamKey } from '../../config/contracts.js';
 import { writer } from '../../db/client.js';
 import { runStream, normalizeAddr } from './_runner.js';
-import { updateStreamWatermark } from '../bankroll-watermark.js';
 import {
   notifyFeed,
   payloadFromGameRound,
@@ -283,7 +282,6 @@ export async function tickBetRefunded(): Promise<number> {
       });
       return await insertBankrollEvents(rows);
     },
-    { onWatermark: (ts) => updateStreamWatermark('bankroll_pool::BetRefunded', ts) },
   );
 }
 
@@ -319,7 +317,6 @@ export async function tickTreasuryDeposited(): Promise<number> {
       });
       return await insertBankrollEvents(rows);
     },
-    { onWatermark: (ts) => updateStreamWatermark('bankroll_pool::TreasuryDeposited', ts) },
   );
 }
 
@@ -355,7 +352,6 @@ export async function tickLiquidityProvided(): Promise<number> {
       }));
       return await insertBankrollEvents(rows);
     },
-    { onWatermark: (ts) => updateStreamWatermark('bankroll_pool::LiquidityProvided', ts) },
   );
 }
 
@@ -391,7 +387,6 @@ export async function tickWithdrawRequested(): Promise<number> {
       }));
       return await insertBankrollEvents(rows);
     },
-    { onWatermark: (ts) => updateStreamWatermark('bankroll_pool::WithdrawRequested', ts) },
   );
 }
 
@@ -425,7 +420,6 @@ export async function tickLiquidityRedeemed(): Promise<number> {
       }));
       return await insertBankrollEvents(rows);
     },
-    { onWatermark: (ts) => updateStreamWatermark('bankroll_pool::LiquidityRedeemed', ts) },
   );
 }
 
@@ -458,7 +452,6 @@ export async function tickPoolSharesSeeded(): Promise<number> {
       }));
       return await insertBankrollEvents(rows);
     },
-    { onWatermark: (ts) => updateStreamWatermark('bankroll_pool::PoolSharesSeeded', ts) },
   );
 }
 

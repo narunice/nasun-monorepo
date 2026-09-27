@@ -18,10 +18,10 @@
  *
  * Staleness:
  *   `cursor_lag_ms` = now - MIN(last_ts_ms) across the PnL streams that
- *   advance the bankroll watermark. Unreconciled row count comes from
- *   `gostop.bankroll_event WHERE total_shares_after IS NULL`. Both are
- *   collapsed into a single `data_quality` enum so consumers do not have
- *   to invent their own threshold logic.
+ *   advance the bankroll watermark, kept as a debug field only.
+ *   `data_quality` is driven by chain reachability plus the age of the last
+ *   chain-vs-ledger share agreement in gostop.bankroll_shares_checkpoint, so
+ *   consumers do not have to invent their own threshold logic.
  *
  * @perf O(window_rows) over two tables. 7d window @ 1500 DAU is ~50ms.
  *       This function has NO internal cache — every consumer wraps it with
@@ -92,8 +92,12 @@ export interface BankrollPnlResult {
   data_quality: DataQuality;
   /** Debug field: now - MIN(last_ts_ms) across PnL streams. UI must use data_quality. */
   cursor_lag_ms: number;
-  /** Bankroll_event rows in window where reconciler has not yet snapshotted. */
-  unreconciled_rows: number;
+  /**
+   * Age of the last chain-vs-ledger share agreement, in ms. Null when no
+   * checkpoint exists yet for this pool object. Drives `data_quality`; see
+   * classifyDataQuality.
+   */
+  checkpoint_age_ms: number | null;
   /**
    * Chain-authoritative `pool.balance` (NUSDC raw units) from the same
    * `sui_getObject` read that produced `share_price_current_scaled`. Null when
@@ -142,25 +146,40 @@ async function fetchChainShares(): Promise<{ balance: bigint; shares: bigint } |
   }
 }
 
+/** Checkpoint staleness past which the numbers are labelled degraded. */
+const CHECKPOINT_LAGGING_MS = 60 * 60_000;
+const CHECKPOINT_UNRELIABLE_MS = 6 * 3_600_000;
+
+/**
+ * Quality of the figures this module returns.
+ *
+ * Driven by chain reachability plus the age of the last agreement between the
+ * chain's share count and the indexed ledger, recorded in
+ * gostop.bankroll_shares_checkpoint by drift-keeper every 5 minutes.
+ *
+ * That agreement is the honest proxy for "the indexer is current". It replaced a
+ * count of rows the retired reconciler had not filled, which was dominated by
+ * open_exposure_snapshot rows in transit and so degraded the public page over a
+ * hundred in-flight bets while saying nothing about whether the numbers were
+ * right. The checkpoint also stops advancing when chain and ledger disagree, so
+ * a known-bad ledger degrades rather than publishing confidently.
+ *
+ * Stream cursor lag is deliberately not an input. The PnL streams are sparse:
+ * BetRefunded fires only on game errors and LP events on user action, so a
+ * stale MIN(last_ts_ms) usually means nothing happened rather than that the
+ * indexer broke. It stays in the response as a debug field.
+ *
+ * A null age means no checkpoint exists yet, which is the first tick after a
+ * fresh genesis. Nothing is known to be wrong then, so it reads fresh.
+ */
 function classifyDataQuality(
-  lagMs: number,
-  unreconciledRows: number,
+  checkpointAgeMs: number | null,
   chainReadOk: boolean,
 ): DataQuality {
   if (!chainReadOk) return 'unreliable';
-  // PnL streams (BetRefunded, TreasuryDeposited, LP flow, shares_seeded) are
-  // inherently sparse — BetRefunded fires only on game errors, LP events fire
-  // on user action. A stale MIN(last_ts_ms) here usually means "no events
-  // happened" not "indexer broken". So data_quality is driven by chain
-  // reachability + reconciler backlog, not by stream cursor lag.
-  //
-  // lagMs is preserved in the response as a debug field but the threshold is
-  // very generous (24h) — beyond that it's worth surfacing in the UI as
-  // "data may be stale" because operationally even sparse streams should see
-  // something within a day on a live pool.
-  void lagMs;
-  if (unreconciledRows > 1000) return 'unreliable';
-  if (unreconciledRows > 100) return 'lagging';
+  if (checkpointAgeMs === null) return 'fresh';
+  if (checkpointAgeMs > CHECKPOINT_UNRELIABLE_MS) return 'unreliable';
+  if (checkpointAgeMs > CHECKPOINT_LAGGING_MS) return 'lagging';
   return 'fresh';
 }
 
@@ -174,7 +193,7 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
   const { fromMs, toMs } = window;
   const sql = reader();
 
-  // Single round-trip for all event aggregates + cursor lag + unreconciled count.
+  // Single round-trip for all event aggregates, cursor lag and checkpoint age.
   // Splitting into separate queries would slightly improve plan flexibility but
   // multiply RTT; node-3 colocation makes the combined CTE shape fast either way.
   const rows = await sql<
@@ -185,7 +204,7 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
       treasury_deposits: string;
       lottery_treasury_inflow: string;
       cursor_lag_ms: string;
-      unreconciled_rows: string;
+      checkpoint_age_ms: string | null;
     }[]
   >`
     WITH gr AS (
@@ -208,13 +227,18 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
         ), 0)::text AS treasury_deposits,
         COALESCE(SUM(amount) FILTER (
           WHERE event_type='treasury_deposited' AND treasury_reason='lottery_treasury_inflow'
-        ), 0)::text AS lottery_treasury_inflow,
-        COUNT(*) FILTER (
-          WHERE total_shares_after IS NULL
-        )::text AS unreconciled_rows
+        ), 0)::text AS lottery_treasury_inflow
       FROM gostop.bankroll_event
       WHERE timestamp_ms >= ${fromMs}::bigint
         AND timestamp_ms <  ${toMs}::bigint
+    ),
+    cp AS (
+      SELECT (
+        (EXTRACT(EPOCH FROM now()) * 1000)::bigint
+        - (EXTRACT(EPOCH FROM observed_at) * 1000)::bigint
+      )::text AS checkpoint_age_ms
+      FROM gostop.bankroll_shares_checkpoint
+      WHERE pool_object_id = ${BANKROLL_POOL.bankrollPoolObjectId}
     ),
     lag AS (
       SELECT (
@@ -226,9 +250,9 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
     )
     SELECT gr.bets, gr.payouts,
            br.refunds, br.treasury_deposits, br.lottery_treasury_inflow,
-           br.unreconciled_rows,
-           lag.cursor_lag_ms
-    FROM gr, br, lag
+           lag.cursor_lag_ms,
+           cp.checkpoint_age_ms
+    FROM gr, br, lag LEFT JOIN cp ON TRUE
   `;
 
   const row = rows[0] ?? {
@@ -238,7 +262,7 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
     treasury_deposits: '0',
     lottery_treasury_inflow: '0',
     cursor_lag_ms: '0',
-    unreconciled_rows: '0',
+    checkpoint_age_ms: null,
   };
 
   const bets = BigInt(row.bets);
@@ -254,8 +278,8 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
     : SHARE_PRICE_SCALE;
 
   const cursorLagMs = Number(row.cursor_lag_ms);
-  const unreconciled = Number(row.unreconciled_rows);
-  const dataQuality = classifyDataQuality(cursorLagMs, unreconciled, chain !== null);
+  const checkpointAgeMs = row.checkpoint_age_ms === null ? null : Number(row.checkpoint_age_ms);
+  const dataQuality = classifyDataQuality(checkpointAgeMs, chain !== null);
 
   return {
     bets: bets.toString(),
@@ -269,7 +293,7 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
     window: { fromMs, toMs },
     data_quality: dataQuality,
     cursor_lag_ms: cursorLagMs,
-    unreconciled_rows: unreconciled,
+    checkpoint_age_ms: checkpointAgeMs,
     pool_balance_raw: chain ? chain.balance.toString() : null,
     chain_total_shares: chain ? chain.shares.toString() : null,
   };
