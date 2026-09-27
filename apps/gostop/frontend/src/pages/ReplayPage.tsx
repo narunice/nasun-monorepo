@@ -140,10 +140,16 @@ function PlaceholderPanel({ title, body }: { title: string; body: string }) {
 }
 
 function LotteryReplay({ data }: { data: RoundDetail }) {
+  // Hook first: the narrowing guard below is an early return, and a hook after
+  // it makes the call order depend on the payload shape. React then throws
+  // "Rendered fewer hooks than expected" and the page blanks. The caller
+  // already rejects non-lottery payloads so the guard is currently
+  // unreachable, but that is a coincidence of two checks agreeing, not a
+  // guarantee. Same defect class as the 2026-05-27 pado universal outage.
+  const { walletAddress } = useGostopAuth();
   if (data.extras.kind !== 'lottery') return null;
   const { ticket, round } = data.extras;
   const r = data.round;
-  const { walletAddress } = useGostopAuth();
   // Share buttons only render for the round owner on a won round.
   // - Server already 404s opt-out + delayed-within-24h, so we never reach
   //   here for those; isOwn gating keeps anonymous & non-owner viewers from
