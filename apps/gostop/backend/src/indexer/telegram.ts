@@ -34,7 +34,7 @@
 
 import { env } from '../env.js';
 
-/** Short — a Telegram outage must not back up the indexer. */
+/** Short, so a Telegram outage cannot back up the indexer. */
 const TELEGRAM_TIMEOUT_MS = 5_000;
 
 export function alertingEnabled(): boolean {
@@ -43,7 +43,7 @@ export function alertingEnabled(): boolean {
 
 /**
  * Post one alert. Returns whether Telegram accepted it, which the callers use
- * to decide whether to latch their cooldown — a rejected send must stay
+ * to decide whether to latch their cooldown. A rejected send must stay
  * un-latched so the next tick retries.
  *
  * `tag` is the caller's log prefix so a failure names which loop produced it.
@@ -116,29 +116,29 @@ function noteFailure(tag: string, detail: string): void {
     return;
   }
   console.error(
-    `[${tag}] TELEGRAM ALERTING DOWN — ${streak} consecutive failures, no alert has been ` +
+    `[${tag}] TELEGRAM ALERTING DOWN: ${streak} consecutive failures, no alert has been ` +
       `delivered since the streak began. Every alert from this loop is being retried and ` +
       `dropped. Last error: ${detail}`,
   );
 }
 
-/** Test-only — the escalation logic, which a unit test cannot reach through
+/** Test-only. The escalation logic, which a unit test cannot reach through
  *  sendTelegram because alertingEnabled() short-circuits without a token. */
 export const _noteFailure = noteFailure;
 export const _noteSuccess = noteSuccess;
 
-/** Test-only — consecutive failure state. */
+/** Test-only. Consecutive failure state. */
 export function _failureStreakForTests(tag: string): number {
   return failureStreak.get(tag) ?? 0;
 }
 
-/** Test-only — reset streaks between specs. */
+/** Test-only. Resets streaks between specs. */
 export function _resetTelegramStateForTests(): void {
   failureStreak.clear();
 }
 
-/** Test-only — escalation threshold. */
+/** Test-only. Escalation threshold. */
 export const _FAILURE_STREAK_ESCALATE = FAILURE_STREAK_ESCALATE;
 
-/** Test-only — the absence of a parse mode is load-bearing, so lock it. */
+/** Test-only. The absence of a parse mode is load-bearing, so lock it. */
 export const _TELEGRAM_PARSE_MODE = null;

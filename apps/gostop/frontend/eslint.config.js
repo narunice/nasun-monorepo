@@ -30,7 +30,7 @@ export default defineConfig([
       },
     },
     rules: {
-      // CORE — the one rule this gate exists for. Keep at error.
+      // CORE. The one rule this gate exists for. Keep at error.
       'react-hooks/rules-of-hooks': 'error',
       // eslint-plugin-react-hooks is pinned to ^5.0.0 to match pado and
       // nasun-website. v7 adds purity / set-state-in-effect rules that would
