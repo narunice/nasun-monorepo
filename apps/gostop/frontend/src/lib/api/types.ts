@@ -228,6 +228,14 @@ export interface RiskMetricsBlock {
   active_exposure_chain_status?: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
   active_exposure_last_snapshot_ms?: number | null;
+  /**
+   * True when the exposure snapshot and the pool balance were read close enough
+   * in time for a 'degraded' excess to be real rather than a sampling artifact.
+   * The snapshot can be up to an hour old, so when this is false the excess may
+   * simply be a balance that dropped after it was taken. The UI withholds the
+   * number either way; only the explanation may differ.
+   */
+  exposure_excess_commensurate?: boolean;
   /** active_exposure × 10_000 / pool.balance, basis points. */
   utilization_ratio_bps: number;
   /**
