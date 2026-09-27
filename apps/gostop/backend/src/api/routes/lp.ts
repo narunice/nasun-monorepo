@@ -30,6 +30,9 @@ import { isValidSuiAddress } from '../auth/wallet-sig.js';
 
 const POOL_STATE_TTL_SECONDS = 30;
 const APY_TTL_SECONDS = 60;
+/** Negative cache for a failed chain read: bounds the stale '0' without
+ *  letting an RPC outage turn every request into a fresh CTE + retry chain. */
+const APY_FAILED_READ_TTL_SECONDS = 5;
 const APY_WINDOW_DAYS = 7;
 const APY_WINDOW_MS = APY_WINDOW_DAYS * 86_400_000;
 const WINDOW_QUANTUM_MS = 30_000;
@@ -202,9 +205,17 @@ lpRoutes.get('/apy', async (c) => {
     generated_at: Date.now(),
   };
 
-  const etag = cacheSet(cacheKey, payload, APY_TTL_SECONDS);
+  // A failed chain read gets a short TTL rather than the full one. tvl_approx is
+  // a non-nullable string, so the failure serializes as '0', and holding that
+  // for 60s shows a drained pool to any consumer not branching on data_quality.
+  // Serving it uncached instead would drop the only stampede guard here: every
+  // public request would re-run the 7-day CTE and the rpcCall retry chain for
+  // as long as the RPC stayed down. A few seconds bounds the stale zero while
+  // keeping the herd off.
+  const ttl = tvl === null ? APY_FAILED_READ_TTL_SECONDS : APY_TTL_SECONDS;
+  const etag = cacheSet(cacheKey, payload, ttl);
   c.header('ETag', etag);
-  c.header('Cache-Control', `public, max-age=${APY_TTL_SECONDS}`);
+  c.header('Cache-Control', `public, max-age=${ttl}`);
   return c.json(payload);
 });
 
