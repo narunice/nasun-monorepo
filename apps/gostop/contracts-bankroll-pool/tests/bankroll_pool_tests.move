@@ -35,8 +35,18 @@
 /// 16. test_reserve_respects_utilization_cap: cumulative reservations trip
 ///     the cap exactly as collect_bet's do.
 /// 17. test_reserve_blocked_when_paused     : pause gates new exposure.
-/// 18. test_release_saturates_after_admin_reset: admin_set_open_exposure
-///     overrides the ledger, and a later release clamps at zero.
+/// 18. test_admin_set_below_attributed_aborts: the total cannot be set
+///     under the paired reservations.
+///
+/// v0.0.6 per-game ledger:
+///
+/// 19. test_over_release_clamps_to_own_game: one game's over-release cannot
+///     draw down another game's reservations.
+/// 20. test_legacy_release_floors_at_attributed: legacy pay_winner and
+///     release_legacy_exposure only drain the unattributed remainder.
+/// 21. test_reset_unattributed_keeps_paired: the reset discards the legacy
+///     leak and keeps every paired reservation.
+/// 22. test_reserve_zero_aborts / test_release_zero_is_noop.
 #[test_only]
 module bankroll_pool::bankroll_pool_tests {
     use sui::test_scenario::{Self as ts, Scenario};
@@ -664,7 +674,8 @@ module bankroll_pool::bankroll_pool_tests {
     }
 
     #[test]
-    fun test_release_saturates_after_admin_reset() {
+    #[expected_failure(abort_code = bp::EBelowAttributed)]
+    fun test_admin_set_below_attributed_aborts() {
         let mut scenario = begin_reserve_scenario();
         let cap = scenario.take_from_sender<GameCap>();
         let admin_cap = scenario.take_from_sender<AdminCap>();
@@ -672,16 +683,148 @@ module bankroll_pool::bankroll_pool_tests {
         let clk = clock::create_for_testing(scenario.ctx());
 
         bp::reserve_exposure(&mut pool, &cap, 400_000_000, &clk);
-        bp::admin_set_open_exposure(&admin_cap, &mut pool, 150_000_000, &clk);
-        assert!(bp::open_exposure(&pool) == 150_000_000, 18001);
-
-        // The in-flight round settles against the corrected ledger.
-        bp::release_exposure(&mut pool, &cap, 400_000_000, &clk);
-        assert!(bp::open_exposure(&pool) == 0, 18002);
+        bp::admin_set_open_exposure(&admin_cap, &mut pool, 399_999_999, &clk);
 
         clock::destroy_for_testing(clk);
         ts::return_shared(pool);
         scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    // ---- v0.0.6 per-game ledger ----
+
+    /// Issue a cap for `game_id` straight from the admin cap, for tests that
+    /// need two games at once.
+    fun issue_cap_for(scenario: &mut Scenario, admin_cap: &AdminCap, game_id: u8): GameCap {
+        bp::issue_game_cap(admin_cap, game_id, b"test", RESERVE_MAX, ADMIN, scenario.ctx());
+        scenario.next_tx(ADMIN);
+        scenario.take_from_sender<GameCap>()
+    }
+
+    #[test]
+    fun test_over_release_clamps_to_own_game() {
+        let mut scenario = begin_reserve_scenario();
+        let cap_a = scenario.take_from_sender<GameCap>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let cap_b = issue_cap_for(&mut scenario, &admin_cap, 2);
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap_b, 300_000_000, &clk);
+        bp::reserve_exposure(&mut pool, &cap_a, 100_000_000, &clk);
+        // Game A releases five times what it reserved.
+        bp::release_exposure(&mut pool, &cap_a, 500_000_000, &clk);
+
+        assert!(bp::game_open_exposure(&pool, 1) == 0, 19001);
+        assert!(bp::game_open_exposure(&pool, 2) == 300_000_000, 19002);
+        assert!(bp::attributed_open_exposure(&pool) == 300_000_000, 19003);
+        assert!(bp::open_exposure(&pool) == 300_000_000, 19004);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap_b);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(cap_a);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_legacy_release_floors_at_attributed() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        // Legacy bet: RESERVE_MAX lands in the total, unattributed.
+        let b = bet(&mut scenario, 10_000_000);
+        bp::collect_bet(&mut pool, &cap, b, ADMIN, &clk);
+        bp::reserve_exposure(&mut pool, &cap, 200_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == RESERVE_MAX + 200_000_000, 20001);
+        assert!(bp::attributed_open_exposure(&pool) == 200_000_000, 20002);
+
+        // Two legacy settlements: the first clears the legacy reservation,
+        // the second finds nothing unattributed and leaves the paired one.
+        let p1 = bp::pay_winner(&mut pool, &cap, 1_000_000, ADMIN, &clk, scenario.ctx());
+        assert!(bp::open_exposure(&pool) == 200_000_000, 20003);
+        let p2 = bp::pay_winner(&mut pool, &cap, 1_000_000, ADMIN, &clk, scenario.ctx());
+        assert!(bp::open_exposure(&pool) == 200_000_000, 20004);
+        bp::release_legacy_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+        assert!(bp::open_exposure(&pool) == 200_000_000, 20005);
+        assert!(bp::game_open_exposure(&pool, 1) == 200_000_000, 20006);
+
+        coin::burn_for_testing(p1);
+        coin::burn_for_testing(p2);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_reset_unattributed_keeps_paired() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        // Three leaked legacy reservations plus one paired.
+        let mut i = 0;
+        while (i < 3) {
+            let b = bet(&mut scenario, 10_000_000);
+            bp::collect_bet(&mut pool, &cap, b, ADMIN, &clk);
+            i = i + 1;
+        };
+        bp::reserve_exposure(&mut pool, &cap, 70_000_000, &clk);
+
+        bp::admin_reset_unattributed_exposure(&admin_cap, &mut pool, 0, &clk);
+        assert!(bp::open_exposure(&pool) == 70_000_000, 21001);
+        bp::admin_reset_unattributed_exposure(&admin_cap, &mut pool, RESERVE_MAX, &clk);
+        assert!(bp::open_exposure(&pool) == 70_000_000 + RESERVE_MAX, 21002);
+
+        // The paired round still settles exactly.
+        bp::release_exposure(&mut pool, &cap, 70_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == RESERVE_MAX, 21003);
+        assert!(bp::attributed_open_exposure(&pool) == 0, 21004);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EInvalidAmount)]
+    fun test_reserve_zero_aborts() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, 0, &clk);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_release_zero_is_noop() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, 5_000_000, &clk);
+        bp::release_exposure(&mut pool, &cap, 0, &clk);
+        bp::release_legacy_exposure(&mut pool, &cap, 0, &clk);
+        assert!(bp::open_exposure(&pool) == 5_000_000, 22001);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
         scenario.return_to_sender(cap);
         ts::end(scenario);
     }

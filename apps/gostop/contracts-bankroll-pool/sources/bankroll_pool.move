@@ -63,6 +63,14 @@ module bankroll_pool::bankroll_pool {
     // upgraded pool initializes the field via df::add.
     const OPEN_EXPOSURE_KEY: vector<u8> = b"open_exposure";
 
+    // v0.0.6 per-game ledger. `open_exposure` stays the pool total that the
+    // utilization cap and the indexer read. The paired path also books each
+    // reservation against its game and against their sum, so one game's
+    // release can only draw down its own reservations. The total minus the
+    // sum is what the legacy path reserved and can never attribute.
+    const GAME_EXPOSURE_PREFIX: vector<u8> = b"open_exposure_game_";
+    const ATTRIBUTED_EXPOSURE_KEY: vector<u8> = b"open_exposure_attributed";
+
     // ===== Errors =====
     const EInsufficientPoolBalance: u64 = 1;
     const EGameCapRevoked: u64 = 2;
@@ -78,6 +86,7 @@ module bankroll_pool::bankroll_pool {
     const EInvalidCapBps: u64 = 11;
     const EUtilizationCapExceeded: u64 = 12;
     const EReserveExceedsCap: u64 = 13;
+    const EBelowAttributed: u64 = 14;
 
     // ===== Capabilities =====
 
@@ -376,26 +385,73 @@ module bankroll_pool::bankroll_pool {
         }
     }
 
-    /// v0.0.4: live max-liability exposure (sum of reserved max_single_payouts
-    /// across in-flight rounds). Returns 0 when the dynamic_field is absent
-    /// (pre-v0.0.4 pool that has never collected a bet under v0.0.4 logic).
-    fun read_open_exposure(pool: &BankrollPool): u64 {
-        if (df::exists_(&pool.id, OPEN_EXPOSURE_KEY)) {
-            *df::borrow<vector<u8>, u64>(&pool.id, OPEN_EXPOSURE_KEY)
+    fun read_u64_field(pool: &BankrollPool, key: vector<u8>): u64 {
+        if (df::exists_(&pool.id, key)) {
+            *df::borrow<vector<u8>, u64>(&pool.id, key)
         } else {
             0
         }
     }
 
-    /// v0.0.4: idempotent setter for the open_exposure dynamic_field. Creates
-    /// the field on first use, otherwise overwrites in place.
-    fun write_open_exposure(pool: &mut BankrollPool, new_val: u64) {
-        if (df::exists_(&pool.id, OPEN_EXPOSURE_KEY)) {
-            let stored: &mut u64 = df::borrow_mut(&mut pool.id, OPEN_EXPOSURE_KEY);
-            *stored = new_val;
+    /// Idempotent setter: creates the field on first use, otherwise
+    /// overwrites in place.
+    fun write_u64_field(pool: &mut BankrollPool, key: vector<u8>, val: u64) {
+        if (df::exists_(&pool.id, key)) {
+            let stored: &mut u64 = df::borrow_mut(&mut pool.id, key);
+            *stored = val;
         } else {
-            df::add(&mut pool.id, OPEN_EXPOSURE_KEY, new_val);
+            df::add(&mut pool.id, key, val);
         }
+    }
+
+    /// v0.0.4: live max-liability exposure, the pool total across every game
+    /// and both paths. 0 while the field is absent.
+    fun read_open_exposure(pool: &BankrollPool): u64 {
+        read_u64_field(pool, OPEN_EXPOSURE_KEY)
+    }
+
+    fun write_open_exposure(pool: &mut BankrollPool, new_val: u64) {
+        write_u64_field(pool, OPEN_EXPOSURE_KEY, new_val);
+    }
+
+    fun game_exposure_key(game_id: u8): vector<u8> {
+        let mut key = GAME_EXPOSURE_PREFIX;
+        key.push_back(game_id);
+        key
+    }
+
+    fun read_game_exposure(pool: &BankrollPool, game_id: u8): u64 {
+        read_u64_field(pool, game_exposure_key(game_id))
+    }
+
+    fun read_attributed_exposure(pool: &BankrollPool): u64 {
+        read_u64_field(pool, ATTRIBUTED_EXPOSURE_KEY)
+    }
+
+    /// Lower the pool total by up to `amount` without taking it below
+    /// `floor`, returning what was actually removed.
+    fun lower_open_exposure(pool: &mut BankrollPool, amount: u64, floor: u64): u64 {
+        let current = read_open_exposure(pool);
+        let headroom = if (current > floor) { current - floor } else { 0 };
+        let removed = if (amount < headroom) { amount } else { headroom };
+        write_open_exposure(pool, current - removed);
+        removed
+    }
+
+    fun emit_exposure_snapshot(
+        pool: &BankrollPool,
+        game_id: u8,
+        delta_is_release: bool,
+        delta_abs: u64,
+        clock: &Clock,
+    ) {
+        event::emit(OpenExposureSnapshot {
+            game_id,
+            delta_is_release,
+            delta_abs,
+            open_exposure_after: read_open_exposure(pool),
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
     }
 
     /// Utilization cap on cumulative reservations. cap_bps == 0 disables it.
@@ -482,19 +538,22 @@ module bankroll_pool::bankroll_pool {
     ) {
         assert!(!cap.revoked, EGameCapRevoked);
         assert!(!pool.paused, EPaused);
+        // A zero reservation pays nothing out and would only add a row to the
+        // per-game reserve/release counts.
+        assert!(amount > 0, EInvalidAmount);
         assert!(amount <= cap.max_single_payout, EReserveExceedsCap);
 
         let new_open = read_open_exposure(pool) + amount;
         assert_within_utilization_cap(pool, new_open);
         write_open_exposure(pool, new_open);
 
-        event::emit(OpenExposureSnapshot {
-            game_id: cap.game_id,
-            delta_is_release: false,
-            delta_abs: amount,
-            open_exposure_after: new_open,
-            timestamp_ms: clock::timestamp_ms(clock),
-        });
+        let game_key = game_exposure_key(cap.game_id);
+        let game_open = read_u64_field(pool, game_key) + amount;
+        write_u64_field(pool, game_key, game_open);
+        let attributed = read_attributed_exposure(pool) + amount;
+        write_u64_field(pool, ATTRIBUTED_EXPOSURE_KEY, attributed);
+
+        emit_exposure_snapshot(pool, cap.game_id, false, amount, clock);
     }
 
     /// Collect a bet without touching `open_exposure`. The round's
@@ -536,12 +595,14 @@ module bankroll_pool::bankroll_pool {
     ///
     /// Deliberately unbounded by `cap.max_single_payout`: an admin may lower
     /// the cap while a multi-transaction round (a mines session) is still
-    /// open, and a bound here would then abort that round's settlement. A
-    /// release moves no coins, so the worst a wrong amount can do is
-    /// understate exposure, which the per-game reserve/release counts expose.
+    /// open, and a bound here would then abort that round's settlement.
     ///
-    /// Saturating, so a release against a pool whose exposure was reset
-    /// underneath it clamps at zero instead of aborting and wedging the game.
+    /// Draws only on the calling game's own reservations and clamps there, so
+    /// an over-release understates that game alone and never another game's
+    /// open rounds; the snapshot records what was actually removed. Clamping
+    /// rather than aborting keeps a wrong amount from wedging settlement. A
+    /// zero amount is a no-op, matching the zero reservations that cannot
+    /// exist.
     public fun release_exposure(
         pool: &mut BankrollPool,
         cap: &GameCap,
@@ -552,44 +613,84 @@ module bankroll_pool::bankroll_pool {
         // pool.paused is deliberately not checked: releasing is the settlement
         // of an obligation the pool already took on, same rationale as
         // pay_winner and refund_bet.
-        let current_open = read_open_exposure(pool);
-        let new_open = if (current_open >= amount) { current_open - amount } else { 0 };
-        write_open_exposure(pool, new_open);
+        if (amount == 0) return;
 
-        event::emit(OpenExposureSnapshot {
-            game_id: cap.game_id,
-            delta_is_release: true,
-            delta_abs: amount,
-            open_exposure_after: new_open,
-            timestamp_ms: clock::timestamp_ms(clock),
-        });
+        let game_key = game_exposure_key(cap.game_id);
+        let game_open = read_u64_field(pool, game_key);
+        let released = if (amount < game_open) { amount } else { game_open };
+        write_u64_field(pool, game_key, game_open - released);
+        let attributed = read_attributed_exposure(pool);
+        let new_attributed = if (attributed > released) { attributed - released } else { 0 };
+        write_u64_field(pool, ATTRIBUTED_EXPOSURE_KEY, new_attributed);
+        lower_open_exposure(pool, released, 0);
+
+        emit_exposure_snapshot(pool, cap.game_id, true, released, clock);
     }
 
-    /// Admin override for `open_exposure`.
+    /// Release a reservation the legacy `collect_bet` took, for a round a
+    /// rebound game settles after the rebind (a mines session opened before
+    /// it). Those reservations were never booked against a game, so this
+    /// draws on the unattributed remainder and floors at the attributed sum,
+    /// leaving every paired reservation intact.
+    public fun release_legacy_exposure(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        clock: &Clock,
+    ) {
+        assert!(!cap.revoked, EGameCapRevoked);
+        if (amount == 0) return;
+        let floor = read_attributed_exposure(pool);
+        let released = lower_open_exposure(pool, amount, floor);
+        emit_exposure_snapshot(pool, cap.game_id, true, released, clock);
+    }
+
+    /// Admin override for the `open_exposure` total.
     ///
-    /// There was no way to correct this field, which is why an unpaired ledger
-    /// could not be cleaned up without one. Needed once after the games move to
-    /// `reserve_exposure`, to discard the reservations the legacy path
-    /// leaked, and thereafter only if an audit finds a mismatch.
-    ///
-    /// Takes an explicit value rather than zeroing, so an operator can set the
-    /// audited in-flight total instead of erasing live obligations. Emits a
-    /// snapshot so the indexer sees the correction like any other movement.
+    /// Floored at the attributed sum: the paired path's reservations are
+    /// exact by construction, so only the unattributed remainder can need
+    /// correcting. `admin_reset_unattributed_exposure` is the race-free way to
+    /// do that while games are live; this remains for setting an audited
+    /// total directly.
     public fun admin_set_open_exposure(
         _admin: &AdminCap,
         pool: &mut BankrollPool,
         new_open: u64,
         clock: &Clock,
     ) {
+        assert!(new_open >= read_attributed_exposure(pool), EBelowAttributed);
+        admin_write_open_exposure(pool, new_open, clock);
+    }
+
+    /// Set the unattributed remainder, keeping every paired reservation.
+    ///
+    /// The total becomes the on-chain attributed sum plus `unattributed`, so a
+    /// round that reserves or releases between the operator's audit and this
+    /// transaction is still counted exactly. Pass 0 once nothing the legacy
+    /// path reserved can still pay out, or the audited legacy in-flight
+    /// amount until then.
+    public fun admin_reset_unattributed_exposure(
+        _admin: &AdminCap,
+        pool: &mut BankrollPool,
+        unattributed: u64,
+        clock: &Clock,
+    ) {
+        let new_open = read_attributed_exposure(pool) + unattributed;
+        admin_write_open_exposure(pool, new_open, clock);
+    }
+
+    /// game_id 0 marks a pool-level correction rather than a game action; the
+    /// delta carries the real direction and size so the indexer's history
+    /// sums to the stored total.
+    fun admin_write_open_exposure(pool: &mut BankrollPool, new_open: u64, clock: &Clock) {
+        let old = read_open_exposure(pool);
         write_open_exposure(pool, new_open);
-        event::emit(OpenExposureSnapshot {
-            // game_id 0 marks a pool-level correction rather than a game action.
-            game_id: 0,
-            delta_is_release: true,
-            delta_abs: 0,
-            open_exposure_after: new_open,
-            timestamp_ms: clock::timestamp_ms(clock),
-        });
+        let (is_release, delta) = if (new_open < old) {
+            (true, old - new_open)
+        } else {
+            (false, new_open - old)
+        };
+        emit_exposure_snapshot(pool, 0, is_release, delta, clock);
     }
 
     public fun pay_winner(
@@ -713,22 +814,14 @@ module bankroll_pool::bankroll_pool {
         out
     }
 
-    /// Saturating subtraction defends against a pre-v0.0.4 pool upgraded
-    /// mid-flight where some collect_bets happened before the open_exposure
-    /// dynamic_field existed.
+    /// Legacy release of `cap.max_single_payout`, the unit `collect_bet`
+    /// reserved. Floors at the attributed sum so a legacy settlement can never
+    /// eat a paired reservation, and saturates for pools upgraded mid-flight
+    /// before the open_exposure field existed.
     fun release_legacy_reservation(pool: &mut BankrollPool, cap: &GameCap, clock: &Clock) {
-        let release = cap.max_single_payout;
-        let current_open = read_open_exposure(pool);
-        let new_open = if (current_open >= release) { current_open - release } else { 0 };
-        write_open_exposure(pool, new_open);
-
-        event::emit(OpenExposureSnapshot {
-            game_id: cap.game_id,
-            delta_is_release: true,
-            delta_abs: release,
-            open_exposure_after: new_open,
-            timestamp_ms: clock::timestamp_ms(clock),
-        });
+        let floor = read_attributed_exposure(pool);
+        let released = lower_open_exposure(pool, cap.max_single_payout, floor);
+        emit_exposure_snapshot(pool, cap.game_id, true, released, clock);
     }
 
     /// Forward a fee / house edge / forfeited prize into the pool.
@@ -906,6 +999,17 @@ module bankroll_pool::bankroll_pool {
     /// have never collected a bet under v0.0.4 logic.
     public fun open_exposure(pool: &BankrollPool): u64 {
         read_open_exposure(pool)
+    }
+
+    /// Paired-path reservations still open for one game.
+    public fun game_open_exposure(pool: &BankrollPool, game_id: u8): u64 {
+        read_game_exposure(pool, game_id)
+    }
+
+    /// Sum of `game_open_exposure` over every game; `open_exposure` minus this
+    /// is the unattributed legacy remainder.
+    public fun attributed_open_exposure(pool: &BankrollPool): u64 {
+        read_attributed_exposure(pool)
     }
 
     /// v0.0.3: true once seed_pool_shares (or any LP) has minted shares.
