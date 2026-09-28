@@ -77,6 +77,7 @@ module bankroll_pool::bankroll_pool {
     const EEmptyPool: u64 = 10;
     const EInvalidCapBps: u64 = 11;
     const EUtilizationCapExceeded: u64 = 12;
+    const EReserveExceedsCap: u64 = 13;
 
     // ===== Capabilities =====
 
@@ -397,8 +398,27 @@ module bankroll_pool::bankroll_pool {
         }
     }
 
+    /// Utilization cap on cumulative reservations. cap_bps == 0 disables it.
+    fun assert_within_utilization_cap(pool: &BankrollPool, new_open: u64) {
+        let cap_bps = read_utilization_cap_bps(pool);
+        if (cap_bps > 0) {
+            let pool_balance_u128 = balance::value(&pool.balance) as u128;
+            let new_open_u128 = new_open as u128;
+            assert!(
+                new_open_u128 * CAP_BPS_DENOM <= pool_balance_u128 * (cap_bps as u128),
+                EUtilizationCapExceeded,
+            );
+        };
+    }
+
     // ===== Game Interface (callable by GameCap holders) =====
 
+    /// LEGACY. Reserves `cap.max_single_payout` regardless of the bet, so a
+    /// 1 NUSDC wager holds the whole game maximum, and it has no matching
+    /// release for rounds that settle without paying out. Retained only so
+    /// packages not yet rebound keep working. New callers use
+    /// `reserve_exposure` + `collect_bet_no_reserve`, and release every
+    /// reservation through `release_exposure`.
     public fun collect_bet(
         pool: &mut BankrollPool,
         cap: &GameCap,
@@ -421,15 +441,7 @@ module bankroll_pool::bankroll_pool {
         let current_open = read_open_exposure(pool);
         let new_open = current_open + reserve;
 
-        let cap_bps = read_utilization_cap_bps(pool);
-        if (cap_bps > 0) {
-            let pool_balance_u128 = balance::value(&pool.balance) as u128;
-            let new_open_u128 = new_open as u128;
-            assert!(
-                new_open_u128 * CAP_BPS_DENOM <= pool_balance_u128 * (cap_bps as u128),
-                EUtilizationCapExceeded,
-            );
-        };
+        assert_within_utilization_cap(pool, new_open);
 
         balance::join(&mut pool.balance, coin::into_balance(bet));
         update_game_bet_stats(pool, cap.game_id, amount);
@@ -451,7 +463,199 @@ module bankroll_pool::bankroll_pool {
         });
     }
 
+    /// Reserve one potential payout against `open_exposure`.
+    ///
+    /// The reservation unit is a single payout, so the bound is the same
+    /// `cap.max_single_payout` that `pay_winner` enforces. A round that can pay
+    /// several times (a scratch card bulk buy) reserves once per payout it can
+    /// make. Every reservation is released by exactly one `release_exposure` of
+    /// the same amount, whatever the outcome, which keeps reserve and release
+    /// counts equal per game.
+    ///
+    /// Call before `collect_bet_no_reserve` so the utilization cap is checked
+    /// against the balance without the incoming bet, as `collect_bet` does.
+    public fun reserve_exposure(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        clock: &Clock,
+    ) {
+        assert!(!cap.revoked, EGameCapRevoked);
+        assert!(!pool.paused, EPaused);
+        assert!(amount <= cap.max_single_payout, EReserveExceedsCap);
+
+        let new_open = read_open_exposure(pool) + amount;
+        assert_within_utilization_cap(pool, new_open);
+        write_open_exposure(pool, new_open);
+
+        event::emit(OpenExposureSnapshot {
+            game_id: cap.game_id,
+            delta_is_release: false,
+            delta_abs: amount,
+            open_exposure_after: new_open,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Collect a bet without touching `open_exposure`. The round's
+    /// reservations are taken separately through `reserve_exposure`, because
+    /// their number depends on how many payouts the round can make, not on
+    /// how many coins it collects.
+    public fun collect_bet_no_reserve(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        bet: Coin<NUSDC>,
+        player: address,
+        clock: &Clock,
+    ) {
+        assert!(!cap.revoked, EGameCapRevoked);
+        assert!(!pool.paused, EPaused);
+
+        let amount = coin::value(&bet);
+        assert!(amount > 0, EInvalidAmount);
+
+        balance::join(&mut pool.balance, coin::into_balance(bet));
+        update_game_bet_stats(pool, cap.game_id, amount);
+
+        event::emit(BetCollected {
+            game_id: cap.game_id,
+            player,
+            amount,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Release a reservation for a round that settles without moving coins.
+    ///
+    /// The single release point for `reserve_exposure`, called once per
+    /// reservation regardless of outcome. Under the legacy path a losing wheel spin,
+    /// a losing scratch card, a mines board that hit a mine and a crash entry
+    /// that never cashed out all ended with nothing to pay, and so left their
+    /// reservation standing forever. Callers pass the same amount they
+    /// reserved.
+    ///
+    /// Deliberately unbounded by `cap.max_single_payout`: an admin may lower
+    /// the cap while a multi-transaction round (a mines session) is still
+    /// open, and a bound here would then abort that round's settlement. A
+    /// release moves no coins, so the worst a wrong amount can do is
+    /// understate exposure, which the per-game reserve/release counts expose.
+    ///
+    /// Saturating, so a release against a pool whose exposure was reset
+    /// underneath it clamps at zero instead of aborting and wedging the game.
+    public fun release_exposure(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        clock: &Clock,
+    ) {
+        assert!(!cap.revoked, EGameCapRevoked);
+        // pool.paused is deliberately not checked: releasing is the settlement
+        // of an obligation the pool already took on, same rationale as
+        // pay_winner and refund_bet.
+        let current_open = read_open_exposure(pool);
+        let new_open = if (current_open >= amount) { current_open - amount } else { 0 };
+        write_open_exposure(pool, new_open);
+
+        event::emit(OpenExposureSnapshot {
+            game_id: cap.game_id,
+            delta_is_release: true,
+            delta_abs: amount,
+            open_exposure_after: new_open,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Admin override for `open_exposure`.
+    ///
+    /// There was no way to correct this field, which is why an unpaired ledger
+    /// could not be cleaned up without one. Needed once after the games move to
+    /// `reserve_exposure`, to discard the reservations the legacy path
+    /// leaked, and thereafter only if an audit finds a mismatch.
+    ///
+    /// Takes an explicit value rather than zeroing, so an operator can set the
+    /// audited in-flight total instead of erasing live obligations. Emits a
+    /// snapshot so the indexer sees the correction like any other movement.
+    public fun admin_set_open_exposure(
+        _admin: &AdminCap,
+        pool: &mut BankrollPool,
+        new_open: u64,
+        clock: &Clock,
+    ) {
+        write_open_exposure(pool, new_open);
+        event::emit(OpenExposureSnapshot {
+            // game_id 0 marks a pool-level correction rather than a game action.
+            game_id: 0,
+            delta_is_release: true,
+            delta_abs: 0,
+            open_exposure_after: new_open,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
     public fun pay_winner(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        player: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        let out = pay_out(pool, cap, amount, player, clock, ctx);
+        // v0.0.4: release the reservation taken by the matching collect_bet.
+        // Each round maps to exactly one pay_winner OR refund_bet, so the
+        // release unit is cap.max_single_payout (same value collect_bet
+        // reserved).
+        release_legacy_reservation(pool, cap, clock);
+        out
+    }
+
+    /// Pay a winner without touching `open_exposure`. For games on
+    /// `reserve_exposure`, which release each reservation through
+    /// `release_exposure` whether or not it paid.
+    public fun pay_winner_no_release(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        player: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        pay_out(pool, cap, amount, player, clock, ctx)
+    }
+
+    /// Refund a previously collected bet (e.g., aborted round). Separate from
+    /// pay_winner so analytics distinguish PnL from round voids.
+    public fun refund_bet(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        player: address,
+        reason_code: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        let out = refund_out(pool, cap, amount, player, reason_code, clock, ctx);
+        // v0.0.4: refund also closes the round, so release the reservation
+        // (same unit as the matching collect_bet).
+        release_legacy_reservation(pool, cap, clock);
+        out
+    }
+
+    /// Refund without touching `open_exposure`. Counterpart of
+    /// `pay_winner_no_release` for the `reserve_exposure` path.
+    public fun refund_bet_no_release(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        amount: u64,
+        player: address,
+        reason_code: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        refund_out(pool, cap, amount, player, reason_code, clock, ctx)
+    }
+
+    fun pay_out(
         pool: &mut BankrollPool,
         cap: &GameCap,
         amount: u64,
@@ -472,37 +676,16 @@ module bankroll_pool::bankroll_pool {
         let out = coin::from_balance(balance::split(&mut pool.balance, amount), ctx);
         update_game_payout_stats(pool, cap.game_id, amount);
 
-        // v0.0.4: release the reservation taken by the matching collect_bet.
-        // Each round maps to exactly one pay_winner OR refund_bet, so the
-        // release unit is cap.max_single_payout (same value collect_bet
-        // reserved). Saturating subtraction defends against a pre-v0.0.4 pool
-        // upgraded mid-flight where some collect_bets happened before the
-        // open_exposure dynamic_field existed.
-        let release = cap.max_single_payout;
-        let current_open = read_open_exposure(pool);
-        let new_open = if (current_open >= release) { current_open - release } else { 0 };
-        write_open_exposure(pool, new_open);
-
-        let ts = clock::timestamp_ms(clock);
         event::emit(WinnerPaid {
             game_id: cap.game_id,
             player,
             amount,
-            timestamp_ms: ts,
-        });
-        event::emit(OpenExposureSnapshot {
-            game_id: cap.game_id,
-            delta_is_release: true,
-            delta_abs: release,
-            open_exposure_after: new_open,
-            timestamp_ms: ts,
+            timestamp_ms: clock::timestamp_ms(clock),
         });
         out
     }
 
-    /// Refund a previously collected bet (e.g., aborted round). Separate from
-    /// pay_winner so analytics distinguish PnL from round voids.
-    public fun refund_bet(
+    fun refund_out(
         pool: &mut BankrollPool,
         cap: &GameCap,
         amount: u64,
@@ -520,30 +703,32 @@ module bankroll_pool::bankroll_pool {
 
         let out = coin::from_balance(balance::split(&mut pool.balance, amount), ctx);
 
-        // v0.0.4: refund also closes the round, so release the reservation
-        // (same unit as the matching collect_bet). Saturating subtract for
-        // the same pre-v0.0.4 upgrade defense as pay_winner.
-        let release = cap.max_single_payout;
-        let current_open = read_open_exposure(pool);
-        let new_open = if (current_open >= release) { current_open - release } else { 0 };
-        write_open_exposure(pool, new_open);
-
-        let ts = clock::timestamp_ms(clock);
         event::emit(BetRefunded {
             game_id: cap.game_id,
             player,
             amount,
             reason_code,
-            timestamp_ms: ts,
+            timestamp_ms: clock::timestamp_ms(clock),
         });
+        out
+    }
+
+    /// Saturating subtraction defends against a pre-v0.0.4 pool upgraded
+    /// mid-flight where some collect_bets happened before the open_exposure
+    /// dynamic_field existed.
+    fun release_legacy_reservation(pool: &mut BankrollPool, cap: &GameCap, clock: &Clock) {
+        let release = cap.max_single_payout;
+        let current_open = read_open_exposure(pool);
+        let new_open = if (current_open >= release) { current_open - release } else { 0 };
+        write_open_exposure(pool, new_open);
+
         event::emit(OpenExposureSnapshot {
             game_id: cap.game_id,
             delta_is_release: true,
             delta_abs: release,
             open_exposure_after: new_open,
-            timestamp_ms: ts,
+            timestamp_ms: clock::timestamp_ms(clock),
         });
-        out
     }
 
     /// Forward a fee / house edge / forfeited prize into the pool.

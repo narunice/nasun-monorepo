@@ -157,7 +157,7 @@ export async function runRiskAlertOnce(): Promise<void> {
         '',
         'Do NOT set a utilization cap. The ratio crosses 100% from hour to hour, and above it no admissible cap exists at all since MAX_CAP_BPS is 10000. Below it a cap still has to clear both the current ratio and each game max_single_payout as a share of balance, or that game aborts on its first bet.',
         '',
-        'Clearing this needs the games redeployed with the pairing fixed and open_exposure reset, which takes a bankroll_pool upgrade since it has no admin reset. This alert stands until then; it does not track the value.',
+        'Clearing this needs the games rebound to the paired ledger (reserve_exposure / release_exposure, live since bankroll_pool v0.0.5 on 2026-09-28), every old GameCap revoked, and open_exposure then reset with admin_set_open_exposure. This alert stands until then; it does not track the value.',
         '',
         `Cooldown ${Math.round(cooldownFor('utilization_unmeasurable') / 3_600_000)} h before re-fire.`,
       ].join('\n');

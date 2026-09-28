@@ -19,6 +19,24 @@
 ///    rejects a second bet that, taken together with the first's outstanding
 ///    reservation, would exceed cap_bps of pool.balance (even though either
 ///    bet alone would pass).
+///
+/// v0.0.5 reservation ledger (reserve_exposure / release_exposure, with
+/// collect_bet_no_reserve and the *_no_release payouts moving coins only):
+///
+/// 10. test_single_payout_round_pairs       : reserve, collect, pay, release.
+/// 11. test_bulk_round_reserves_per_payout  : a 10-card round reserves ten
+///     times (more than one cap in total) and releases ten times.
+/// 12. test_release_isolates_rounds         : one round's release leaves a
+///     concurrent round's reservation intact.
+/// 13. test_refund_no_release_keeps_reservation: refund moves coins only.
+/// 14. test_reserve_above_cap_aborts        : reserve > max_single_payout.
+/// 15. test_release_survives_lowered_cap    : a reservation taken under the
+///     old cap still releases after the admin lowers it.
+/// 16. test_reserve_respects_utilization_cap: cumulative reservations trip
+///     the cap exactly as collect_bet's do.
+/// 17. test_reserve_blocked_when_paused     : pause gates new exposure.
+/// 18. test_release_saturates_after_admin_reset: admin_set_open_exposure
+///     overrides the ledger, and a later release clamps at zero.
 #[test_only]
 module bankroll_pool::bankroll_pool_tests {
     use sui::test_scenario::{Self as ts, Scenario};
@@ -436,6 +454,235 @@ module bankroll_pool::bankroll_pool_tests {
         ts::return_shared(pool);
         scenario.return_to_sender(cap);
 
+        ts::end(scenario);
+    }
+
+    // ---- v0.0.5 reservation ledger ----
+
+    const RESERVE_MAX: u64 = 500_000_000; // 500 NUSDC, the scratch card MAX_PRIZE
+
+    /// Game cap with RESERVE_MAX, pool seeded with SEED_AMOUNT.
+    fun begin_reserve_scenario(): Scenario {
+        let mut scenario = begin_with_init();
+        issue_test_game_cap(&mut scenario, RESERVE_MAX, ADMIN);
+        treasury_seed(&mut scenario, SEED_AMOUNT);
+        scenario.next_tx(ADMIN);
+        scenario
+    }
+
+    fun bet(scenario: &mut Scenario, amount: u64): Coin<NUSDC> {
+        coin::mint_for_testing<NUSDC>(amount, scenario.ctx())
+    }
+
+    #[test]
+    fun test_single_payout_round_pairs() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        let before = bp::pool_balance(&pool);
+
+        bp::reserve_exposure(&mut pool, &cap, 40_000_000, &clk);
+        let b = bet(&mut scenario, 10_000_000);
+        bp::collect_bet_no_reserve(&mut pool, &cap, b, ADMIN, &clk);
+        assert!(bp::open_exposure(&pool) == 40_000_000, 10001);
+        assert!(bp::pool_balance(&pool) == before + 10_000_000, 10002);
+
+        let p = bp::pay_winner_no_release(&mut pool, &cap, 40_000_000, ADMIN, &clk, scenario.ctx());
+        assert!(bp::open_exposure(&pool) == 40_000_000, 10003);
+        bp::release_exposure(&mut pool, &cap, 40_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == 0, 10004);
+        assert!(bp::pool_balance(&pool) == before - 30_000_000, 10005);
+
+        coin::burn_for_testing(p);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_bulk_round_reserves_per_payout() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        let mut i = 0;
+        while (i < 10) {
+            bp::reserve_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+            i = i + 1;
+        };
+        // Ten payouts' worth, well past a single cap, which one reservation
+        // could not have covered.
+        assert!(bp::open_exposure(&pool) == 10 * RESERVE_MAX, 11001);
+        let b = bet(&mut scenario, 50_000_000);
+        bp::collect_bet_no_reserve(&mut pool, &cap, b, ADMIN, &clk);
+
+        // Three winning cards, seven losing ones; every card releases.
+        let p1 = bp::pay_winner_no_release(&mut pool, &cap, RESERVE_MAX, ADMIN, &clk, scenario.ctx());
+        let p2 = bp::pay_winner_no_release(&mut pool, &cap, 10_000_000, ADMIN, &clk, scenario.ctx());
+        let p3 = bp::pay_winner_no_release(&mut pool, &cap, 5_000_000, ADMIN, &clk, scenario.ctx());
+        let mut j = 0;
+        while (j < 10) {
+            bp::release_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+            j = j + 1;
+        };
+        assert!(bp::open_exposure(&pool) == 0, 11002);
+
+        coin::burn_for_testing(p1);
+        coin::burn_for_testing(p2);
+        coin::burn_for_testing(p3);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_release_isolates_rounds() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, 100_000_000, &clk);
+        bp::reserve_exposure(&mut pool, &cap, 300_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == 400_000_000, 12001);
+
+        // The first round loses: only its own reservation goes.
+        bp::release_exposure(&mut pool, &cap, 100_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == 300_000_000, 12002);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_refund_no_release_keeps_reservation() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, 70_000_000, &clk);
+        let b = bet(&mut scenario, 10_000_000);
+        bp::collect_bet_no_reserve(&mut pool, &cap, b, ADMIN, &clk);
+        let r = bp::refund_bet_no_release(&mut pool, &cap, 10_000_000, ADMIN, 0, &clk, scenario.ctx());
+        assert!(coin::value(&r) == 10_000_000, 13001);
+        assert!(bp::open_exposure(&pool) == 70_000_000, 13002);
+
+        coin::burn_for_testing(r);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EReserveExceedsCap)]
+    fun test_reserve_above_cap_aborts() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, RESERVE_MAX + 1, &clk);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_release_survives_lowered_cap() {
+        let mut scenario = begin_reserve_scenario();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let mut cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+        bp::update_max_payout(&admin_cap, &mut cap, RESERVE_MAX / 2, &clk);
+        bp::release_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+        assert!(bp::open_exposure(&pool) == 0, 15001);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        scenario.return_to_sender(admin_cap);
+        ts::end(scenario);
+    }
+
+    // pool 10_000 NUSDC, cap_bps 1000 (1_000 NUSDC ceiling): the second
+    // 500 NUSDC reservation reaches the ceiling, the third crosses it.
+    #[test]
+    #[expected_failure(abort_code = bp::EUtilizationCapExceeded)]
+    fun test_reserve_respects_utilization_cap() {
+        let mut scenario = begin_with_init();
+        issue_test_game_cap(&mut scenario, RESERVE_MAX, ADMIN);
+        treasury_seed(&mut scenario, 10_000_000_000);
+        scenario.next_tx(ADMIN);
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        bp::set_utilization_cap(&admin_cap, &mut pool, 1_000, &clk);
+
+        bp::reserve_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+        bp::reserve_exposure(&mut pool, &cap, RESERVE_MAX, &clk);
+        assert!(bp::open_exposure(&pool) == 2 * RESERVE_MAX, 16001);
+        bp::reserve_exposure(&mut pool, &cap, 1, &clk);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        scenario.return_to_sender(admin_cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EPaused)]
+    fun test_reserve_blocked_when_paused() {
+        let mut scenario = begin_reserve_scenario();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        bp::set_paused(&admin_cap, &mut pool, true, &clk);
+
+        bp::reserve_exposure(&mut pool, &cap, 1, &clk);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        scenario.return_to_sender(admin_cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_release_saturates_after_admin_reset() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure(&mut pool, &cap, 400_000_000, &clk);
+        bp::admin_set_open_exposure(&admin_cap, &mut pool, 150_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == 150_000_000, 18001);
+
+        // The in-flight round settles against the corrected ledger.
+        bp::release_exposure(&mut pool, &cap, 400_000_000, &clk);
+        assert!(bp::open_exposure(&pool) == 0, 18002);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(admin_cap);
+        scenario.return_to_sender(cap);
         ts::end(scenario);
     }
 }

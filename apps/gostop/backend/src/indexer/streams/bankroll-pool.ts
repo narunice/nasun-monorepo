@@ -521,8 +521,10 @@ export async function tickOpenExposureSnapshot(): Promise<number> {
         // Surface unexpected ids as NULL with a log breadcrumb (lottery=1 cannot
         // emit OpenExposureSnapshot — bankroll_pool only emits this for
         // collect_bet / pay_winner / refund_bet which lottery does not call).
+        // game_id 0 is admin_set_open_exposure (v0.0.5), a pool-level
+        // correction; it stays NULL but is expected, so it does not warn.
         r.game_id = gid >= 2 && gid <= 6 ? gid : null;
-        if (r.game_id === null) {
+        if (r.game_id === null && gid !== 0) {
           console.warn(`[bankroll-pool] OpenExposureSnapshot unexpected game_id=${gid}`);
         }
         r.amount = e.parsedJson.delta_abs;

@@ -6,7 +6,20 @@
   "version": "v8-fresh",
   "deployer": "0x98f5339a8d5c6ba1c1478d8b405711c816e13250553a2c20ec8b839abf454a6c",
   "versionNotes": [
-    "bankroll v0.0.4 (current, 2026-05-19) - Tier 1 post-cleanup \u00a710.B Liability-aware NAV (top-level cohort still v4; bankroll-only upgrade):",
+    "bankroll v0.0.5 (current, 2026-09-28) - reservation ledger that pairs (bankroll-only compatible upgrade, tx BDd7meTZnGd97QTjoikKfrW8DyMt6rQDKBrnhMpDRVzw):",
+    "  - v0.0.4's open_exposure could not measure liability: collect_bet reserved",
+    "    cap.max_single_payout per bet, but rounds that paid nothing released",
+    "    nothing and a scratch bulk buy released once per winning card.",
+    "  - New primitives: reserve_exposure (one per potential payout, bounded by",
+    "    cap.max_single_payout), collect_bet_no_reserve, release_exposure (exactly",
+    "    once per reservation, saturating, unbounded so a lowered cap cannot wedge",
+    "    settlement), pay_winner_no_release, refund_bet_no_release, and",
+    "    admin_set_open_exposure (emits OpenExposureSnapshot with game_id 0).",
+    "  - Legacy collect_bet / pay_winner / refund_bet behave exactly as v0.0.4 for",
+    "    game packages not yet rebound. No struct change: event type tags stay on",
+    "    originalPackageId.",
+    "",
+    "bankroll v0.0.4 (2026-05-19) - Tier 1 post-cleanup \u00a710.B Liability-aware NAV (top-level cohort still v4; bankroll-only upgrade):",
     "  - bankroll_pool: open_exposure dynamic_field tracks live max-liability",
     "    (SUM of cap.max_single_payout across in-flight rounds). collect_bet",
     "    reserves; pay_winner / refund_bet release. UpgradeCap-compatible",
@@ -78,7 +91,7 @@
     "tokenFaucet": "0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff"
   },
   "bankrollPool": {
-    "packageId": "0xbd90dbc51a4b00e1366ad864817d0611eac2b2df3190fdf0615b97ff60b60da1",
+    "packageId": "0x70cb01f6e9b8dca02c1022e1002b98495f1e9ec3527233240b3031caf2f5d9bf",
     "originalPackageId": "0xbd90dbc51a4b00e1366ad864817d0611eac2b2df3190fdf0615b97ff60b60da1",
     "bankrollPool": "0xbed633d543e6b3bf932fb91c4238e07e6377ed8e8521e8f67760c2b01c332fd2",
     "adminCap": "0x2d55773e44dc5fd58dce698adbdef4d5eea3651f33bfbf417e98ac2532f82a1f",
@@ -88,9 +101,10 @@
     "upgradeTxDigest": "",
     "upgradeTxDigestV0_0_3": "",
     "upgradeTxDigestV0_0_4": "",
+    "upgradeTxDigestV0_0_5": "BDd7meTZnGd97QTjoikKfrW8DyMt6rQDKBrnhMpDRVzw",
     "seedSharesTxDigest": "",
-    "version": "v8-fresh",
-    "upgradeNotes": "v8 fresh genesis 2026-06-19. Re-seed via seed-bankroll-v2 + seed_pool_shares.",
+    "version": "v0.0.5",
+    "upgradeNotes": "v8 fresh genesis 2026-06-19 (v1 = originalPackageId). v0.0.5 compatible upgrade 2026-09-28 (v2 = packageId): reservation ledger primitives, no struct change, so every event type still tags with originalPackageId.",
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "lottery": {

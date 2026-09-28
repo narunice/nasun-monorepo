@@ -250,8 +250,9 @@ function worstQuality(a: DataQuality, b: DataQuality): DataQuality {
  *
  * Typed `boolean` rather than left to literal inference so the comparison
  * below stays compiled while this is false. Flip to true only once the games
- * are redeployed with the pairing fixed AND open_exposure has been reset,
- * which needs a bankroll_pool upgrade since there is no admin reset for it.
+ * are rebound to reserve_exposure / release_exposure (bankroll_pool v0.0.5,
+ * live 2026-09-28), every old GameCap is revoked so the legacy path stops
+ * leaking, AND open_exposure has been reset with admin_set_open_exposure.
  */
 const RESERVATION_LEDGER_PAIRS_EXACTLY: boolean = false;
 
