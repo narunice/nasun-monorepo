@@ -107,20 +107,16 @@ export const STREAMS: StreamDef[] = [
   { key: 'bankroll_pool::LiquidityProvided',   module: 'bankroll_pool', eventName: 'LiquidityProvided',   originalPackageId: BANKROLL_POOL.originalPackageId },
   { key: 'bankroll_pool::WithdrawRequested',   module: 'bankroll_pool', eventName: 'WithdrawRequested',   originalPackageId: BANKROLL_POOL.originalPackageId },
   { key: 'bankroll_pool::LiquidityRedeemed',   module: 'bankroll_pool', eventName: 'LiquidityRedeemed',   originalPackageId: BANKROLL_POOL.originalPackageId },
-  // PoolSharesSeeded and UtilizationCapUpdated were added in v0.0.3 — their
-  // event type tags bind to the v0.0.3 package, NOT the originalPackageId
-  // (Sui invariant: type tag = package that defined the struct). Verified
-  // via sui_getTransactionBlock on the live seed_pool_shares tx
-  // B29mvxri1UBRRC6phmBk5z1P6B4qYrGdtTkLh789WqCg. A future v0.0.4 upgrade
-  // that re-touches either struct would shift the type tag again — at that
-  // point this row must be updated and the stream's cursor must be reset.
-  { key: 'bankroll_pool::PoolSharesSeeded',    module: 'bankroll_pool', eventName: 'PoolSharesSeeded',    originalPackageId: BANKROLL_POOL.packageId },
-  { key: 'bankroll_pool::UtilizationCapUpdated', module: 'bankroll_pool', eventName: 'UtilizationCapUpdated', originalPackageId: BANKROLL_POOL.packageId },
-  // v0.0.4: like PoolSharesSeeded/UtilizationCapUpdated, this event's type
-  // tag binds to the package that introduced the struct — v0.0.4's packageId,
-  // NOT the originalPackageId. The same caveat as line 115 applies: a future
-  // upgrade that re-touches OpenExposureSnapshot will shift the type tag.
-  { key: 'bankroll_pool::OpenExposureSnapshot', module: 'bankroll_pool', eventName: 'OpenExposureSnapshot', originalPackageId: BANKROLL_POOL.packageId },
+  // Event type tags bind to the package that first defined the struct. On the
+  // v8 genesis every bankroll_pool struct was defined by the fresh publish, so
+  // all of them tag with originalPackageId, and upgrades (v0.0.5 onward) that
+  // add no struct leave them there. Keying these rows on packageId only worked
+  // while the two ids were equal; it would have silently emptied the streams
+  // on the first upgrade. A struct introduced by a later upgrade is the one
+  // case that needs that upgrade's id here.
+  { key: 'bankroll_pool::PoolSharesSeeded',    module: 'bankroll_pool', eventName: 'PoolSharesSeeded',    originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::UtilizationCapUpdated', module: 'bankroll_pool', eventName: 'UtilizationCapUpdated', originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::OpenExposureSnapshot', module: 'bankroll_pool', eventName: 'OpenExposureSnapshot', originalPackageId: BANKROLL_POOL.originalPackageId },
   { key: 'lottery::RoundCreated',      module: 'lottery',       eventName: 'RoundCreated',     originalPackageId: GAMES.lottery.originalPackageId },
   { key: 'lottery::TicketPurchased',   module: 'lottery',       eventName: 'TicketPurchased',  originalPackageId: GAMES.lottery.originalPackageId },
   { key: 'lottery::NumbersDrawn',      module: 'lottery',       eventName: 'NumbersDrawn',     originalPackageId: GAMES.lottery.originalPackageId },
