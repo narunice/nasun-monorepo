@@ -21,6 +21,7 @@
 module gostop_scratchcard::scratchcard {
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
+    use sui::dynamic_object_field as dof;
     use sui::event;
     use sui::random::{Self, Random};
     use devnet_tokens::nusdc::NUSDC;
@@ -66,6 +67,14 @@ module gostop_scratchcard::scratchcard {
     const EGameCapAlreadyInstalled: u64 = 3;
     const EGameCapNotInstalled: u64 = 4;
     const EGameCapMismatch: u64 = 5;
+    const EGameCapNotInOption: u64 = 6;
+
+    // ===== Dynamic Field Keys =====
+
+    /// Where the GameCap lives once `move_game_cap_to_field` has run. The
+    /// pre-upgrade code only knows the `game_cap` option, so emptying it is
+    /// what stops that code from selling cards under the unpaired ledger.
+    public struct GameCapKey has copy, drop, store {}
 
     // ===== Structs =====
 
@@ -136,12 +145,26 @@ module gostop_scratchcard::scratchcard {
         registry: &mut ScratchCardRegistry,
         cap: GameCap,
     ) {
-        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(!cap_installed(&registry.id, &registry.game_cap), EGameCapAlreadyInstalled);
         assert!(
             bankroll_pool::game_cap_id(&cap) == GAME_ID_SELF,
             EGameCapMismatch,
         );
         option::fill(&mut registry.game_cap, cap);
+    }
+
+    /// Move the installed GameCap out of the `game_cap` option into a
+    /// dynamic object field. The current code reads either place; the
+    /// pre-upgrade code aborts with EGameCapNotInstalled once the option is
+    /// empty, so every card from then on reserves through the paired ledger.
+    /// Run after the frontend calls the upgraded package.
+    public entry fun move_game_cap_to_field(
+        _admin: &AdminCap,
+        registry: &mut ScratchCardRegistry,
+    ) {
+        assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
+        let cap = option::extract(&mut registry.game_cap);
+        dof::add(&mut registry.id, GameCapKey {}, cap);
     }
 
     // ===== Core: Buy (single) =====
@@ -192,7 +215,7 @@ module gostop_scratchcard::scratchcard {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
 
         // ===== Phase 1: Pre-random assertions =====
         let required_payment = CARD_PRICE * (count as u64);
@@ -209,12 +232,23 @@ module gostop_scratchcard::scratchcard {
             EInsufficientBankroll,
         );
 
-        let cap = option::borrow(&registry.game_cap);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
         let sender = tx_context::sender(ctx);
+
+        // Every card can pay once, up to MAX_PRIZE, so the round takes one
+        // reservation per card. A single reservation could not cover a bulk
+        // buy: its worst case is count * MAX_PRIZE and a reservation is
+        // bounded by one payout. Taken before any random is drawn, so a
+        // utilization cap rejects the buy instead of aborting mid-round.
+        let mut k: u8 = 0;
+        while (k < count) {
+            bankroll_pool::reserve_exposure(pool, cap, MAX_PRIZE, clock);
+            k = k + 1;
+        };
 
         // Collect the entire bulk payment in one go (analytics attribute
         // the full amount to a single tx).
-        bankroll_pool::collect_bet(pool, cap, payment, sender, clock);
+        bankroll_pool::collect_bet_no_reserve(pool, cap, payment, sender, clock);
 
         // ===== Phase 2: Random consumption (no abort past this point) =====
         let mut g = random::new_generator(r, ctx);
@@ -232,7 +266,7 @@ module gostop_scratchcard::scratchcard {
 
             let card_nft_id: Option<ID> = if (multiplier > 0) {
                 // Winner: pay prize + mint NFT.
-                let prize_coin = bankroll_pool::pay_winner(
+                let prize_coin = bankroll_pool::pay_winner_no_release(
                     pool,
                     cap,
                     prize,
@@ -281,6 +315,29 @@ module gostop_scratchcard::scratchcard {
 
             i = i + 1;
         };
+
+        // One release per card, winners and losers alike.
+        let mut k: u8 = 0;
+        while (k < count) {
+            bankroll_pool::release_exposure(pool, cap, MAX_PRIZE, clock);
+            k = k + 1;
+        };
+    }
+
+    // ===== Internal =====
+
+    /// Takes the two fields rather than the registry so callers can keep
+    /// mutating the registry's counters while the cap is borrowed.
+    fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
+        dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    }
+
+    fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
+        if (dof::exists_(id, GameCapKey {})) {
+            dof::borrow(id, GameCapKey {})
+        } else {
+            option::borrow(slot)
+        }
     }
 
     // ===== Prize Table =====
@@ -312,7 +369,7 @@ module gostop_scratchcard::scratchcard {
     }
 
     public fun is_game_cap_installed(registry: &ScratchCardRegistry): bool {
-        option::is_some(&registry.game_cap)
+        cap_installed(&registry.id, &registry.game_cap)
     }
 
     /// Prize table for on-chain auditing. Pairs (threshold, multiplier):
@@ -325,6 +382,24 @@ module gostop_scratchcard::scratchcard {
         ];
         let multipliers = vector[1, 2, 5, 10, 20, 50, 100];
         (thresholds, multipliers)
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx);
+    }
+
+    #[test_only]
+    public fun buy_bulk_for_testing(
+        registry: &mut ScratchCardRegistry,
+        pool: &mut BankrollPool,
+        payment: Coin<NUSDC>,
+        count: u8,
+        r: &Random,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        buy_internal(registry, pool, payment, count, r, clock, ctx);
     }
 
     // ===== Pure-logic tests =====

@@ -148,8 +148,10 @@
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "scratchcard": {
-    "packageId": "0xd04d86674b80196c71a3019fd0efb55e462b56d2b804f37e807aa6333830c286",
+    "packageId": "0x2f3a8a3e7c50d04595ca3528c35f980eda6dc5110315d02b153aaa85e9149405",
     "originalPackageId": "0xd04d86674b80196c71a3019fd0efb55e462b56d2b804f37e807aa6333830c286",
+    "ledgerUpgradeTxDigest": "BwMn28EfqRXNFxi1RwEjZnDLq4bq6x135hZJvRadLUtW",
+    "ledgerUpgradeNotes": "2026-09-28 in-place compatible upgrade onto the bankroll v0.0.6 paired ledger (reserve_exposure / release_exposure). Structs and events unchanged, so types stay on originalPackageId; move_game_cap_to_field retires the pre-upgrade code.",
     "registry": "0x3df030ad83df6190ebae45984782a557157ecaef971336939df4528c67b4c97d",
     "adminCap": "0xd5beaaa0fbf5a54a624db9715636f04c071d072e1d984d4f47ee9d15b224f45d",
     "upgradeCap": "0x95e0874e7ad9f76d9e0189fc2eb7dda0187e67daf578ea195a456eb359da9e5d",
@@ -189,8 +191,10 @@
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "mines": {
-    "packageId": "0x1ba1065558e2495aec9d48e393f39d3086650013e68ef2ff498daa673d68faa4",
+    "packageId": "0xfd7307ba6b81b4f6c6baea8ec9a8f7d8884d18ca35435418e8481ec10ea5da71",
     "originalPackageId": "0x1ba1065558e2495aec9d48e393f39d3086650013e68ef2ff498daa673d68faa4",
+    "ledgerUpgradeTxDigest": "3db8XajCTrgQsEUMet3iYbgYcagxotcbPwKPhwcDR7aN",
+    "ledgerUpgradeNotes": "2026-09-28 in-place compatible upgrade onto the bankroll v0.0.6 paired ledger (reserve_exposure / release_exposure). Structs and events unchanged, so types stay on originalPackageId; move_game_cap_to_field retires the pre-upgrade code.",
     "v5UpgradeTxDigest": "",
     "v5Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "upgradeTxDigest": "",
@@ -251,8 +255,10 @@
     "_v8note": "NOT deployed in v8 (crash shut down indefinitely, CRASH_ENABLED=false). IDs stale v7."
   },
   "wheel": {
-    "packageId": "0xd7ec44b5ca454914d79a8cdd395e6c746ac9850a95fe616de4de25ef4af4e6cb",
+    "packageId": "0x93771e1d911dba271cc83a03d937ecd3c6ab455a90b1090b97aab85f1128ef9b",
     "originalPackageId": "0xd7ec44b5ca454914d79a8cdd395e6c746ac9850a95fe616de4de25ef4af4e6cb",
+    "ledgerUpgradeTxDigest": "HT1rFG7sJNmKpbRjWBzjDg9C1zr2VKjH27Jt771jtguQ",
+    "ledgerUpgradeNotes": "2026-09-28 in-place compatible upgrade onto the bankroll v0.0.6 paired ledger (reserve_exposure / release_exposure). Structs and events unchanged, so types stay on originalPackageId; move_game_cap_to_field retires the pre-upgrade code.",
     "v2UpgradeTxDigest": "",
     "v2Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "registry": "0x603d0c99600b17cf18cff3b8b67853c85b1ef22297a073262dc0f8485dd7cb83",

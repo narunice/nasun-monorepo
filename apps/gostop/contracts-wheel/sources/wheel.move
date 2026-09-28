@@ -22,6 +22,7 @@
 module gostop_wheel::wheel {
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
+    use sui::dynamic_object_field as dof;
     use sui::event;
     use sui::random::{Self, Random};
     use devnet_tokens::nusdc::NUSDC;
@@ -55,6 +56,14 @@ module gostop_wheel::wheel {
     const EGameCapAlreadyInstalled: u64 = 3;
     const EGameCapNotInstalled: u64 = 4;
     const EGameCapMismatch: u64 = 5;
+    const EGameCapNotInOption: u64 = 6;
+
+    // ===== Dynamic Field Keys =====
+
+    /// Where the GameCap lives once `move_game_cap_to_field` has run. The
+    /// pre-upgrade code only knows the `game_cap` option, so emptying it is
+    /// what stops that code from taking bets under the unpaired ledger.
+    public struct GameCapKey has copy, drop, store {}
 
     // ===== Structs =====
 
@@ -149,12 +158,26 @@ module gostop_wheel::wheel {
         registry: &mut WheelRegistry,
         cap: GameCap,
     ) {
-        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(!cap_installed(&registry.id, &registry.game_cap), EGameCapAlreadyInstalled);
         assert!(
             bankroll_pool::game_cap_id(&cap) == GAME_ID_SELF,
             EGameCapMismatch,
         );
         option::fill(&mut registry.game_cap, cap);
+    }
+
+    /// Move the installed GameCap out of the `game_cap` option into a
+    /// dynamic object field. The current code reads either place; the
+    /// pre-upgrade code aborts with EGameCapNotInstalled once the option is
+    /// empty, so every bet from then on reserves through the paired ledger.
+    /// Run after the frontend calls the upgraded package.
+    public entry fun move_game_cap_to_field(
+        _admin: &AdminCap,
+        registry: &mut WheelRegistry,
+    ) {
+        assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
+        let cap = option::extract(&mut registry.game_cap);
+        dof::add(&mut registry.id, GameCapKey {}, cap);
     }
 
     public entry fun set_paused(
@@ -176,7 +199,7 @@ module gostop_wheel::wheel {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
         assert!(!registry.paused, EPaused);
 
         let sender = tx_context::sender(ctx);
@@ -196,10 +219,14 @@ module gostop_wheel::wheel {
             EInsufficientBankroll,
         );
 
-        let cap = option::borrow(&registry.game_cap);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
 
-        // Collect the bet into BankrollPool.
-        bankroll_pool::collect_bet(pool, cap, bet_coin, sender, clock);
+        // A spin pays at most once, so it takes one reservation of the most
+        // it can pay, and releases it below whatever the segment. Reserving
+        // before any random is drawn also moves the max_single_payout check
+        // ahead of the draw, where the old pay_winner abort sat after it.
+        bankroll_pool::reserve_exposure(pool, cap, max_payout, clock);
+        bankroll_pool::collect_bet_no_reserve(pool, cap, bet_coin, sender, clock);
 
         // ===== Phase 2: Random consumption (no abort past this point) =====
 
@@ -215,7 +242,7 @@ module gostop_wheel::wheel {
         let payout = (((bet as u128) * (mult_bps as u128)) / 10_000u128) as u64;
 
         if (payout > 0) {
-            let coin = bankroll_pool::pay_winner(
+            let coin = bankroll_pool::pay_winner_no_release(
                 pool,
                 cap,
                 payout,
@@ -225,13 +252,10 @@ module gostop_wheel::wheel {
             );
             transfer::public_transfer(coin, sender);
         };
-
-        let game_id = registry.next_game_id;
-        registry.next_game_id = registry.next_game_id + 1;
-        registry.total_plays = registry.total_plays + 1;
-        registry.total_prizes_paid = registry.total_prizes_paid + payout;
+        bankroll_pool::release_exposure(pool, cap, max_payout, clock);
 
         // Standardized cross-game result event (leaderboard indexer).
+        let game_id = registry.next_game_id;
         let sid = sui::bcs::to_bytes(&game_id);
         bankroll_pool::emit_game_result(
             cap,
@@ -241,6 +265,10 @@ module gostop_wheel::wheel {
             sid,
             clock,
         );
+
+        registry.next_game_id = registry.next_game_id + 1;
+        registry.total_plays = registry.total_plays + 1;
+        registry.total_prizes_paid = registry.total_prizes_paid + payout;
 
         // Game-specific event (frontend history).
         event::emit(WheelResultEvent {
@@ -252,6 +280,22 @@ module gostop_wheel::wheel {
             payout,
             timestamp_ms: clock::timestamp_ms(clock),
         });
+    }
+
+    // ===== Internal =====
+
+    /// Takes the two fields rather than the registry so callers can keep
+    /// mutating the registry's counters while the cap is borrowed.
+    fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
+        dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    }
+
+    fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
+        if (dof::exists_(id, GameCapKey {})) {
+            dof::borrow(id, GameCapKey {})
+        } else {
+            option::borrow(slot)
+        }
     }
 
     // ===== Views =====
@@ -268,7 +312,24 @@ module gostop_wheel::wheel {
     }
 
     public fun is_game_cap_installed(r: &WheelRegistry): bool {
-        option::is_some(&r.game_cap)
+        cap_installed(&r.id, &r.game_cap)
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx);
+    }
+
+    #[test_only]
+    public fun spin_for_testing(
+        registry: &mut WheelRegistry,
+        pool: &mut BankrollPool,
+        bet_coin: Coin<NUSDC>,
+        r: &Random,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        spin(registry, pool, bet_coin, r, clock, ctx);
     }
 
     // ===== Pure-logic tests =====

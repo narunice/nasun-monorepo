@@ -37,6 +37,7 @@ module gostop_mines::mines {
     use sui::coin::Coin;
     use sui::clock::{Self, Clock};
     use sui::dynamic_field;
+    use sui::dynamic_object_field as dof;
     use sui::event;
     use sui::random::{Self, Random};
     use sui::table::{Self, Table};
@@ -75,11 +76,36 @@ module gostop_mines::mines {
     const EGameCapAlreadyInstalled: u64 = 9;
     const EGameCapNotInstalled: u64 = 10;
     const EGameCapMismatch: u64 = 11;
+    const EGameCapNotInOption: u64 = 12;
 
     // ===== Dynamic Field Keys =====
 
     /// Key for the per-game max bet limit stored on MinesRegistry.
     public struct MaxBetKey has copy, drop, store {}
+
+    /// Where the GameCap lives once `move_game_cap_to_field` has run. The
+    /// pre-upgrade code only knows the `game_cap` option, so emptying it is
+    /// what stops that code from opening sessions under the unpaired ledger.
+    public struct GameCapKey has copy, drop, store {}
+
+    /// u64 on a MinesSession: what `create_session` reserved for it. Absent on
+    /// sessions opened by the pre-upgrade code, whose reservation the legacy
+    /// `collect_bet` took and never booked against the game.
+    public struct ReservedKey has copy, drop, store {}
+
+    /// vector<u64> on MinesRegistry: reservations of sessions that ended
+    /// without a payout (a mine, a forfeit). `reveal_cell` and
+    /// `forfeit_session` do not take the pool, deliberately, so they queue
+    /// the release and the next call holding the pool settles it.
+    public struct PendingReleasesKey has copy, drop, store {}
+
+    /// vector<u64> on MinesRegistry: the same queue for legacy sessions,
+    /// released against the unattributed remainder instead of the game.
+    public struct PendingLegacyReleasesKey has copy, drop, store {}
+
+    /// u64 on MinesRegistry: sessions open under the paired ledger. The rest
+    /// of `active_sessions` are legacy sessions.
+    public struct PairedLiveKey has copy, drop, store {}
 
     // ===== Structs =====
 
@@ -164,7 +190,7 @@ module gostop_mines::mines {
         registry: &mut MinesRegistry,
         cap: GameCap,
     ) {
-        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(!cap_installed(&registry.id, &registry.game_cap), EGameCapAlreadyInstalled);
         assert!(
             bankroll_pool::game_cap_id(&cap) == GAME_ID_SELF,
             EGameCapMismatch,
@@ -198,9 +224,58 @@ module gostop_mines::mines {
         new_max: u64,
         clock: &Clock,
     ) {
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
-        let cap = option::borrow_mut(&mut registry.game_cap);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        let cap = cap_mut(&mut registry.id, &mut registry.game_cap);
         bankroll_pool::update_max_payout(bp_admin, cap, new_max, clock);
+    }
+
+    /// Move the installed GameCap out of the `game_cap` option into a
+    /// dynamic object field. The current code reads either place; the
+    /// pre-upgrade code aborts with EGameCapNotInstalled once the option is
+    /// empty, so from then on every session is opened, and every legacy
+    /// session settled, by the paired code. Run after the frontend calls the
+    /// upgraded package.
+    public entry fun move_game_cap_to_field(
+        _admin: &AdminCap,
+        registry: &mut MinesRegistry,
+    ) {
+        assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
+        let cap = option::extract(&mut registry.game_cap);
+        dof::add(&mut registry.id, GameCapKey {}, cap);
+    }
+
+    /// Settle every queued release. Anyone may call it: it only releases
+    /// reservations of sessions that already ended.
+    public entry fun flush_pending_releases(
+        registry: &mut MinesRegistry,
+        pool: &mut BankrollPool,
+        clock: &Clock,
+    ) {
+        flush_pending(registry, pool, clock);
+    }
+
+    /// Set the pool's unattributed exposure to exactly the legacy mines
+    /// sessions still open, each at the `max_single_payout` the legacy
+    /// `collect_bet` reserved for it.
+    ///
+    /// Counted on chain in the same transaction, so a session that settles
+    /// while the operator prepares this cannot be double counted. Mines is
+    /// the only game still holding legacy reservations at rest once the other
+    /// games' caps have moved (wheel and scratch settle in one transaction),
+    /// which is why the pool-wide reset lives here. Run after every game's
+    /// `move_game_cap_to_field`.
+    public entry fun reset_legacy_exposure(
+        _mines_admin: &AdminCap,
+        bp_admin: &BpAdminCap,
+        registry: &mut MinesRegistry,
+        pool: &mut BankrollPool,
+        clock: &Clock,
+    ) {
+        flush_pending(registry, pool, clock);
+        let legacy_live = table::length(&registry.active_sessions) - paired_live(&registry.id);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let unit = bankroll_pool::game_cap_max_payout(cap);
+        bankroll_pool::admin_reset_unattributed_exposure(bp_admin, pool, legacy_live * unit, clock);
     }
 
     // ===== Core =====
@@ -217,8 +292,9 @@ module gostop_mines::mines {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
-        let cap = option::borrow(&registry.game_cap);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        flush_pending(registry, pool, clock);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
 
         let sender = tx_context::sender(ctx);
         let bet_amount = sui::coin::value(&bet_coin);
@@ -241,15 +317,20 @@ module gostop_mines::mines {
         };
         assert!(bet_amount <= max_bet, EBetTooLarge);
 
-        // Collect bet.
-        bankroll_pool::collect_bet(pool, cap, bet_coin, sender, clock);
+        // Reserve the most this session can ever pay: cashout clamps to
+        // max_single_payout, and short of that a full board is the ceiling.
+        let full_board = ((bet_amount as u128) * (max_multiplier_bps(mine_count) as u128)) / 10_000;
+        let cap_max = bankroll_pool::game_cap_max_payout(cap);
+        let reserved = if (full_board < (cap_max as u128)) { full_board as u64 } else { cap_max };
+        bankroll_pool::reserve_exposure(pool, cap, reserved, clock);
+        bankroll_pool::collect_bet_no_reserve(pool, cap, bet_coin, sender, clock);
 
         // ===== Phase 2: Random consumption (no abort past this point) =====
         let mine_positions = sample_mine_positions(r, mine_count, ctx);
         let revealed = init_revealed_vector();
         let now = clock::timestamp_ms(clock);
 
-        let session = MinesSession {
+        let mut session = MinesSession {
             id: object::new(ctx),
             player: sender,
             bet_amount,
@@ -260,10 +341,13 @@ module gostop_mines::mines {
             status: STATUS_ACTIVE,
             created_at: now,
         };
+        dynamic_field::add(&mut session.id, ReservedKey {}, reserved);
         let sid = object::id(&session);
 
         table::add(&mut registry.active_sessions, sender, sid);
         registry.total_sessions = registry.total_sessions + 1;
+        let live = paired_live(&registry.id) + 1;
+        set_paired_live(&mut registry.id, live);
 
         event::emit(SessionCreated {
             session_id: sid,
@@ -300,7 +384,9 @@ module gostop_mines::mines {
             ECellAlreadyRevealed,
         );
 
-        let cap = option::borrow(&registry.game_cap);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let legacy_unit = bankroll_pool::game_cap_max_payout(cap);
         *vector::borrow_mut(&mut session.revealed, cell_index as u64) = true;
 
         let is_mine = vector::contains(&session.mine_positions, &cell_index);
@@ -340,6 +426,7 @@ module gostop_mines::mines {
             table::remove(&mut registry.active_sessions, session.player);
             registry.total_explosions = registry.total_explosions + 1;
 
+            queue_release(registry, &mut session, legacy_unit);
             destroy_session(session);
         } else {
             session.safe_reveals = session.safe_reveals + 1;
@@ -363,7 +450,7 @@ module gostop_mines::mines {
     /// stays bounded even at extreme mine counts where bet * multiplier
     /// would otherwise blow past cap.
     entry fun cashout(
-        session: MinesSession,
+        mut session: MinesSession,
         registry: &mut MinesRegistry,
         pool: &mut BankrollPool,
         clock: &Clock,
@@ -373,14 +460,17 @@ module gostop_mines::mines {
         assert!(session.player == sender, ENotSessionOwner);
         assert!(session.status == STATUS_ACTIVE, ESessionNotActive);
         assert!(session.safe_reveals > 0, ENoSafeReveals);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
 
-        let cap = option::borrow(&registry.game_cap);
+        flush_pending(registry, pool, clock);
+        let reservation = take_reservation(&mut session);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
         let mul_bps = compute_multiplier_bps(session.mine_count, session.safe_reveals);
         let raw_payout = ((session.bet_amount as u128) * (mul_bps as u128) / 10000) as u64;
         let max_payout = bankroll_pool::game_cap_max_payout(cap);
         let payout = if (raw_payout > max_payout) { max_payout } else { raw_payout };
 
-        let coin = bankroll_pool::pay_winner(
+        let coin = bankroll_pool::pay_winner_no_release(
             pool,
             cap,
             payout,
@@ -389,6 +479,13 @@ module gostop_mines::mines {
             ctx,
         );
         transfer::public_transfer(coin, session.player);
+        let paired = option::is_some(&reservation);
+        if (paired) {
+            bankroll_pool::release_exposure(pool, cap, option::destroy_some(reservation), clock);
+        } else {
+            option::destroy_none(reservation);
+            bankroll_pool::release_legacy_exposure(pool, cap, max_payout, clock);
+        };
 
         let sid = object::id(&session);
         let sid_bytes = sui::bcs::to_bytes(&sid);
@@ -414,6 +511,10 @@ module gostop_mines::mines {
 
         table::remove(&mut registry.active_sessions, session.player);
         registry.total_cashouts = registry.total_cashouts + 1;
+        if (paired) {
+            let live = paired_live(&registry.id) - 1;
+            set_paired_live(&mut registry.id, live);
+        };
 
         destroy_session(session);
     }
@@ -430,7 +531,7 @@ module gostop_mines::mines {
     /// 1-session-per-address invariant would lock them out of mines
     /// permanently.
     entry fun forfeit_session(
-        session: MinesSession,
+        mut session: MinesSession,
         registry: &mut MinesRegistry,
         clock: &Clock,
         ctx: &TxContext,
@@ -438,9 +539,10 @@ module gostop_mines::mines {
         let sender = tx_context::sender(ctx);
         assert!(session.player == sender, ENotSessionOwner);
         assert!(session.status == STATUS_ACTIVE, ESessionNotActive);
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
 
-        let cap = option::borrow(&registry.game_cap);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let legacy_unit = bankroll_pool::game_cap_max_payout(cap);
         let sid = object::id(&session);
         let sid_bytes = sui::bcs::to_bytes(&sid);
         let now = clock::timestamp_ms(clock);
@@ -468,10 +570,104 @@ module gostop_mines::mines {
 
         table::remove(&mut registry.active_sessions, session.player);
 
+        queue_release(registry, &mut session, legacy_unit);
         destroy_session(session);
     }
 
     // ===== Internal =====
+
+    /// Take the fields rather than the registry so callers can keep mutating
+    /// the registry's counters while the cap is borrowed.
+    fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
+        dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    }
+
+    fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
+        if (dof::exists_(id, GameCapKey {})) {
+            dof::borrow(id, GameCapKey {})
+        } else {
+            option::borrow(slot)
+        }
+    }
+
+    fun cap_mut(id: &mut UID, slot: &mut Option<GameCap>): &mut GameCap {
+        if (dof::exists_(id, GameCapKey {})) {
+            dof::borrow_mut(id, GameCapKey {})
+        } else {
+            option::borrow_mut(slot)
+        }
+    }
+
+    fun paired_live(id: &UID): u64 {
+        if (dynamic_field::exists_(id, PairedLiveKey {})) {
+            *dynamic_field::borrow<PairedLiveKey, u64>(id, PairedLiveKey {})
+        } else {
+            0
+        }
+    }
+
+    fun set_paired_live(id: &mut UID, val: u64) {
+        if (dynamic_field::exists_(id, PairedLiveKey {})) {
+            *dynamic_field::borrow_mut<PairedLiveKey, u64>(id, PairedLiveKey {}) = val;
+        } else {
+            dynamic_field::add(id, PairedLiveKey {}, val);
+        }
+    }
+
+    /// Remove and return the session's reservation; none for a legacy session.
+    fun take_reservation(session: &mut MinesSession): Option<u64> {
+        if (dynamic_field::exists_(&session.id, ReservedKey {})) {
+            option::some(dynamic_field::remove<ReservedKey, u64>(&mut session.id, ReservedKey {}))
+        } else {
+            option::none()
+        }
+    }
+
+    fun push_pending<K: copy + drop + store>(id: &mut UID, key: K, amount: u64) {
+        if (dynamic_field::exists_(id, key)) {
+            vector::push_back(dynamic_field::borrow_mut<K, vector<u64>>(id, key), amount);
+        } else {
+            dynamic_field::add(id, key, vector[amount]);
+        }
+    }
+
+    fun take_pending<K: copy + drop + store>(id: &mut UID, key: K): vector<u64> {
+        if (dynamic_field::exists_(id, key)) {
+            dynamic_field::remove<K, vector<u64>>(id, key)
+        } else {
+            vector[]
+        }
+    }
+
+    /// Queue the release of a session that ended without a payout. A legacy
+    /// session queues `legacy_unit`, the max_single_payout its `collect_bet`
+    /// reserved.
+    fun queue_release(registry: &mut MinesRegistry, session: &mut MinesSession, legacy_unit: u64) {
+        let reservation = take_reservation(session);
+        if (option::is_some(&reservation)) {
+            push_pending(&mut registry.id, PendingReleasesKey {}, option::destroy_some(reservation));
+            let live = paired_live(&registry.id) - 1;
+            set_paired_live(&mut registry.id, live);
+        } else {
+            option::destroy_none(reservation);
+            push_pending(&mut registry.id, PendingLegacyReleasesKey {}, legacy_unit);
+        }
+    }
+
+    /// One release per queued session, so reserve and release counts still
+    /// pair one to one.
+    fun flush_pending(registry: &mut MinesRegistry, pool: &mut BankrollPool, clock: &Clock) {
+        let mut paired = take_pending(&mut registry.id, PendingReleasesKey {});
+        let mut legacy = take_pending(&mut registry.id, PendingLegacyReleasesKey {});
+        if (vector::is_empty(&paired) && vector::is_empty(&legacy)) return;
+        let cap = cap_ref(&registry.id, &registry.game_cap);
+        while (!vector::is_empty(&paired)) {
+            bankroll_pool::release_exposure(pool, cap, vector::pop_back(&mut paired), clock);
+        };
+        while (!vector::is_empty(&legacy)) {
+            bankroll_pool::release_legacy_exposure(pool, cap, vector::pop_back(&mut legacy), clock);
+        };
+    }
 
     fun destroy_session(session: MinesSession) {
         let MinesSession {
@@ -590,11 +786,101 @@ module gostop_mines::mines {
     }
 
     public fun is_game_cap_installed(r: &MinesRegistry): bool {
-        option::is_some(&r.game_cap)
+        cap_installed(&r.id, &r.game_cap)
     }
 
     public fun has_active_session(r: &MinesRegistry, player: address): bool {
         table::contains(&r.active_sessions, player)
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx);
+    }
+
+    #[test_only]
+    public fun create_session_for_testing(
+        registry: &mut MinesRegistry,
+        pool: &mut BankrollPool,
+        bet_coin: Coin<NUSDC>,
+        mine_count: u8,
+        r: &Random,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        create_session(registry, pool, bet_coin, mine_count, r, clock, ctx);
+    }
+
+    /// What the pre-upgrade `create_session` left behind: a legacy
+    /// `collect_bet` reservation and a session with no ReservedKey.
+    #[test_only]
+    public fun create_legacy_session_for_testing(
+        registry: &mut MinesRegistry,
+        pool: &mut BankrollPool,
+        bet_coin: Coin<NUSDC>,
+        mine_count: u8,
+        r: &Random,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        let bet_amount = sui::coin::value(&bet_coin);
+        bankroll_pool::collect_bet(pool, cap_ref(&registry.id, &registry.game_cap), bet_coin, sender, clock);
+        let session = MinesSession {
+            id: object::new(ctx),
+            player: sender,
+            bet_amount,
+            mine_count,
+            mine_positions: sample_mine_positions(r, mine_count, ctx),
+            revealed: init_revealed_vector(),
+            safe_reveals: 0,
+            status: STATUS_ACTIVE,
+            created_at: clock::timestamp_ms(clock),
+        };
+        table::add(&mut registry.active_sessions, sender, object::id(&session));
+        transfer::transfer(session, sender);
+    }
+
+    #[test_only]
+    public fun reveal_cell_for_testing(
+        session: MinesSession,
+        registry: &mut MinesRegistry,
+        cell_index: u8,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        reveal_cell(session, registry, cell_index, clock, ctx);
+    }
+
+    #[test_only]
+    public fun cashout_for_testing(
+        session: MinesSession,
+        registry: &mut MinesRegistry,
+        pool: &mut BankrollPool,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        cashout(session, registry, pool, clock, ctx);
+    }
+
+    #[test_only]
+    public fun forfeit_for_testing(
+        session: MinesSession,
+        registry: &mut MinesRegistry,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        forfeit_session(session, registry, clock, ctx);
+    }
+
+    #[test_only]
+    public fun mine_positions_for_testing(s: &MinesSession): vector<u8> {
+        s.mine_positions
+    }
+
+    #[test_only]
+    public fun max_multiplier_bps_for_testing(mine_count: u8): u64 {
+        max_multiplier_bps(mine_count)
     }
 
     // ===== Pure-logic tests =====
