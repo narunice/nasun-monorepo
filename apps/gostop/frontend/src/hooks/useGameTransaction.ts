@@ -166,7 +166,12 @@ export function useGameTransaction() {
           zkLogout();
           userMessage = 'Your session expired (the network was reset). Please log in again.';
         } else if (message.includes('MoveAbort')) {
-          userMessage = options.humanizeMoveAbort?.(message) ?? 'Transaction rejected by smart contract.';
+          // Humanizers hand back the raw text when they have no mapping; a raw
+          // MoveAbort is not a toast, so that case keeps the generic message.
+          const humanized = options.humanizeMoveAbort?.(message);
+          userMessage = humanized && humanized !== message
+            ? humanized
+            : 'Transaction rejected by smart contract.';
         } else if (/is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted|LockConflict|ObjectVersionMismatch/i.test(message)) {
           userMessage = RETRY_HINT;
         } else if (message.includes('GasBalanceTooLow') || /Balance of gas object.*lower than the needed amount/i.test(message)) {

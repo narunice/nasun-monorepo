@@ -560,8 +560,9 @@ module bankroll_pool::bankroll_pool {
         // per-game reserve/release counts.
         assert!(unit > 0 && count > 0, EInvalidAmount);
         assert!(unit <= cap.max_single_payout, EReserveExceedsCap);
-        // Checked, so an absurd count aborts with a code rather than an
-        // arithmetic error.
+        // Checked, so a count that overflows the product aborts with a code.
+        // The sums below stay unchecked: they would need more than 1.8e13
+        // NUSDC of open exposure to overflow.
         let total = (unit as u128) * (count as u128);
         assert!(total <= (U64_MAX as u128), EInvalidAmount);
         let amount = total as u64;

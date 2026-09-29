@@ -52,8 +52,6 @@ module gostop_scratchcard::scratchcard_ledger_tests {
         scenario
     }
 
-    fun setup_default(): Scenario { setup(100_000_000_000) }
-
     fun buy_rounds(scenario: &mut Scenario, rounds: u64, count: u8) {
         let mut registry = scenario.take_shared<ScratchCardRegistry>();
         let mut pool = scenario.take_shared<BankrollPool>();
@@ -85,14 +83,8 @@ module gostop_scratchcard::scratchcard_ledger_tests {
     }
 
     #[test]
-    fun test_single_rounds_pair_after_cap_move() {
+    fun test_single_rounds_pair() {
         let mut scenario = setup(100_000_000_000);
-        let admin = scenario.take_from_sender<AdminCap>();
-        let mut registry = scenario.take_shared<ScratchCardRegistry>();
-        scratchcard::move_game_cap_to_field(&admin, &mut registry);
-        ts::return_shared(registry);
-        scenario.return_to_sender(admin);
-        scenario.next_tx(SYSTEM);
         buy_rounds(&mut scenario, 60, 1);
         ts::end(scenario);
     }
@@ -115,53 +107,71 @@ module gostop_scratchcard::scratchcard_ledger_tests {
         ts::end(scenario);
     }
 
-    // ---- legacy slot seal ----
+    // ---- legacy seals ----
 
-    /// Move the live cap out, then issue a second cap for the same game and
-    /// optionally revoke it, returning it for the seal.
-    fun moved_with_sentinel(scenario: &mut Scenario, revoke: bool): GameCap {
-        let admin = scenario.take_from_sender<AdminCap>();
-        let mut registry = scenario.take_shared<ScratchCardRegistry>();
-        scratchcard::move_game_cap_to_field(&admin, &mut registry);
-        ts::return_shared(registry);
-        scenario.return_to_sender(admin);
+    fun sentinel(scenario: &mut Scenario, revoke: bool): GameCap {
         let bp_admin = scenario.take_from_sender<BpAdminCap>();
         bp::issue_game_cap(&bp_admin, GAME_ID, b"sentinel", 1, SYSTEM, scenario.ctx());
-        scenario.next_tx(SYSTEM);
-        let mut sentinel = scenario.take_from_sender<GameCap>();
-        if (revoke) {
-            let clk = clock::create_for_testing(scenario.ctx());
-            bp::revoke_game_cap(&bp_admin, &mut sentinel, &clk);
-            clock::destroy_for_testing(clk);
-        };
         scenario.return_to_sender(bp_admin);
         scenario.next_tx(SYSTEM);
-        sentinel
+        let mut cap = scenario.take_from_sender<GameCap>();
+        if (revoke) {
+            let bp_admin = scenario.take_from_sender<BpAdminCap>();
+            let clk = clock::create_for_testing(scenario.ctx());
+            bp::revoke_game_cap(&bp_admin, &mut cap, &clk);
+            clock::destroy_for_testing(clk);
+            scenario.return_to_sender(bp_admin);
+        };
+        scenario.next_tx(SYSTEM);
+        cap
+    }
+
+    fun seal_both(scenario: &mut Scenario) {
+        let slot = sentinel(scenario, true);
+        let field = sentinel(scenario, true);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<ScratchCardRegistry>();
+        scratchcard::seal_legacy_slot(&admin, &mut registry, slot);
+        scratchcard::seal_legacy_field(&admin, &mut registry, field);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+    }
+
+    fun migrate(scenario: &mut Scenario) {
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<ScratchCardRegistry>();
+        scratchcard::migrate(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+    }
+
+    fun stamp(scenario: &mut Scenario, version: u64) {
+        let mut registry = scenario.take_shared<ScratchCardRegistry>();
+        scratchcard::stamp_version_for_testing(&mut registry, version);
+        ts::return_shared(registry);
+        scenario.next_tx(SYSTEM);
     }
 
     #[test]
-    fun test_sealed_slot_keeps_game_running() {
-        let mut scenario = setup_default();
-        let sentinel = moved_with_sentinel(&mut scenario, true);
-        let admin = scenario.take_from_sender<AdminCap>();
-        let mut registry = scenario.take_shared<ScratchCardRegistry>();
-        scratchcard::seal_legacy_slot(&admin, &mut registry, sentinel);
-        assert!(scratchcard::is_game_cap_installed(&registry), 5000);
-        ts::return_shared(registry);
-        scenario.return_to_sender(admin);
-        scenario.next_tx(SYSTEM);
+    fun test_sealed_and_migrated_keeps_selling() {
+        let mut scenario = setup(100_000_000_000);
+        seal_both(&mut scenario);
+        stamp(&mut scenario, 1);
+        migrate(&mut scenario);
         buy_rounds(&mut scenario, 10, 10);
         ts::end(scenario);
     }
 
     #[test]
     #[expected_failure(abort_code = scratchcard::ESentinelNotRevoked)]
-    fun test_seal_rejects_live_cap() {
-        let mut scenario = setup_default();
-        let sentinel = moved_with_sentinel(&mut scenario, false);
+    fun test_seal_field_rejects_live_cap() {
+        let mut scenario = setup(100_000_000_000);
+        let live = sentinel(&mut scenario, false);
         let admin = scenario.take_from_sender<AdminCap>();
         let mut registry = scenario.take_shared<ScratchCardRegistry>();
-        scratchcard::seal_legacy_slot(&admin, &mut registry, sentinel);
+        scratchcard::seal_legacy_field(&admin, &mut registry, live);
         ts::return_shared(registry);
         scenario.return_to_sender(admin);
         ts::end(scenario);
@@ -169,22 +179,33 @@ module gostop_scratchcard::scratchcard_ledger_tests {
 
     #[test]
     #[expected_failure(abort_code = scratchcard::EGameCapAlreadyInstalled)]
-    fun test_sealed_slot_refuses_install() {
-        let mut scenario = setup_default();
-        let sentinel = moved_with_sentinel(&mut scenario, true);
+    fun test_second_install_aborts() {
+        let mut scenario = setup(100_000_000_000);
+        let second = sentinel(&mut scenario, false);
         let admin = scenario.take_from_sender<AdminCap>();
         let mut registry = scenario.take_shared<ScratchCardRegistry>();
-        scratchcard::seal_legacy_slot(&admin, &mut registry, sentinel);
-        ts::return_shared(registry);
-        let bp_admin = scenario.take_from_sender<BpAdminCap>();
-        bp::issue_game_cap(&bp_admin, GAME_ID, b"again", 1, SYSTEM, scenario.ctx());
-        scenario.return_to_sender(bp_admin);
-        scenario.next_tx(SYSTEM);
-        let another = scenario.take_from_sender<GameCap>();
-        let mut registry = scenario.take_shared<ScratchCardRegistry>();
-        scratchcard::install_game_cap(&admin, &mut registry, another);
+        scratchcard::install_game_cap(&admin, &mut registry, second);
         ts::return_shared(registry);
         scenario.return_to_sender(admin);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = scratchcard::ELedgerAlreadyCurrent)]
+    fun test_migrate_twice_aborts() {
+        let mut scenario = setup(100_000_000_000);
+        migrate(&mut scenario);
+        migrate(&mut scenario);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = scratchcard::EWrongVersion)]
+    fun test_later_version_retires_play() {
+        let mut scenario = setup(100_000_000_000);
+        migrate(&mut scenario);
+        stamp(&mut scenario, 3);
+        buy_rounds(&mut scenario, 1, 1);
         ts::end(scenario);
     }
 }

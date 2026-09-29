@@ -84,34 +84,72 @@ module gostop_numbermatch::numbermatch_ledger_tests {
         ts::end(scenario);
     }
 
-    #[test]
-    fun test_plays_after_cap_move_and_seal() {
-        let mut scenario = setup();
-        let admin = scenario.take_from_sender<AdminCap>();
-        let mut registry = scenario.take_shared<NumberMatchRegistry>();
-        numbermatch::move_game_cap_to_field(&admin, &mut registry);
-        ts::return_shared(registry);
-        scenario.return_to_sender(admin);
+    fun sentinel(scenario: &mut Scenario): GameCap {
         let bp_admin = scenario.take_from_sender<BpAdminCap>();
         bp::issue_game_cap(&bp_admin, GAME_ID, b"sentinel", 1, SYSTEM, scenario.ctx());
         scenario.return_to_sender(bp_admin);
         scenario.next_tx(SYSTEM);
-
-        let mut sentinel = scenario.take_from_sender<GameCap>();
+        let mut cap = scenario.take_from_sender<GameCap>();
         let bp_admin = scenario.take_from_sender<BpAdminCap>();
         let clk = clock::create_for_testing(scenario.ctx());
-        bp::revoke_game_cap(&bp_admin, &mut sentinel, &clk);
+        bp::revoke_game_cap(&bp_admin, &mut cap, &clk);
         clock::destroy_for_testing(clk);
         scenario.return_to_sender(bp_admin);
+        scenario.next_tx(SYSTEM);
+        cap
+    }
+
+    fun migrate(scenario: &mut Scenario) {
         let admin = scenario.take_from_sender<AdminCap>();
         let mut registry = scenario.take_shared<NumberMatchRegistry>();
-        numbermatch::seal_legacy_slot(&admin, &mut registry, sentinel);
+        numbermatch::migrate(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+    }
+
+    fun stamp(scenario: &mut Scenario, version: u64) {
+        let mut registry = scenario.take_shared<NumberMatchRegistry>();
+        numbermatch::stamp_version_for_testing(&mut registry, version);
+        ts::return_shared(registry);
+        scenario.next_tx(SYSTEM);
+    }
+
+    #[test]
+    fun test_plays_after_seal_and_migrate() {
+        let mut scenario = setup();
+        let slot = sentinel(&mut scenario);
+        let field = sentinel(&mut scenario);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<NumberMatchRegistry>();
+        numbermatch::seal_legacy_slot(&admin, &mut registry, slot);
+        numbermatch::seal_legacy_field(&admin, &mut registry, field);
         assert!(numbermatch::is_game_cap_installed(&registry), 4000);
         ts::return_shared(registry);
         scenario.return_to_sender(admin);
         scenario.next_tx(SYSTEM);
-
+        stamp(&mut scenario, 1);
+        migrate(&mut scenario);
         play_many(&mut scenario, 12);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = numbermatch::ELedgerAlreadyCurrent)]
+    fun test_migrate_twice_aborts() {
+        let mut scenario = setup();
+        migrate(&mut scenario);
+        migrate(&mut scenario);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = numbermatch::EWrongVersion)]
+    fun test_later_version_retires_play() {
+        let mut scenario = setup();
+        migrate(&mut scenario);
+        stamp(&mut scenario, 3);
+        play_many(&mut scenario, 1);
         ts::end(scenario);
     }
 

@@ -106,6 +106,7 @@ export function useMines(): UseMinesResult {
             return validateMinesConfig(mineCount, MINES_MIN_MINES, MINES_MAX_MINES);
           },
           onSuccess: waitForActiveSession,
+          humanizeMoveAbort: humanizeMinesError,
           onError: (err) => setError(humanizeMinesError(err.message)),
         }
       )
@@ -157,6 +158,7 @@ export function useMines(): UseMinesResult {
               })
             }
           },
+          humanizeMoveAbort: humanizeMinesError,
           onError: (err) => setError(humanizeMinesError(err.message)),
         }
       )
@@ -196,6 +198,7 @@ export function useMines(): UseMinesResult {
           }
           setSession(null)
         },
+        humanizeMoveAbort: humanizeMinesError,
         onError: (err) => setError(humanizeMinesError(err.message)),
       }
     )
@@ -220,6 +223,7 @@ export function useMines(): UseMinesResult {
           setLastFinish({ kind: 'exploded', payout: 0n, bet: session.betAmount })
           setSession(null)
         },
+        humanizeMoveAbort: humanizeMinesError,
         onError: (err) => setError(humanizeMinesError(err.message)),
       }
     )

@@ -280,23 +280,15 @@ module gostop_mines::mines_ledger_tests {
     }
 
     #[test]
-    fun test_cap_move_keeps_sessions_settling() {
+    #[expected_failure(abort_code = mines::EObsolete)]
+    fun test_move_is_obsolete() {
         let mut scenario = setup();
-        open_session(&mut scenario, ALICE, 1, false);
         scenario.next_tx(SYSTEM);
-        {
-            let admin = scenario.take_from_sender<AdminCap>();
-            let mut registry = scenario.take_shared<MinesRegistry>();
-            mines::move_game_cap_to_field(&admin, &mut registry);
-            assert!(mines::is_game_cap_installed(&registry), 60);
-            ts::return_shared(registry);
-            scenario.return_to_sender(admin);
-        };
-        reveal(&mut scenario, ALICE, false);
-        cashout(&mut scenario, ALICE);
-        open_session(&mut scenario, BOB, 1, false);
-        let (game, _, total) = exposure(&mut scenario);
-        assert!(game == one_mine_reserve() && total == game, 61);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<MinesRegistry>();
+        mines::move_game_cap_to_field(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
         ts::end(scenario);
     }
 
@@ -348,32 +340,33 @@ module gostop_mines::mines_ledger_tests {
         ts::end(scenario);
     }
 
+    fun revoked_sentinel(scenario: &mut Scenario): GameCap {
+        scenario.next_tx(SYSTEM);
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        bp::issue_game_cap(&bp_admin, GAME_ID, b"sentinel", 1, SYSTEM, scenario.ctx());
+        scenario.return_to_sender(bp_admin);
+        scenario.next_tx(SYSTEM);
+        let mut cap = scenario.take_from_sender<GameCap>();
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        bp::revoke_game_cap(&bp_admin, &mut cap, &clk);
+        clock::destroy_for_testing(clk);
+        scenario.return_to_sender(bp_admin);
+        cap
+    }
+
     #[test]
-    fun test_sealed_slot_keeps_sessions_settling() {
+    fun test_sealed_legacy_keeps_sessions_settling() {
         let mut scenario = setup();
         open_session(&mut scenario, ALICE, 1, false);
+        let slot = revoked_sentinel(&mut scenario);
+        let field = revoked_sentinel(&mut scenario);
         scenario.next_tx(SYSTEM);
         {
             let admin = scenario.take_from_sender<AdminCap>();
             let mut registry = scenario.take_shared<MinesRegistry>();
-            mines::move_game_cap_to_field(&admin, &mut registry);
-            ts::return_shared(registry);
-            scenario.return_to_sender(admin);
-            let bp_admin = scenario.take_from_sender<BpAdminCap>();
-            bp::issue_game_cap(&bp_admin, GAME_ID, b"sentinel", 1, SYSTEM, scenario.ctx());
-            scenario.return_to_sender(bp_admin);
-        };
-        scenario.next_tx(SYSTEM);
-        {
-            let mut sentinel = scenario.take_from_sender<GameCap>();
-            let bp_admin = scenario.take_from_sender<BpAdminCap>();
-            let clk = clock::create_for_testing(scenario.ctx());
-            bp::revoke_game_cap(&bp_admin, &mut sentinel, &clk);
-            clock::destroy_for_testing(clk);
-            scenario.return_to_sender(bp_admin);
-            let admin = scenario.take_from_sender<AdminCap>();
-            let mut registry = scenario.take_shared<MinesRegistry>();
-            mines::seal_legacy_slot(&admin, &mut registry, sentinel);
+            mines::seal_legacy_slot(&admin, &mut registry, slot);
+            mines::seal_legacy_field(&admin, &mut registry, field);
             ts::return_shared(registry);
             scenario.return_to_sender(admin);
         };
@@ -422,10 +415,34 @@ module gostop_mines::mines_ledger_tests {
         scenario.next_tx(SYSTEM);
         {
             let mut registry = scenario.take_shared<MinesRegistry>();
-            mines::stamp_version_for_testing(&mut registry, 2);
+            mines::stamp_version_for_testing(&mut registry, 3);
             ts::return_shared(registry);
         };
         reveal(&mut scenario, ALICE, false);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = mines::EWrongVersion)]
+    fun test_later_version_retires_admin() {
+        let mut scenario = setup();
+        migrate(&mut scenario);
+        scenario.next_tx(SYSTEM);
+        {
+            let mut registry = scenario.take_shared<MinesRegistry>();
+            mines::stamp_version_for_testing(&mut registry, 3);
+            ts::return_shared(registry);
+        };
+        scenario.next_tx(SYSTEM);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        let mut registry = scenario.take_shared<MinesRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        mines::update_max_payout_via_bp_admin(&admin, &bp_admin, &mut registry, 1, &clk);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+        scenario.return_to_sender(bp_admin);
+        scenario.return_to_sender(admin);
         ts::end(scenario);
     }
 }

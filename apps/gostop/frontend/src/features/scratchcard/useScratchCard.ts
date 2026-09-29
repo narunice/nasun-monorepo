@@ -9,7 +9,7 @@ import {
   buildBuyScratchCardsBulk,
 } from './transactions'
 import { useGameTransaction } from '../../hooks/useGameTransaction'
-import { humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
+import { GAME_UNAVAILABLE_MESSAGE, humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
 
 export interface ScratchResult {
   cardId: number
@@ -91,6 +91,7 @@ export function useScratchCard(): UseScratchCardResult {
               })
               .sort((a: any, b: any) => a.bulkIndex - b.bulkIndex)
           },
+          humanizeMoveAbort: humanizeScratchError,
           onError: (err) => setError(humanizeScratchError(err.message)),
         }
       )
@@ -119,7 +120,7 @@ function humanizeScratchError(raw: string): string {
     0: 'Invalid card count (must be 1-10).',
     1: 'Payment amount does not match card price exactly.',
     2: 'Bankroll pool is temporarily low. Try again shortly.',
-    4: STALE_PAGE_MESSAGE,
+    4: GAME_UNAVAILABLE_MESSAGE,
     8: STALE_PAGE_MESSAGE,
   })
   if (abort) return abort

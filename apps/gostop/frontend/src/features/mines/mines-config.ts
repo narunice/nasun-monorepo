@@ -2,7 +2,7 @@ import {
   MINES_GRID_SIZE,
   MINES_HOUSE_EDGE_BPS,
 } from '../../lib/gostop-config'
-import { humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
+import { GAME_UNAVAILABLE_MESSAGE, humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
 
 export const MINES_SESSION_STATUS = {
   ACTIVE: 0,
@@ -23,7 +23,7 @@ export const MINES_ERRORS: Record<number, string> = {
   7: 'Bet too large for this mine count. Reduce bet or mine count.',
   8: 'You already have an active session.',
   9: 'Game cap already installed.',
-  10: STALE_PAGE_MESSAGE,
+  10: GAME_UNAVAILABLE_MESSAGE,
   11: 'Game cap does not match this module.',
   14: STALE_PAGE_MESSAGE,
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { humanizeGameAbort, parseMoveAbort, STALE_PAGE_MESSAGE } from './move-abort';
+import { GAME_UNAVAILABLE_MESSAGE, humanizeGameAbort, parseMoveAbort, STALE_PAGE_MESSAGE } from './move-abort';
 
 // Shapes copied from real devnet aborts.
 const bankrollRevoked =
@@ -23,7 +23,13 @@ describe('humanizeGameAbort', () => {
 
   it('does not read a bankroll code as a game code', () => {
     // The bug this replaces: bankroll 2 rendered as the game's own 2.
-    expect(humanizeGameAbort(bankrollRevoked, 'numbermatch', nm)).toBe(STALE_PAGE_MESSAGE);
+    expect(humanizeGameAbort(bankrollRevoked, 'numbermatch', nm)).toBe(GAME_UNAVAILABLE_MESSAGE);
+  });
+
+  it('keeps the refresh promise to real version mismatches', () => {
+    // A revoked cap also happens on a current page, so it must not promise
+    // that a refresh fixes it; only a wrong ledger version is a stale tab.
+    expect(GAME_UNAVAILABLE_MESSAGE).not.toBe(STALE_PAGE_MESSAGE);
   });
 
   it('maps the game module through its own table', () => {

@@ -3,7 +3,7 @@ import { useActiveAddress } from '../../hooks/useActiveAddress';
 import { WHEEL_RESULT_EVENT_TYPE } from '../../lib/gostop-config';
 import { useGameTransaction } from '../../hooks/useGameTransaction';
 import { buildSpinTx } from './transactions';
-import { humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort';
+import { GAME_UNAVAILABLE_MESSAGE, humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort';
 
 export interface WheelResult {
   gameId: number;
@@ -71,6 +71,7 @@ export function useWheel(): UseWheelResult {
               txDigest: txResult.digest,
             };
           },
+          humanizeMoveAbort: humanizeWheelError,
           onError: (err) => setError(humanizeWheelError(err.message)),
         },
       );
@@ -99,7 +100,7 @@ function humanizeWheelError(raw: string): string {
     0: 'Wheel is paused. Try again later.',
     1: 'Bet out of range (1-100 NUSDC).',
     2: 'Bankroll pool is temporarily low. Try again shortly.',
-    4: STALE_PAGE_MESSAGE,
+    4: GAME_UNAVAILABLE_MESSAGE,
     8: STALE_PAGE_MESSAGE,
   });
   if (abort) return abort;

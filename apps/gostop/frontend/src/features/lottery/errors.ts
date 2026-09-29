@@ -7,6 +7,8 @@
  * The trailing integer (here `21`) is the abort code we map.
  */
 
+import { humanizeGameAbort } from '../../lib/move-abort'
+
 const LOTTERY_ABORT_MAP: Record<number, string> = {
   0: 'Round is not open for ticket purchases.',
   1: 'Round must be closed before this action.',
@@ -37,16 +39,6 @@ const LOTTERY_ABORT_MAP: Record<number, string> = {
   28: 'GameCap does not match this game.',
 }
 
-const BANKROLL_ABORT_MAP: Record<number, string> = {
-  1: 'Bankroll pool is paused.',
-  2: 'Withdraw must be requested before redeeming liquidity.',
-  3: 'Withdraw cooldown is still active. Wait 24 hours after requesting.',
-  4: 'Liquidity provided is below the minimum (10 NUSDC).',
-  5: 'Insufficient liquidity in the pool.',
-  6: 'Payout exceeds the per-call cap for this game.',
-  7: 'GameCap has been revoked.',
-  8: 'GameCap mismatch.',
-}
 
 /**
  * Best-effort parse of a Sui transaction error string into something users
@@ -67,18 +59,13 @@ export function humanizeLotteryError(rawMessage: string): string {
     return 'Not enough NASUN for gas. Please top up your wallet and try again.'
   }
 
-  // MoveAbort(... , N) in command M — two patterns cover known SDK serialization formats
-  const m = rawMessage.match(/MoveAbort.*?(\w+)\s*"\s*\}.*?,\s*(\d+)\s*\)/i)
-    || rawMessage.match(/Identifier\("?(\w+)"?\).*?,\s*(\d+)\s*\)/i)
-  if (m) {
-    const moduleName = m[1].toLowerCase()
-    const code = Number(m[2])
-    const map = moduleName.includes('bankroll') ? BANKROLL_ABORT_MAP : LOTTERY_ABORT_MAP
-    if (code in map) return map[code]
-  }
+  const abort = humanizeGameAbort(rawMessage, 'lottery', LOTTERY_ABORT_MAP)
+  if (abort) return abort
 
   // Direct number-only fallback (some SDK versions strip the module name).
-  const codeOnly = rawMessage.match(/abort.*?,\s*(\d+)\s*\)/i)
+  // Only when the module is genuinely missing: with a module present, a bare
+  // code match would read another module's code (bankroll_pool's) as ours.
+  const codeOnly = /Identifier\(/.test(rawMessage) ? null : rawMessage.match(/abort.*?,\s*(\d+)\s*\)/i)
   if (codeOnly) {
     const code = Number(codeOnly[1])
     if (code in LOTTERY_ABORT_MAP) return LOTTERY_ABORT_MAP[code]

@@ -71,15 +71,16 @@ module gostop_scratchcard::scratchcard {
     const ESentinelNotRevoked: u64 = 7;
     const EWrongVersion: u64 = 8;
     const ELedgerAlreadyCurrent: u64 = 9;
+    const EObsolete: u64 = 10;
 
     /// Bumped by every upgrade that must retire the one before it.
-    const LEDGER_VERSION: u64 = 1;
+    const LEDGER_VERSION: u64 = 2;
 
     // ===== Dynamic Field Keys =====
 
-    /// Where the GameCap lives once `move_game_cap_to_field` has run. The
-    /// pre-upgrade code only knows the `game_cap` option, so emptying it is
-    /// what stops that code from selling cards under the unpaired ledger.
+    /// Where the first ledger version kept the GameCap. Since ledger version 2
+    /// it holds a revoked sentinel (`seal_legacy_field`), so that version's
+    /// code finds a dead cap here and its cap-moving entry point aborts.
     public struct GameCapKey has copy, drop, store {}
 
     /// Where the live GameCap sits once `migrate` has run. Every earlier
@@ -162,49 +163,31 @@ module gostop_scratchcard::scratchcard {
         registry: &mut ScratchCardRegistry,
         cap: GameCap,
     ) {
-        assert!(!cap_installed(&registry.id, &registry.game_cap), EGameCapAlreadyInstalled);
+        assert_current(&registry.id);
+        assert!(!cap_installed(&registry.id), EGameCapAlreadyInstalled);
         assert!(
             bankroll_pool::game_cap_id(&cap) == GAME_ID_SELF,
             EGameCapMismatch,
         );
-        option::fill(&mut registry.game_cap, cap);
+        dof::add(&mut registry.id, LiveCapKey {}, cap);
     }
 
-    /// Move the installed GameCap out of the `game_cap` option into a
-    /// dynamic object field. The current code reads either place; the
-    /// pre-upgrade code aborts with EGameCapNotInstalled once the option is
-    /// empty, so every card from then on reserves through the paired ledger.
-    /// Run after the frontend calls the upgraded package.
+    /// Obsolete since ledger version 1 moved every cap to LiveCapKey. Kept only
+    /// because a compatible upgrade cannot remove a public function.
     public entry fun move_game_cap_to_field(
         _admin: &AdminCap,
-        registry: &mut ScratchCardRegistry,
+        _registry: &mut ScratchCardRegistry,
     ) {
-        assert!(!dof::exists_(&registry.id, LiveCapKey {}), EGameCapAlreadyInstalled);
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
-        let cap = option::extract(&mut registry.game_cap);
-        dof::add(&mut registry.id, GameCapKey {}, cap);
+        abort EObsolete
     }
 
-    /// Retire every earlier version of this module. Moves the live GameCap
-    /// to LiveCapKey, where neither the pre-ledger code nor the ledger code
-    /// before this one can see it, and stamps LEDGER_VERSION, which every
-    /// entry point of this version checks. Run once the frontend calls this
-    /// package; until then this version reads the cap wherever it is.
+    /// Retire every earlier version of this module by stamping LEDGER_VERSION,
+    /// which every entry point of this version checks. Run once the frontend
+    /// calls this package; until then this version runs on the older stamp.
     public entry fun migrate(
         _admin: &AdminCap,
         registry: &mut ScratchCardRegistry,
     ) {
-        if (dof::exists_(&registry.id, GameCapKey {})) {
-            let cap: GameCap = dof::remove(&mut registry.id, GameCapKey {});
-            dof::add(&mut registry.id, LiveCapKey {}, cap);
-        } else if (
-            option::is_some(&registry.game_cap)
-                && !bankroll_pool::game_cap_revoked(option::borrow(&registry.game_cap))
-        ) {
-            // Never moved out of the option. A revoked sentinel there stays put.
-            let cap = option::extract(&mut registry.game_cap);
-            dof::add(&mut registry.id, LiveCapKey {}, cap);
-        };
         assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
         if (sui::dynamic_field::exists_(&registry.id, VersionKey {})) {
             let stamped: &mut u64 = sui::dynamic_field::borrow_mut(&mut registry.id, VersionKey {});
@@ -215,22 +198,38 @@ module gostop_scratchcard::scratchcard {
         }
     }
 
+    /// Park a revoked GameCap in GameCapKey, the field the ledger code before
+    /// LiveCapKey read. With it occupied, that code's move_game_cap_to_field
+    /// aborts instead of emptying the `game_cap` option (which would let the
+    /// pre-ledger install_game_cap take a live cap again), and anything else it
+    /// tries with the cap aborts on the revocation.
+    public entry fun seal_legacy_field(
+        _admin: &AdminCap,
+        registry: &mut ScratchCardRegistry,
+        sentinel: GameCap,
+    ) {
+        assert_current(&registry.id);
+        assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
+        assert!(!dof::exists_(&registry.id, GameCapKey {}), EGameCapAlreadyInstalled);
+        assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
+        assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
+        dof::add(&mut registry.id, GameCapKey {}, sentinel);
+    }
+
     /// Park a revoked GameCap in the emptied `game_cap` option. The
     /// pre-upgrade code reads only that option: once it holds a revoked cap,
     /// its install_game_cap aborts on the occupied slot and every bet, payout
     /// or release it attempts aborts on the revocation (only moves that touch
     /// no bankroll call, such as a safe mines reveal, still pass), so no stale
-    /// script or config can bring the unpaired path back. The live cap stays in the dynamic object
-    /// field, which is all the current code reads.
+    /// script or config can bring the unpaired path back. The live cap stays in
+    /// LiveCapKey, which is all the current code reads.
     public entry fun seal_legacy_slot(
         _admin: &AdminCap,
         registry: &mut ScratchCardRegistry,
         sentinel: GameCap,
     ) {
-        assert!(
-            dof::exists_(&registry.id, LiveCapKey {}) || dof::exists_(&registry.id, GameCapKey {}),
-            EGameCapNotInstalled,
-        );
+        assert_current(&registry.id);
+        assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
         assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
         assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
         assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
@@ -286,7 +285,7 @@ module gostop_scratchcard::scratchcard {
         ctx: &mut TxContext,
     ) {
         assert_current(&registry.id);
-        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id), EGameCapNotInstalled);
 
         // ===== Phase 1: Pre-random assertions =====
         let required_payment = CARD_PRICE * (count as u64);
@@ -303,14 +302,15 @@ module gostop_scratchcard::scratchcard {
             EInsufficientBankroll,
         );
 
-        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let cap = cap_ref(&registry.id);
         let sender = tx_context::sender(ctx);
 
         // Every card can pay once, up to MAX_PRIZE, so the round reserves
         // MAX_PRIZE per card, booked as one batch and released as one total.
         // Taken before any random is drawn, so a utilization cap rejects the
         // buy instead of aborting mid-round.
-        bankroll_pool::reserve_exposure_batch(pool, cap, MAX_PRIZE, count as u64, clock);
+        let cards = count as u64;
+        bankroll_pool::reserve_exposure_batch(pool, cap, MAX_PRIZE, cards, clock);
 
         // Collect the entire bulk payment in one go (analytics attribute
         // the full amount to a single tx).
@@ -383,36 +383,32 @@ module gostop_scratchcard::scratchcard {
         };
 
         // Released whole, winners and losers alike.
-        bankroll_pool::release_exposure(pool, cap, worst_case_payout, clock);
+        bankroll_pool::release_exposure(pool, cap, MAX_PRIZE * cards, clock);
     }
 
     // ===== Internal =====
 
-    /// Takes the two fields rather than the registry so callers can keep
-    /// mutating the registry's counters while the cap is borrowed.
-    fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
-        dof::exists_(id, LiveCapKey {}) || dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    /// Take the UID rather than the registry so callers can keep mutating the
+    /// registry's counters while the cap is borrowed.
+    fun cap_installed(id: &UID): bool {
+        dof::exists_(id, LiveCapKey {})
     }
 
-    /// Abort unless the registry is stamped for this version, or not stamped
-    /// yet (between this upgrade and its `migrate`).
+    /// Abort once a later version's `migrate` has stamped the registry past
+    /// this one. An older stamp is accepted, so this version already runs
+    /// between its upgrade and its own `migrate` and the frontend can switch
+    /// over before the stamp retires the version it replaces.
     fun assert_current(id: &UID) {
         if (sui::dynamic_field::exists_(id, VersionKey {})) {
             assert!(
-                *sui::dynamic_field::borrow<VersionKey, u64>(id, VersionKey {}) == LEDGER_VERSION,
+                *sui::dynamic_field::borrow<VersionKey, u64>(id, VersionKey {}) <= LEDGER_VERSION,
                 EWrongVersion,
             );
         }
     }
 
-    fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
-        if (dof::exists_(id, LiveCapKey {})) {
-            dof::borrow(id, LiveCapKey {})
-        } else if (dof::exists_(id, GameCapKey {})) {
-            dof::borrow(id, GameCapKey {})
-        } else {
-            option::borrow(slot)
-        }
+    fun cap_ref(id: &UID): &GameCap {
+        dof::borrow(id, LiveCapKey {})
     }
 
     // ===== Prize Table =====
@@ -444,7 +440,7 @@ module gostop_scratchcard::scratchcard {
     }
 
     public fun is_game_cap_installed(registry: &ScratchCardRegistry): bool {
-        cap_installed(&registry.id, &registry.game_cap)
+        cap_installed(&registry.id)
     }
 
     /// Prize table for on-chain auditing. Pairs (threshold, multiplier):

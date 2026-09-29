@@ -6,7 +6,7 @@ import {
 } from '../../lib/gostop-config'
 import { buildPlayGame } from './transactions'
 import { useGameTransaction } from '../../hooks/useGameTransaction'
-import { humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
+import { GAME_UNAVAILABLE_MESSAGE, humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
 
 export interface NumberMatchResult {
   gameId: number
@@ -67,6 +67,7 @@ export function useNumberMatch(): UseNumberMatchResult {
               payout: BigInt(pj.payout),
             }
           },
+          humanizeMoveAbort: humanizeNmError,
           onError: (err) => setError(humanizeNmError(err.message)),
         }
       )
@@ -96,7 +97,7 @@ function humanizeNmError(raw: string): string {
     2: 'Duplicate number in picks.',
     3: 'Payment amount does not match cost exactly.',
     4: 'Bankroll pool is temporarily low. Try again shortly.',
-    6: STALE_PAGE_MESSAGE,
+    6: GAME_UNAVAILABLE_MESSAGE,
     10: STALE_PAGE_MESSAGE,
   })
   if (abort) return abort

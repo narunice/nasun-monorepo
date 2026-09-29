@@ -80,18 +80,19 @@ module gostop_mines::mines {
     const ESentinelNotRevoked: u64 = 13;
     const EWrongVersion: u64 = 14;
     const ELedgerAlreadyCurrent: u64 = 15;
+    const EObsolete: u64 = 16;
 
     /// Bumped by every upgrade that must retire the one before it.
-    const LEDGER_VERSION: u64 = 1;
+    const LEDGER_VERSION: u64 = 2;
 
     // ===== Dynamic Field Keys =====
 
     /// Key for the per-game max bet limit stored on MinesRegistry.
     public struct MaxBetKey has copy, drop, store {}
 
-    /// Where the GameCap lives once `move_game_cap_to_field` has run. The
-    /// pre-upgrade code only knows the `game_cap` option, so emptying it is
-    /// what stops that code from opening sessions under the unpaired ledger.
+    /// Where the first ledger version kept the GameCap. Since ledger version 2
+    /// it holds a revoked sentinel (`seal_legacy_field`), so that version's
+    /// code finds a dead cap here and its cap-moving entry point aborts.
     public struct GameCapKey has copy, drop, store {}
 
     /// Where the live GameCap sits once `migrate` has run. Every earlier
@@ -213,12 +214,13 @@ module gostop_mines::mines {
         registry: &mut MinesRegistry,
         cap: GameCap,
     ) {
-        assert!(!cap_installed(&registry.id, &registry.game_cap), EGameCapAlreadyInstalled);
+        assert_current(&registry.id);
+        assert!(!cap_installed(&registry.id), EGameCapAlreadyInstalled);
         assert!(
             bankroll_pool::game_cap_id(&cap) == GAME_ID_SELF,
             EGameCapMismatch,
         );
-        option::fill(&mut registry.game_cap, cap);
+        dof::add(&mut registry.id, LiveCapKey {}, cap);
     }
 
     /// Set the per-bet upper limit enforced in create_session.
@@ -229,6 +231,7 @@ module gostop_mines::mines {
         registry: &mut MinesRegistry,
         new_max: u64,
     ) {
+        assert_current(&registry.id);
         if (dynamic_field::exists_(&registry.id, MaxBetKey {})) {
             *dynamic_field::borrow_mut<MaxBetKey, u64>(&mut registry.id, MaxBetKey {}) = new_max;
         } else {
@@ -247,47 +250,28 @@ module gostop_mines::mines {
         new_max: u64,
         clock: &Clock,
     ) {
-        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
-        let cap = cap_mut(&mut registry.id, &mut registry.game_cap);
+        assert_current(&registry.id);
+        assert!(cap_installed(&registry.id), EGameCapNotInstalled);
+        let cap = cap_mut(&mut registry.id);
         bankroll_pool::update_max_payout(bp_admin, cap, new_max, clock);
     }
 
-    /// Move the installed GameCap out of the `game_cap` option into a
-    /// dynamic object field. The current code reads either place; the
-    /// pre-upgrade code aborts with EGameCapNotInstalled once the option is
-    /// empty, so from then on every session is opened, and every legacy
-    /// session settled, by the paired code. Run after the frontend calls the
-    /// upgraded package.
+    /// Obsolete since ledger version 1 moved every cap to LiveCapKey. Kept only
+    /// because a compatible upgrade cannot remove a public function.
     public entry fun move_game_cap_to_field(
         _admin: &AdminCap,
-        registry: &mut MinesRegistry,
+        _registry: &mut MinesRegistry,
     ) {
-        assert!(!dof::exists_(&registry.id, LiveCapKey {}), EGameCapAlreadyInstalled);
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
-        let cap = option::extract(&mut registry.game_cap);
-        dof::add(&mut registry.id, GameCapKey {}, cap);
+        abort EObsolete
     }
 
-    /// Retire every earlier version of this module. Moves the live GameCap
-    /// to LiveCapKey, where neither the pre-ledger code nor the ledger code
-    /// before this one can see it, and stamps LEDGER_VERSION, which every
-    /// entry point of this version checks. Run once the frontend calls this
-    /// package; until then this version reads the cap wherever it is.
+    /// Retire every earlier version of this module by stamping LEDGER_VERSION,
+    /// which every entry point of this version checks. Run once the frontend
+    /// calls this package; until then this version runs on the older stamp.
     public entry fun migrate(
         _admin: &AdminCap,
         registry: &mut MinesRegistry,
     ) {
-        if (dof::exists_(&registry.id, GameCapKey {})) {
-            let cap: GameCap = dof::remove(&mut registry.id, GameCapKey {});
-            dof::add(&mut registry.id, LiveCapKey {}, cap);
-        } else if (
-            option::is_some(&registry.game_cap)
-                && !bankroll_pool::game_cap_revoked(option::borrow(&registry.game_cap))
-        ) {
-            // Never moved out of the option. A revoked sentinel there stays put.
-            let cap = option::extract(&mut registry.game_cap);
-            dof::add(&mut registry.id, LiveCapKey {}, cap);
-        };
         assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
         if (sui::dynamic_field::exists_(&registry.id, VersionKey {})) {
             let stamped: &mut u64 = sui::dynamic_field::borrow_mut(&mut registry.id, VersionKey {});
@@ -298,22 +282,38 @@ module gostop_mines::mines {
         }
     }
 
+    /// Park a revoked GameCap in GameCapKey, the field the ledger code before
+    /// LiveCapKey read. With it occupied, that code's move_game_cap_to_field
+    /// aborts instead of emptying the `game_cap` option (which would let the
+    /// pre-ledger install_game_cap take a live cap again), and anything else it
+    /// tries with the cap aborts on the revocation.
+    public entry fun seal_legacy_field(
+        _admin: &AdminCap,
+        registry: &mut MinesRegistry,
+        sentinel: GameCap,
+    ) {
+        assert_current(&registry.id);
+        assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
+        assert!(!dof::exists_(&registry.id, GameCapKey {}), EGameCapAlreadyInstalled);
+        assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
+        assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
+        dof::add(&mut registry.id, GameCapKey {}, sentinel);
+    }
+
     /// Park a revoked GameCap in the emptied `game_cap` option. The
     /// pre-upgrade code reads only that option: once it holds a revoked cap,
     /// its install_game_cap aborts on the occupied slot and every bet, payout
     /// or release it attempts aborts on the revocation (only moves that touch
     /// no bankroll call, such as a safe mines reveal, still pass), so no stale
-    /// script or config can bring the unpaired path back. The live cap stays in the dynamic object
-    /// field, which is all the current code reads.
+    /// script or config can bring the unpaired path back. The live cap stays in
+    /// LiveCapKey, which is all the current code reads.
     public entry fun seal_legacy_slot(
         _admin: &AdminCap,
         registry: &mut MinesRegistry,
         sentinel: GameCap,
     ) {
-        assert!(
-            dof::exists_(&registry.id, LiveCapKey {}) || dof::exists_(&registry.id, GameCapKey {}),
-            EGameCapNotInstalled,
-        );
+        assert_current(&registry.id);
+        assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
         assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
         assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
         assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
@@ -374,9 +374,9 @@ module gostop_mines::mines {
         ctx: &mut TxContext,
     ) {
         assert_current(&registry.id);
-        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id), EGameCapNotInstalled);
         flush_pending(registry, pool, clock);
-        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let cap = cap_ref(&registry.id);
 
         let sender = tx_context::sender(ctx);
         let bet_amount = sui::coin::value(&bet_coin);
@@ -467,8 +467,8 @@ module gostop_mines::mines {
             ECellAlreadyRevealed,
         );
 
-        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
-        let cap = cap_ref(&registry.id, &registry.game_cap);
+        assert!(cap_installed(&registry.id), EGameCapNotInstalled);
+        let cap = cap_ref(&registry.id);
         *vector::borrow_mut(&mut session.revealed, cell_index as u64) = true;
 
         let is_mine = vector::contains(&session.mine_positions, &cell_index);
@@ -543,11 +543,11 @@ module gostop_mines::mines {
         assert!(session.player == sender, ENotSessionOwner);
         assert!(session.status == STATUS_ACTIVE, ESessionNotActive);
         assert!(session.safe_reveals > 0, ENoSafeReveals);
-        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id), EGameCapNotInstalled);
 
         flush_pending(registry, pool, clock);
         let reservation = take_reservation(&mut session);
-        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let cap = cap_ref(&registry.id);
         let mul_bps = compute_multiplier_bps(session.mine_count, session.safe_reveals);
         let raw_payout = ((session.bet_amount as u128) * (mul_bps as u128) / 10000) as u64;
         let max_payout = bankroll_pool::game_cap_max_payout(cap);
@@ -623,9 +623,9 @@ module gostop_mines::mines {
         let sender = tx_context::sender(ctx);
         assert!(session.player == sender, ENotSessionOwner);
         assert!(session.status == STATUS_ACTIVE, ESessionNotActive);
-        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id), EGameCapNotInstalled);
 
-        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let cap = cap_ref(&registry.id);
         let sid = object::id(&session);
         let sid_bytes = sui::bcs::to_bytes(&sid);
         let now = clock::timestamp_ms(clock);
@@ -659,41 +659,31 @@ module gostop_mines::mines {
 
     // ===== Internal =====
 
-    /// Take the fields rather than the registry so callers can keep mutating
-    /// the registry's counters while the cap is borrowed.
-    fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
-        dof::exists_(id, LiveCapKey {}) || dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    /// Take the UID rather than the registry so callers can keep mutating the
+    /// registry's counters while the cap is borrowed.
+    fun cap_installed(id: &UID): bool {
+        dof::exists_(id, LiveCapKey {})
     }
 
-    /// Abort unless the registry is stamped for this version, or not stamped
-    /// yet (between this upgrade and its `migrate`).
+    /// Abort once a later version's `migrate` has stamped the registry past
+    /// this one. An older stamp is accepted, so this version already runs
+    /// between its upgrade and its own `migrate` and the frontend can switch
+    /// over before the stamp retires the version it replaces.
     fun assert_current(id: &UID) {
         if (sui::dynamic_field::exists_(id, VersionKey {})) {
             assert!(
-                *sui::dynamic_field::borrow<VersionKey, u64>(id, VersionKey {}) == LEDGER_VERSION,
+                *sui::dynamic_field::borrow<VersionKey, u64>(id, VersionKey {}) <= LEDGER_VERSION,
                 EWrongVersion,
             );
         }
     }
 
-    fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
-        if (dof::exists_(id, LiveCapKey {})) {
-            dof::borrow(id, LiveCapKey {})
-        } else if (dof::exists_(id, GameCapKey {})) {
-            dof::borrow(id, GameCapKey {})
-        } else {
-            option::borrow(slot)
-        }
+    fun cap_ref(id: &UID): &GameCap {
+        dof::borrow(id, LiveCapKey {})
     }
 
-    fun cap_mut(id: &mut UID, slot: &mut Option<GameCap>): &mut GameCap {
-        if (dof::exists_(id, LiveCapKey {})) {
-            dof::borrow_mut(id, LiveCapKey {})
-        } else if (dof::exists_(id, GameCapKey {})) {
-            dof::borrow_mut(id, GameCapKey {})
-        } else {
-            option::borrow_mut(slot)
-        }
+    fun cap_mut(id: &mut UID): &mut GameCap {
+        dof::borrow_mut(id, LiveCapKey {})
     }
 
     fun paired_live(id: &UID): u64 {
@@ -743,7 +733,7 @@ module gostop_mines::mines {
         if (dynamic_field::exists_(&registry.id, LegacyUnitKey {})) {
             *dynamic_field::borrow<LegacyUnitKey, u64>(&registry.id, LegacyUnitKey {})
         } else {
-            bankroll_pool::game_cap_max_payout(cap_ref(&registry.id, &registry.game_cap))
+            bankroll_pool::game_cap_max_payout(cap_ref(&registry.id))
         }
     }
 
@@ -768,7 +758,7 @@ module gostop_mines::mines {
         let mut paired = take_pending(&mut registry.id, PendingReleasesKey {});
         let mut legacy = take_pending(&mut registry.id, PendingLegacyReleasesKey {});
         if (vector::is_empty(&paired) && vector::is_empty(&legacy)) return;
-        let cap = cap_ref(&registry.id, &registry.game_cap);
+        let cap = cap_ref(&registry.id);
         while (!vector::is_empty(&paired)) {
             bankroll_pool::release_exposure(pool, cap, vector::pop_back(&mut paired), clock);
         };
@@ -894,7 +884,7 @@ module gostop_mines::mines {
     }
 
     public fun is_game_cap_installed(r: &MinesRegistry): bool {
-        cap_installed(&r.id, &r.game_cap)
+        cap_installed(&r.id)
     }
 
     public fun has_active_session(r: &MinesRegistry, player: address): bool {
@@ -943,7 +933,7 @@ module gostop_mines::mines {
     ) {
         let sender = tx_context::sender(ctx);
         let bet_amount = sui::coin::value(&bet_coin);
-        bankroll_pool::collect_bet(pool, cap_ref(&registry.id, &registry.game_cap), bet_coin, sender, clock);
+        bankroll_pool::collect_bet(pool, cap_ref(&registry.id), bet_coin, sender, clock);
         let session = MinesSession {
             id: object::new(ctx),
             player: sender,
