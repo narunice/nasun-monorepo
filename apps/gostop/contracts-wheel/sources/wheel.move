@@ -72,15 +72,14 @@ module gostop_wheel::wheel {
     /// code finds a dead cap here and its cap-moving entry point aborts.
     public struct GameCapKey has copy, drop, store {}
 
-    /// Where the live GameCap sits once `migrate` has run. Every earlier
-    /// version of this module looks only in GameCapKey or the `game_cap`
-    /// option, so moving the cap here retires all of them at once: they find
-    /// the revoked sentinel in the option and abort.
+    /// Where the live GameCap sits (ledger version 1's migrate moved it here).
+    /// The code before that looks only in GameCapKey or the `game_cap` option,
+    /// and both hold revoked sentinels, so it finds a dead cap and aborts.
     public struct LiveCapKey has copy, drop, store {}
 
     /// u64 on the registry: the ledger version `migrate` last stamped. Every
-    /// entry point asserts it equals LEDGER_VERSION, so the next upgrade only
-    /// has to bump the constant and call `migrate` to retire this code too.
+    /// entry point asserts it is at most LEDGER_VERSION, so the next upgrade
+    /// only has to bump the constant and call `migrate` to retire this code.
     public struct VersionKey has copy, drop, store {}
 
     // ===== Structs =====

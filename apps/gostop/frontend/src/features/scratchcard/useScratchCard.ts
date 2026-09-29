@@ -112,7 +112,7 @@ export function useScratchCard(): UseScratchCardResult {
   }
 }
 
-function humanizeScratchError(raw: string): string {
+export function humanizeScratchError(raw: string): string {
   if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
     return 'Not enough NASUN for gas. Please top up your wallet and try again.'
   }

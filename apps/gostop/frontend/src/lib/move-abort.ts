@@ -11,12 +11,17 @@ export interface MoveAbort {
   code: number;
 }
 
-const ABORT_RE = /MoveAbort\(MoveLocation \{ module: ModuleId \{ address: \w+, name: Identifier\("(\w+)"\) \}[\s\S]*?\},\s*(\d+)\)/;
+// Tolerates the module name with or without quotes, which SDK versions differ on.
+const ABORT_RE = /Identifier\("?(\w+)"?\)[\s\S]*?\},\s*(\d+)\)/;
 
 export function parseMoveAbort(raw: string): MoveAbort | null {
+  if (!raw.includes('MoveAbort')) return null;
   const m = ABORT_RE.exec(raw);
   return m ? { module: m[1]!, code: Number(m[2]) } : null;
 }
+
+/** An abort nobody has a message for. Never show the raw MoveAbort dump. */
+export const GENERIC_ABORT_MESSAGE = 'The game contract rejected this transaction.';
 
 /** A game package the site no longer calls: a stale tab after an upgrade. */
 export const STALE_PAGE_MESSAGE = 'This page is out of date. Refresh to continue.';
@@ -44,17 +49,18 @@ export const BANKROLL_ABORTS: Record<number, string> = {
 };
 
 /**
- * Message for an abort in bankroll_pool or in the calling game module, or null
- * when it is neither, so the caller can fall through to its generic handling.
+ * Message for a MoveAbort: the mapped text for bankroll_pool or the calling
+ * game module, GENERIC_ABORT_MESSAGE for any other abort, or null when `raw`
+ * is not a MoveAbort at all so the caller can handle network and gas errors.
  */
 export function humanizeGameAbort(
   raw: string,
   gameModule: string,
   gameMessages: Record<number, string>,
 ): string | null {
+  if (!raw.includes('MoveAbort')) return null;
   const abort = parseMoveAbort(raw);
-  if (!abort) return null;
-  if (abort.module === 'bankroll_pool') return BANKROLL_ABORTS[abort.code] ?? null;
-  if (abort.module === gameModule) return gameMessages[abort.code] ?? null;
-  return null;
+  if (abort?.module === 'bankroll_pool') return BANKROLL_ABORTS[abort.code] ?? GENERIC_ABORT_MESSAGE;
+  if (abort?.module === gameModule) return gameMessages[abort.code] ?? GENERIC_ABORT_MESSAGE;
+  return GENERIC_ABORT_MESSAGE;
 }

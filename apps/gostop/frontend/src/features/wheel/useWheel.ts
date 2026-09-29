@@ -92,7 +92,7 @@ export function useWheel(): UseWheelResult {
   };
 }
 
-function humanizeWheelError(raw: string): string {
+export function humanizeWheelError(raw: string): string {
   if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
     return 'Not enough NASUN for gas. Top up your wallet and try again.';
   }

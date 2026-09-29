@@ -62,14 +62,5 @@ export function humanizeLotteryError(rawMessage: string): string {
   const abort = humanizeGameAbort(rawMessage, 'lottery', LOTTERY_ABORT_MAP)
   if (abort) return abort
 
-  // Direct number-only fallback (some SDK versions strip the module name).
-  // Only when the module is genuinely missing: with a module present, a bare
-  // code match would read another module's code (bankroll_pool's) as ours.
-  const codeOnly = /Identifier\(/.test(rawMessage) ? null : rawMessage.match(/abort.*?,\s*(\d+)\s*\)/i)
-  if (codeOnly) {
-    const code = Number(codeOnly[1])
-    if (code in LOTTERY_ABORT_MAP) return LOTTERY_ABORT_MAP[code]
-  }
-
   return rawMessage
 }

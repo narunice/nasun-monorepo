@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_UNAVAILABLE_MESSAGE, humanizeGameAbort, parseMoveAbort, STALE_PAGE_MESSAGE } from './move-abort';
+import {
+  GAME_UNAVAILABLE_MESSAGE,
+  GENERIC_ABORT_MESSAGE,
+  humanizeGameAbort,
+  parseMoveAbort,
+  STALE_PAGE_MESSAGE,
+} from './move-abort';
+import { humanizeWheelError } from '../features/wheel/useWheel';
+import { humanizeScratchError } from '../features/scratchcard/useScratchCard';
+import { humanizeNmError } from '../features/numbermatch/useNumberMatch';
+import { humanizeMinesError } from '../features/mines/mines-config';
 
 // Shapes copied from real devnet aborts.
 const bankrollRevoked =
@@ -34,6 +44,33 @@ describe('humanizeGameAbort', () => {
 
   it('maps the game module through its own table', () => {
     expect(humanizeGameAbort(minesTooLarge, 'mines', { 7: 'too large' })).toBe('too large');
-    expect(humanizeGameAbort(minesTooLarge, 'wheel', { 7: 'wrong' })).toBeNull();
+    expect(humanizeGameAbort(minesTooLarge, 'wheel', { 7: 'wrong' })).toBe(GENERIC_ABORT_MESSAGE);
+    expect(humanizeGameAbort('fetch failed', 'wheel', {})).toBeNull();
+  });
+});
+
+// Per-game tables are hand-maintained, so pin each game's stale-version and
+// missing-cap codes to the right message, and an unknown abort to the generic
+// one rather than the raw dump.
+
+const abortIn = (module: string, code: number) =>
+  `MoveAbort(MoveLocation { module: ModuleId { address: 00ff, name: Identifier("${module}") }, function: 1, instruction: 2, function_name: Some("f") }, ${code}) in command 1`;
+
+describe.each([
+  ['wheel', humanizeWheelError, 8, 4],
+  ['scratchcard', humanizeScratchError, 8, 4],
+  ['numbermatch', humanizeNmError, 10, 6],
+  ['mines', humanizeMinesError, 14, 10],
+] as const)('%s humanizer', (module, humanize, wrongVersion, notInstalled) => {
+  it('treats EWrongVersion as a stale page', () => {
+    expect(humanize(abortIn(module, wrongVersion))).toBe(STALE_PAGE_MESSAGE);
+  });
+  it('treats a missing cap as unavailable', () => {
+    expect(humanize(abortIn(module, notInstalled))).toBe(GAME_UNAVAILABLE_MESSAGE);
+    expect(humanize(abortIn('bankroll_pool', 2))).toBe(GAME_UNAVAILABLE_MESSAGE);
+  });
+  it('never returns the raw dump for an unmapped abort', () => {
+    expect(humanize(abortIn(module, 999))).toBe(GENERIC_ABORT_MESSAGE);
+    expect(humanize(abortIn('balance', 2))).toBe(GENERIC_ABORT_MESSAGE);
   });
 });
