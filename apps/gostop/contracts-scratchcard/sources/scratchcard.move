@@ -69,6 +69,11 @@ module gostop_scratchcard::scratchcard {
     const EGameCapMismatch: u64 = 5;
     const EGameCapNotInOption: u64 = 6;
     const ESentinelNotRevoked: u64 = 7;
+    const EWrongVersion: u64 = 8;
+    const ELedgerAlreadyCurrent: u64 = 9;
+
+    /// Bumped by every upgrade that must retire the one before it.
+    const LEDGER_VERSION: u64 = 1;
 
     // ===== Dynamic Field Keys =====
 
@@ -76,6 +81,17 @@ module gostop_scratchcard::scratchcard {
     /// pre-upgrade code only knows the `game_cap` option, so emptying it is
     /// what stops that code from selling cards under the unpaired ledger.
     public struct GameCapKey has copy, drop, store {}
+
+    /// Where the live GameCap sits once `migrate` has run. Every earlier
+    /// version of this module looks only in GameCapKey or the `game_cap`
+    /// option, so moving the cap here retires all of them at once: they find
+    /// the revoked sentinel in the option and abort.
+    public struct LiveCapKey has copy, drop, store {}
+
+    /// u64 on the registry: the ledger version `migrate` last stamped. Every
+    /// entry point asserts it equals LEDGER_VERSION, so the next upgrade only
+    /// has to bump the constant and call `migrate` to retire this code too.
+    public struct VersionKey has copy, drop, store {}
 
     // ===== Structs =====
 
@@ -163,23 +179,58 @@ module gostop_scratchcard::scratchcard {
         _admin: &AdminCap,
         registry: &mut ScratchCardRegistry,
     ) {
+        assert!(!dof::exists_(&registry.id, LiveCapKey {}), EGameCapAlreadyInstalled);
         assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
         let cap = option::extract(&mut registry.game_cap);
         dof::add(&mut registry.id, GameCapKey {}, cap);
     }
 
+    /// Retire every earlier version of this module. Moves the live GameCap
+    /// to LiveCapKey, where neither the pre-ledger code nor the ledger code
+    /// before this one can see it, and stamps LEDGER_VERSION, which every
+    /// entry point of this version checks. Run once the frontend calls this
+    /// package; until then this version reads the cap wherever it is.
+    public entry fun migrate(
+        _admin: &AdminCap,
+        registry: &mut ScratchCardRegistry,
+    ) {
+        if (dof::exists_(&registry.id, GameCapKey {})) {
+            let cap: GameCap = dof::remove(&mut registry.id, GameCapKey {});
+            dof::add(&mut registry.id, LiveCapKey {}, cap);
+        } else if (
+            option::is_some(&registry.game_cap)
+                && !bankroll_pool::game_cap_revoked(option::borrow(&registry.game_cap))
+        ) {
+            // Never moved out of the option. A revoked sentinel there stays put.
+            let cap = option::extract(&mut registry.game_cap);
+            dof::add(&mut registry.id, LiveCapKey {}, cap);
+        };
+        assert!(dof::exists_(&registry.id, LiveCapKey {}), EGameCapNotInstalled);
+        if (sui::dynamic_field::exists_(&registry.id, VersionKey {})) {
+            let stamped: &mut u64 = sui::dynamic_field::borrow_mut(&mut registry.id, VersionKey {});
+            assert!(*stamped < LEDGER_VERSION, ELedgerAlreadyCurrent);
+            *stamped = LEDGER_VERSION;
+        } else {
+            sui::dynamic_field::add(&mut registry.id, VersionKey {}, LEDGER_VERSION);
+        }
+    }
+
     /// Park a revoked GameCap in the emptied `game_cap` option. The
     /// pre-upgrade code reads only that option: once it holds a revoked cap,
-    /// its install_game_cap aborts on the occupied slot and anything it tries
-    /// with the cap aborts on the revocation, so no stale script or config can
-    /// bring the unpaired path back. The live cap stays in the dynamic object
+    /// its install_game_cap aborts on the occupied slot and every bet, payout
+    /// or release it attempts aborts on the revocation (only moves that touch
+    /// no bankroll call, such as a safe mines reveal, still pass), so no stale
+    /// script or config can bring the unpaired path back. The live cap stays in the dynamic object
     /// field, which is all the current code reads.
     public entry fun seal_legacy_slot(
         _admin: &AdminCap,
         registry: &mut ScratchCardRegistry,
         sentinel: GameCap,
     ) {
-        assert!(dof::exists_(&registry.id, GameCapKey {}), EGameCapNotInstalled);
+        assert!(
+            dof::exists_(&registry.id, LiveCapKey {}) || dof::exists_(&registry.id, GameCapKey {}),
+            EGameCapNotInstalled,
+        );
         assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
         assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
         assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
@@ -234,6 +285,7 @@ module gostop_scratchcard::scratchcard {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
+        assert_current(&registry.id);
         assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
 
         // ===== Phase 1: Pre-random assertions =====
@@ -258,7 +310,6 @@ module gostop_scratchcard::scratchcard {
         // MAX_PRIZE per card, booked as one batch and released as one total.
         // Taken before any random is drawn, so a utilization cap rejects the
         // buy instead of aborting mid-round.
-        let reserved = MAX_PRIZE * (count as u64);
         bankroll_pool::reserve_exposure_batch(pool, cap, MAX_PRIZE, count as u64, clock);
 
         // Collect the entire bulk payment in one go (analytics attribute
@@ -332,7 +383,7 @@ module gostop_scratchcard::scratchcard {
         };
 
         // Released whole, winners and losers alike.
-        bankroll_pool::release_exposure(pool, cap, reserved, clock);
+        bankroll_pool::release_exposure(pool, cap, worst_case_payout, clock);
     }
 
     // ===== Internal =====
@@ -340,11 +391,24 @@ module gostop_scratchcard::scratchcard {
     /// Takes the two fields rather than the registry so callers can keep
     /// mutating the registry's counters while the cap is borrowed.
     fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
-        dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+        dof::exists_(id, LiveCapKey {}) || dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    }
+
+    /// Abort unless the registry is stamped for this version, or not stamped
+    /// yet (between this upgrade and its `migrate`).
+    fun assert_current(id: &UID) {
+        if (sui::dynamic_field::exists_(id, VersionKey {})) {
+            assert!(
+                *sui::dynamic_field::borrow<VersionKey, u64>(id, VersionKey {}) == LEDGER_VERSION,
+                EWrongVersion,
+            );
+        }
     }
 
     fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
-        if (dof::exists_(id, GameCapKey {})) {
+        if (dof::exists_(id, LiveCapKey {})) {
+            dof::borrow(id, LiveCapKey {})
+        } else if (dof::exists_(id, GameCapKey {})) {
             dof::borrow(id, GameCapKey {})
         } else {
             option::borrow(slot)
@@ -393,6 +457,16 @@ module gostop_scratchcard::scratchcard {
         ];
         let multipliers = vector[1, 2, 5, 10, 20, 50, 100];
         (thresholds, multipliers)
+    }
+
+    /// Stamp an arbitrary version, standing in for a later upgrade's migrate.
+    #[test_only]
+    public fun stamp_version_for_testing(registry: &mut ScratchCardRegistry, version: u64) {
+        if (sui::dynamic_field::exists_(&registry.id, VersionKey {})) {
+            *sui::dynamic_field::borrow_mut<VersionKey, u64>(&mut registry.id, VersionKey {}) = version;
+        } else {
+            sui::dynamic_field::add(&mut registry.id, VersionKey {}, version);
+        }
     }
 
     #[test_only]

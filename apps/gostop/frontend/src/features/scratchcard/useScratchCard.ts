@@ -9,6 +9,7 @@ import {
   buildBuyScratchCardsBulk,
 } from './transactions'
 import { useGameTransaction } from '../../hooks/useGameTransaction'
+import { humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
 
 export interface ScratchResult {
   cardId: number
@@ -114,12 +115,14 @@ function humanizeScratchError(raw: string): string {
   if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
     return 'Not enough NASUN for gas. Please top up your wallet and try again.'
   }
-  if (raw.includes('MoveAbort')) {
-    if (raw.includes(', 0)')) return 'Invalid card count (must be 1-10).'
-    if (raw.includes(', 1)')) return 'Payment amount does not match card price exactly.'
-    if (raw.includes(', 2)')) return 'Bankroll pool is temporarily low. Try again shortly.'
-    if (raw.includes(', 4)')) return 'Scratch card module is not ready (game cap not installed).'
-  }
+  const abort = humanizeGameAbort(raw, 'scratchcard', {
+    0: 'Invalid card count (must be 1-10).',
+    1: 'Payment amount does not match card price exactly.',
+    2: 'Bankroll pool is temporarily low. Try again shortly.',
+    4: STALE_PAGE_MESSAGE,
+    8: STALE_PAGE_MESSAGE,
+  })
+  if (abort) return abort
   if (
     /is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted/i.test(raw) ||
     /Transaction is rejected as invalid by more than 1\/3 of validators/i.test(raw) ||

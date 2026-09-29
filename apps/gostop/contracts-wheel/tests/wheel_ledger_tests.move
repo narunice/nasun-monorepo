@@ -203,4 +203,80 @@ module gostop_wheel::wheel_ledger_tests {
         scenario.return_to_sender(admin);
         ts::end(scenario);
     }
+
+    // ---- version gate ----
+
+    fun migrate(scenario: &mut Scenario) {
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::migrate(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+    }
+
+    #[test]
+    fun test_migrate_from_option_keeps_spinning() {
+        let mut scenario = setup();
+        migrate(&mut scenario);
+        spin_many(&mut scenario, 10, 50_000_000);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_migrate_from_field_keeps_spinning() {
+        let mut scenario = setup();
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::move_game_cap_to_field(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+        migrate(&mut scenario);
+        spin_many(&mut scenario, 10, 50_000_000);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = wheel::ELedgerAlreadyCurrent)]
+    fun test_migrate_twice_aborts() {
+        let mut scenario = setup();
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::move_game_cap_to_field(&admin, &mut registry);
+        wheel::migrate(&admin, &mut registry);
+        wheel::migrate(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = wheel::EWrongVersion)]
+    fun test_later_version_retires_this_code() {
+        let mut scenario = setup();
+        migrate(&mut scenario);
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::stamp_version_for_testing(&mut registry, 2);
+        ts::return_shared(registry);
+        scenario.next_tx(SYSTEM);
+        spin_many(&mut scenario, 1, 50_000_000);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_migrate_from_live_chain_state() {
+        // Devnet today: live cap in GameCapKey, revoked sentinel in the option.
+        let mut scenario = setup_default();
+        let sentinel = moved_with_sentinel(&mut scenario, true);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::seal_legacy_slot(&admin, &mut registry, sentinel);
+        wheel::migrate(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+        spin_many(&mut scenario, 10, 50_000_000);
+        ts::end(scenario);
+    }
 }

@@ -386,4 +386,46 @@ module gostop_mines::mines_ledger_tests {
         assert!(game == 0 && total == 0, 80);
         ts::end(scenario);
     }
+
+    // ---- version gate ----
+
+    fun migrate(scenario: &mut Scenario) {
+        scenario.next_tx(SYSTEM);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<MinesRegistry>();
+        mines::migrate(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+    }
+
+    #[test]
+    fun test_open_session_settles_across_migrate() {
+        let mut scenario = setup();
+        open_session(&mut scenario, ALICE, 1, false);
+        migrate(&mut scenario);
+        reveal(&mut scenario, ALICE, false);
+        cashout(&mut scenario, ALICE);
+        open_session(&mut scenario, BOB, 3, false);
+        reveal(&mut scenario, BOB, true);
+        flush(&mut scenario);
+        let (game, _, total) = exposure(&mut scenario);
+        assert!(game == 0 && total == 0, 90);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = mines::EWrongVersion)]
+    fun test_later_version_retires_reveal() {
+        let mut scenario = setup();
+        open_session(&mut scenario, ALICE, 1, false);
+        migrate(&mut scenario);
+        scenario.next_tx(SYSTEM);
+        {
+            let mut registry = scenario.take_shared<MinesRegistry>();
+            mines::stamp_version_for_testing(&mut registry, 2);
+            ts::return_shared(registry);
+        };
+        reveal(&mut scenario, ALICE, false);
+        ts::end(scenario);
+    }
 }

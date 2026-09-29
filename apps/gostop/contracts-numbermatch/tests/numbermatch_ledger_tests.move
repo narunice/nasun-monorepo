@@ -17,7 +17,9 @@ module gostop_numbermatch::numbermatch_ledger_tests {
     const CAP_MAX: u64 = 20_000_000;
     const PRICE: u64 = 5_000_000;
 
-    fun setup(): Scenario {
+    fun setup(): Scenario { setup_with(100_000_000_000) }
+
+    fun setup_with(seed: u64): Scenario {
         let mut scenario = ts::begin(SYSTEM);
         random::create_for_testing(scenario.ctx());
         bp::init_for_testing(scenario.ctx());
@@ -40,7 +42,7 @@ module gostop_numbermatch::numbermatch_ledger_tests {
         let cap = scenario.take_from_sender<GameCap>();
         let mut pool = scenario.take_shared<BankrollPool>();
         let clk = clock::create_for_testing(scenario.ctx());
-        bp::treasury_deposit(&mut pool, &cap, coin::mint_for_testing<NUSDC>(100_000_000_000, scenario.ctx()), &clk);
+        bp::treasury_deposit(&mut pool, &cap, coin::mint_for_testing<NUSDC>(seed, scenario.ctx()), &clk);
         clock::destroy_for_testing(clk);
         ts::return_shared(pool);
 
@@ -110,6 +112,50 @@ module gostop_numbermatch::numbermatch_ledger_tests {
         scenario.next_tx(SYSTEM);
 
         play_many(&mut scenario, 12);
+        ts::end(scenario);
+    }
+
+    /// Pool of 200 NUSDC with an 875 bps cap: 17.5 NUSDC of headroom. A two-pick
+    /// play reserves its 17 NUSDC win and fits; reserving the 20 NUSDC cap, as
+    /// the legacy collect_bet did, would not.
+    fun capped(scenario: &mut Scenario) {
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        bp::set_utilization_cap(&bp_admin, &mut pool, 875, &clk);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(bp_admin);
+        scenario.next_tx(SYSTEM);
+    }
+
+    fun play_once(scenario: &mut Scenario, picks: vector<u8>) {
+        let mut registry = scenario.take_shared<NumberMatchRegistry>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let rnd = scenario.take_shared<Random>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        let pay = coin::mint_for_testing<NUSDC>(PRICE * vector::length(&picks), scenario.ctx());
+        numbermatch::play_for_testing(&mut registry, &mut pool, pay, picks, &rnd, &clk, scenario.ctx());
+        clock::destroy_for_testing(clk);
+        ts::return_shared(rnd);
+        ts::return_shared(pool);
+        ts::return_shared(registry);
+    }
+
+    #[test]
+    fun test_reserves_the_win_not_the_cap() {
+        let mut scenario = setup_with(200_000_000);
+        capped(&mut scenario);
+        play_once(&mut scenario, vector[2u8, 4u8]);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EUtilizationCapExceeded)]
+    fun test_three_pick_win_exceeds_the_same_headroom() {
+        let mut scenario = setup_with(200_000_000);
+        capped(&mut scenario);
+        play_once(&mut scenario, vector[1u8, 3u8, 5u8]);
         ts::end(scenario);
     }
 }

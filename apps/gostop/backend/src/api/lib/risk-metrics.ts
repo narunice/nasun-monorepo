@@ -223,8 +223,10 @@ function worstQuality(a: DataQuality, b: DataQuality): DataQuality {
  * mines::reset_legacy_exposure discarded the leak, leaving exactly the legacy
  * mines sessions still open (75 x 2,000 = 150,000 at the reset). On
  * 2026-09-29 numbermatch moved onto the same ledger and every game's legacy
- * slot was sealed with a revoked GameCap, so no code path takes the legacy
- * collect_bet any more. Set it back to false if a game is ever rebound to it.
+ * slot was sealed with a revoked GameCap, so no deployed game takes the
+ * legacy collect_bet any more. crash's source still calls it, but crash has no
+ * v8 deployment; relaunching it needs the same rebind first. Set this back to
+ * false if any game is deployed or rebound onto collect_bet.
  */
 const RESERVATION_LEDGER_PAIRS_EXACTLY: boolean = true;
 

@@ -88,6 +88,8 @@ module bankroll_pool::bankroll_pool {
     const EReserveExceedsCap: u64 = 13;
     const EBelowAttributed: u64 = 14;
 
+    const U64_MAX: u64 = 18_446_744_073_709_551_615;
+
     // ===== Capabilities =====
 
     /// Global admin capability (issued at init to deployer).
@@ -523,10 +525,10 @@ module bankroll_pool::bankroll_pool {
     ///
     /// The reservation unit is a single payout, so the bound is the same
     /// `cap.max_single_payout` that `pay_winner` enforces. A round that can pay
-    /// several times (a scratch card bulk buy) reserves once per payout it can
-    /// make. Every reservation is released by exactly one `release_exposure` of
-    /// the same amount, whatever the outcome, which keeps reserve and release
-    /// counts equal per game.
+    /// several times books all its payouts at once through
+    /// `reserve_exposure_batch`. Every reservation, single or batched, is
+    /// released by exactly one `release_exposure` of the same total, whatever
+    /// the outcome, which keeps reserve and release counts equal per game.
     ///
     /// Call before `collect_bet_no_reserve` so the utilization cap is checked
     /// against the balance without the incoming bet, as `collect_bet` does.
@@ -558,7 +560,11 @@ module bankroll_pool::bankroll_pool {
         // per-game reserve/release counts.
         assert!(unit > 0 && count > 0, EInvalidAmount);
         assert!(unit <= cap.max_single_payout, EReserveExceedsCap);
-        let amount = unit * count;
+        // Checked, so an absurd count aborts with a code rather than an
+        // arithmetic error.
+        let total = (unit as u128) * (count as u128);
+        assert!(total <= (U64_MAX as u128), EInvalidAmount);
+        let amount = total as u64;
 
         let new_open = read_open_exposure(pool) + amount;
         assert_within_utilization_cap(pool, new_open);

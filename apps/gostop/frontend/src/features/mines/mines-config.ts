@@ -2,6 +2,7 @@ import {
   MINES_GRID_SIZE,
   MINES_HOUSE_EDGE_BPS,
 } from '../../lib/gostop-config'
+import { humanizeGameAbort, STALE_PAGE_MESSAGE } from '../../lib/move-abort'
 
 export const MINES_SESSION_STATUS = {
   ACTIVE: 0,
@@ -22,7 +23,9 @@ export const MINES_ERRORS: Record<number, string> = {
   7: 'Bet too large for this mine count. Reduce bet or mine count.',
   8: 'You already have an active session.',
   9: 'Game cap already installed.',
-  10: 'Game cap does not match this module.',
+  10: STALE_PAGE_MESSAGE,
+  11: 'Game cap does not match this module.',
+  14: STALE_PAGE_MESSAGE,
 }
 
 /**
@@ -55,11 +58,8 @@ export function humanizeMinesError(raw: string): string {
   if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
     return 'Not enough NASUN for gas. Please top up your wallet and try again.'
   }
-  if (raw.includes('MoveAbort')) {
-    for (const code of Object.keys(MINES_ERRORS)) {
-      if (raw.includes(`, ${code})`)) return MINES_ERRORS[Number(code)]
-    }
-  }
+  const abort = humanizeGameAbort(raw, 'mines', MINES_ERRORS)
+  if (abort) return abort
   if (
     /is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted/i.test(raw) ||
     /Transaction is rejected as invalid by more than 1\/3 of validators/i.test(raw) ||

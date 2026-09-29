@@ -889,4 +889,20 @@ module bankroll_pool::bankroll_pool_tests {
         scenario.return_to_sender(cap);
         ts::end(scenario);
     }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EInvalidAmount)]
+    fun test_batch_overflow_aborts_with_code() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure_batch(&mut pool, &cap, RESERVE_MAX, 18_446_744_073_709_551_615, &clk);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
 }

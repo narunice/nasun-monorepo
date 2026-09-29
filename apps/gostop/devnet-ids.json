@@ -6,7 +6,9 @@
   "version": "v8-fresh",
   "deployer": "0x98f5339a8d5c6ba1c1478d8b405711c816e13250553a2c20ec8b839abf454a6c",
   "versionNotes": [
-    "bankroll v0.0.7 (current, 2026-09-29) - batch reservation (compatible upgrade, tx 5o3sxkKpRkL64XkYFyhZDobZ9dUdzN2qpmeac3Whwn43):",
+    "bankroll v0.0.8 (current, 2026-09-29) - checked reserve_exposure_batch multiply (tx 5oBRpsszvkZnQH2wETfJ4fmwmnJgkZBWKGeejg4gd8Xo); games gain a ledger version gate (migrate + LEDGER_VERSION) that retires every earlier package version at once.",
+    "",
+    "bankroll v0.0.7 (2026-09-29) - batch reservation (compatible upgrade, tx 5o3sxkKpRkL64XkYFyhZDobZ9dUdzN2qpmeac3Whwn43):",
     "  - reserve_exposure_batch(unit, count): one snapshot for a multi-payout round,",
     "    still bounded per payout. reserve_exposure delegates to it with count 1.",
     "",
@@ -106,7 +108,7 @@
     "tokenFaucet": "0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff"
   },
   "bankrollPool": {
-    "packageId": "0x4e022dd1699614a040cf555d9fdc603bf89047e95224a6a799c04c4645171d5d",
+    "packageId": "0xefbe8c3a8faaca5811351d075d648ed094b70b34e17bfabdad5a2e745f0456bc",
     "originalPackageId": "0xbd90dbc51a4b00e1366ad864817d0611eac2b2df3190fdf0615b97ff60b60da1",
     "bankrollPool": "0xbed633d543e6b3bf932fb91c4238e07e6377ed8e8521e8f67760c2b01c332fd2",
     "adminCap": "0x2d55773e44dc5fd58dce698adbdef4d5eea3651f33bfbf417e98ac2532f82a1f",
@@ -119,13 +121,14 @@
     "upgradeTxDigestV0_0_5": "BDd7meTZnGd97QTjoikKfrW8DyMt6rQDKBrnhMpDRVzw",
     "upgradeTxDigestV0_0_6": "GcMsq2zRk2ka9HghweBj53Y2eCm1Q5mGkPszQP5A3tra",
     "upgradeTxDigestV0_0_7": "5o3sxkKpRkL64XkYFyhZDobZ9dUdzN2qpmeac3Whwn43",
+    "upgradeTxDigestV0_0_8": "5oBRpsszvkZnQH2wETfJ4fmwmnJgkZBWKGeejg4gd8Xo",
     "ledgerCutoverTxDigest": "GPtUqYrwYpCL4XxdNUsKkGXBTF1hjKBmcdcYjT5Xej2g",
     "ledgerCutoverNotes": "2026-09-29: move_game_cap_to_field on wheel, scratch card and mines (pre-upgrade code aborts EGameCapNotInstalled from here) plus mines::reset_legacy_exposure in one PTB. open_exposure 12,652,500 -> 150,000 NUSDC = 75 legacy mines sessions x 2,000.",
     "ledgerSealTxDigest": "E1sLYUQd5pSqjaC893iSVwR1ceqeWjxFvLXKUyVUk3g5",
     "ledgerSealNotes": "2026-09-29: numbermatch move_game_cap_to_field, four revoked sentinel GameCaps (issued in A5UiJy4NKiVuhivEjaKtLAa8Q4J3naT1xnkTkWAAZZbV) sealed into every legacy game_cap slot, mines::reset_legacy_exposure pinning the legacy unit at 2,000 NUSDC (reset delta 0).",
     "seedSharesTxDigest": "",
-    "version": "v0.0.7",
-    "upgradeNotes": "v8 fresh genesis 2026-06-19 (v1 = originalPackageId). v0.0.5 2026-09-28 (v2 0x70cb01f6): reservation ledger primitives. v0.0.6 2026-09-28 (v3 0xa96d94c5): per-game ledger. v0.0.7 2026-09-29 (v4 = packageId): reserve_exposure_batch. No struct change in either, so every event type still tags with originalPackageId.",
+    "version": "v0.0.8",
+    "upgradeNotes": "v8 fresh genesis 2026-06-19 (v1 = originalPackageId). v0.0.5 2026-09-28 (v2 0x70cb01f6): reservation ledger primitives. v0.0.6 2026-09-28 (v3 0xa96d94c5): per-game ledger. v0.0.7 2026-09-29 (v4 0x4e022dd1): reserve_exposure_batch. v0.0.8 2026-09-29 (v5 = packageId): checked batch multiply. No struct change in either, so every event type still tags with originalPackageId.",
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "lottery": {
@@ -157,12 +160,14 @@
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "scratchcard": {
-    "packageId": "0x8082d70bd1b3e040b851a556c034fff8d488979d83065e9298ad8d8039b28e93",
+    "packageId": "0x0f40380b18cfa7ab5a8cbff9b98977c111ca13450349ef7b4ab8cfbcd94244a7",
     "originalPackageId": "0xd04d86674b80196c71a3019fd0efb55e462b56d2b804f37e807aa6333830c286",
     "ledgerUpgradeTxDigest": "BwMn28EfqRXNFxi1RwEjZnDLq4bq6x135hZJvRadLUtW",
     "ledgerUpgradeNotes": "2026-09-28 in-place compatible upgrade onto the bankroll v0.0.6 paired ledger (reserve_exposure / release_exposure). Structs and events unchanged, so types stay on originalPackageId; move_game_cap_to_field retires the pre-upgrade code.",
     "sealUpgradeTxDigest": "AEs8z5ZC7PkhGjE1UgNgtfkvdtCaMzruz6eTHL3cFebv",
     "sealUpgradeNotes": "2026-09-29 one batched reservation per bulk buy; seal_legacy_slot.",
+    "versionGateUpgradeTxDigest": "GP9NPamP5H9dK7xLAP3ruxtgG4txJhmoxyn4FCJkH242",
+    "versionGateNotes": "2026-09-29 LEDGER_VERSION 1: migrate moves the GameCap to LiveCapKey and stamps VersionKey; every entry point asserts it, retiring all earlier package versions.",
     "registry": "0x3df030ad83df6190ebae45984782a557157ecaef971336939df4528c67b4c97d",
     "adminCap": "0xd5beaaa0fbf5a54a624db9715636f04c071d072e1d984d4f47ee9d15b224f45d",
     "upgradeCap": "0x95e0874e7ad9f76d9e0189fc2eb7dda0187e67daf578ea195a456eb359da9e5d",
@@ -181,10 +186,12 @@
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "numbermatch": {
-    "packageId": "0x4ca88e3402610ecded36ca8734adbd9e8ed73a8d3eca3bbd5b9becf04ad39a77",
+    "packageId": "0x93ec4e57a41ac1bed044fab736507dc6709bf01b90b1694baaf1e9edef67f8ea",
     "originalPackageId": "0x8780af96d1accbdb10ccbe3d5102233d95f0883e68d8540c5202028b88711daf",
     "ledgerUpgradeTxDigest": "7BjRWSz58wj4CzPSVkYvzwxSzB9TwqxbZehJBL7h2Jia",
     "ledgerUpgradeNotes": "2026-09-29 in-place compatible upgrade onto the paired ledger (reserve_exposure / release_exposure), move_game_cap_to_field, seal_legacy_slot. Structs and events unchanged.",
+    "versionGateUpgradeTxDigest": "44F64bUovdcZxxJiic345LHXHasU64BDvay2fBbhSGM4",
+    "versionGateNotes": "2026-09-29 LEDGER_VERSION 1: migrate moves the GameCap to LiveCapKey and stamps VersionKey; every entry point asserts it, retiring all earlier package versions.",
     "v2UpgradeTxDigest": "",
     "v2Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "registry": "0x7d65c5970e18d5fc0e3bc8db1665148f703414ec86b0fd7e796b863474da080e",
@@ -204,12 +211,14 @@
     "_v8note": "fresh genesis 2026-06-19; gameCapInstalled PENDING install-gamecap"
   },
   "mines": {
-    "packageId": "0x71f0eccaa863c5b56378a416cd45405b1e0f4b502fff8fb281e621e793312302",
+    "packageId": "0xbaad34fe6f2cfd8f4b0e9c924851ddc8e2df685bbb6cc6998e5ed2730763e6df",
     "originalPackageId": "0x1ba1065558e2495aec9d48e393f39d3086650013e68ef2ff498daa673d68faa4",
     "ledgerUpgradeTxDigest": "3db8XajCTrgQsEUMet3iYbgYcagxotcbPwKPhwcDR7aN",
     "ledgerUpgradeNotes": "2026-09-28 in-place compatible upgrade onto the bankroll v0.0.6 paired ledger (reserve_exposure / release_exposure). Structs and events unchanged, so types stay on originalPackageId; move_game_cap_to_field retires the pre-upgrade code.",
     "sealUpgradeTxDigest": "68kZHv83tdWxrFyYYr8EsbS1bRMHBEXRzLjLgsawrBgG",
     "sealUpgradeNotes": "2026-09-29 legacy unit pinned by reset_legacy_exposure, no cap lookup on safe reveals; seal_legacy_slot.",
+    "versionGateUpgradeTxDigest": "43y6KwqedsjjPtMHkTgsYsHP19bA2hbgRXHnDkVczpZ1",
+    "versionGateNotes": "2026-09-29 LEDGER_VERSION 1: migrate moves the GameCap to LiveCapKey and stamps VersionKey; every entry point asserts it, retiring all earlier package versions.",
     "v5UpgradeTxDigest": "",
     "v5Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "upgradeTxDigest": "",
@@ -270,12 +279,14 @@
     "_v8note": "NOT deployed in v8 (crash shut down indefinitely, CRASH_ENABLED=false). IDs stale v7."
   },
   "wheel": {
-    "packageId": "0xfcdab4b5e3a87bfb525639dbc1ff670e6a9aa87308dd18390d271534331cef58",
+    "packageId": "0x106790450ad697bcaecf8efffbe92468d4856d72db98345b020a2ccdbb03c768",
     "originalPackageId": "0xd7ec44b5ca454914d79a8cdd395e6c746ac9850a95fe616de4de25ef4af4e6cb",
     "ledgerUpgradeTxDigest": "HT1rFG7sJNmKpbRjWBzjDg9C1zr2VKjH27Jt771jtguQ",
     "ledgerUpgradeNotes": "2026-09-28 in-place compatible upgrade onto the bankroll v0.0.6 paired ledger (reserve_exposure / release_exposure). Structs and events unchanged, so types stay on originalPackageId; move_game_cap_to_field retires the pre-upgrade code.",
     "sealUpgradeTxDigest": "DdnmWGBbvWVbYJxb6wa4ivgQmviqpYRL7TDSvzA5aVHd",
     "sealUpgradeNotes": "2026-09-29 seal_legacy_slot.",
+    "versionGateUpgradeTxDigest": "HWqo5cvLDThQmqyx5UNGrDBEHBEqMh9NnrZ1YrWfwQnY",
+    "versionGateNotes": "2026-09-29 LEDGER_VERSION 1: migrate moves the GameCap to LiveCapKey and stamps VersionKey; every entry point asserts it, retiring all earlier package versions.",
     "v2UpgradeTxDigest": "",
     "v2Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "registry": "0x603d0c99600b17cf18cff3b8b67853c85b1ef22297a073262dc0f8485dd7cb83",
