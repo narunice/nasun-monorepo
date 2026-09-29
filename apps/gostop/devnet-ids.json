@@ -121,6 +121,8 @@
     "upgradeTxDigestV0_0_7": "5o3sxkKpRkL64XkYFyhZDobZ9dUdzN2qpmeac3Whwn43",
     "ledgerCutoverTxDigest": "GPtUqYrwYpCL4XxdNUsKkGXBTF1hjKBmcdcYjT5Xej2g",
     "ledgerCutoverNotes": "2026-09-29: move_game_cap_to_field on wheel, scratch card and mines (pre-upgrade code aborts EGameCapNotInstalled from here) plus mines::reset_legacy_exposure in one PTB. open_exposure 12,652,500 -> 150,000 NUSDC = 75 legacy mines sessions x 2,000.",
+    "ledgerSealTxDigest": "E1sLYUQd5pSqjaC893iSVwR1ceqeWjxFvLXKUyVUk3g5",
+    "ledgerSealNotes": "2026-09-29: numbermatch move_game_cap_to_field, four revoked sentinel GameCaps (issued in A5UiJy4NKiVuhivEjaKtLAa8Q4J3naT1xnkTkWAAZZbV) sealed into every legacy game_cap slot, mines::reset_legacy_exposure pinning the legacy unit at 2,000 NUSDC (reset delta 0).",
     "seedSharesTxDigest": "",
     "version": "v0.0.7",
     "upgradeNotes": "v8 fresh genesis 2026-06-19 (v1 = originalPackageId). v0.0.5 2026-09-28 (v2 0x70cb01f6): reservation ledger primitives. v0.0.6 2026-09-28 (v3 0xa96d94c5): per-game ledger. v0.0.7 2026-09-29 (v4 = packageId): reserve_exposure_batch. No struct change in either, so every event type still tags with originalPackageId.",

@@ -221,9 +221,10 @@ function worstQuality(a: DataQuality, b: DataQuality): DataQuality {
  * scratch card and mines were upgraded in place onto it; their GameCaps moved
  * out of the field the pre-upgrade code reads, so that code aborts; and
  * mines::reset_legacy_exposure discarded the leak, leaving exactly the legacy
- * mines sessions still open (75 x 2,000 = 150,000 at the reset). numbermatch
- * still runs the legacy path, which pairs within one transaction. Set it back
- * to false if a game is ever rebound to the unpaired legacy collect_bet.
+ * mines sessions still open (75 x 2,000 = 150,000 at the reset). On
+ * 2026-09-29 numbermatch moved onto the same ledger and every game's legacy
+ * slot was sealed with a revoked GameCap, so no code path takes the legacy
+ * collect_bet any more. Set it back to false if a game is ever rebound to it.
  */
 const RESERVATION_LEDGER_PAIRS_EXACTLY: boolean = true;
 
