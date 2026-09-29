@@ -21,6 +21,7 @@
 module gostop_numbermatch::numbermatch {
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
+    use sui::dynamic_object_field as dof;
     use sui::event;
     use sui::random::{Self, Random};
     use devnet_tokens::nusdc::NUSDC;
@@ -60,6 +61,15 @@ module gostop_numbermatch::numbermatch {
     const EGameCapAlreadyInstalled: u64 = 5;
     const EGameCapNotInstalled: u64 = 6;
     const EGameCapMismatch: u64 = 7;
+    const EGameCapNotInOption: u64 = 8;
+    const ESentinelNotRevoked: u64 = 9;
+
+    // ===== Dynamic Field Keys =====
+
+    /// Where the GameCap lives once `move_game_cap_to_field` has run. The
+    /// pre-upgrade code only knows the `game_cap` option, so emptying it is
+    /// what stops that code from taking bets under the legacy ledger.
+    public struct GameCapKey has copy, drop, store {}
 
     // ===== Structs =====
 
@@ -114,12 +124,44 @@ module gostop_numbermatch::numbermatch {
         registry: &mut NumberMatchRegistry,
         cap: GameCap,
     ) {
-        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(!cap_installed(&registry.id, &registry.game_cap), EGameCapAlreadyInstalled);
         assert!(
             bankroll_pool::game_cap_id(&cap) == GAME_ID_SELF,
             EGameCapMismatch,
         );
         option::fill(&mut registry.game_cap, cap);
+    }
+
+    /// Move the installed GameCap out of the `game_cap` option into a
+    /// dynamic object field. The current code reads either place; the
+    /// pre-upgrade code aborts with EGameCapNotInstalled once the option is
+    /// empty, so every play from then on reserves through the paired ledger.
+    /// Run after the frontend calls the upgraded package.
+    public entry fun move_game_cap_to_field(
+        _admin: &AdminCap,
+        registry: &mut NumberMatchRegistry,
+    ) {
+        assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
+        let cap = option::extract(&mut registry.game_cap);
+        dof::add(&mut registry.id, GameCapKey {}, cap);
+    }
+
+    /// Park a revoked GameCap in the emptied `game_cap` option. The
+    /// pre-upgrade code reads only that option: once it holds a revoked cap,
+    /// its install_game_cap aborts on the occupied slot and anything it tries
+    /// with the cap aborts on the revocation, so no stale script or config can
+    /// bring the legacy path back. The live cap stays in the dynamic object
+    /// field, which is all the current code reads.
+    public entry fun seal_legacy_slot(
+        _admin: &AdminCap,
+        registry: &mut NumberMatchRegistry,
+        sentinel: GameCap,
+    ) {
+        assert!(dof::exists_(&registry.id, GameCapKey {}), EGameCapNotInstalled);
+        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
+        assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
+        option::fill(&mut registry.game_cap, sentinel);
     }
 
     // ===== Core: Play =====
@@ -136,7 +178,7 @@ module gostop_numbermatch::numbermatch {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
+        assert!(cap_installed(&registry.id, &registry.game_cap), EGameCapNotInstalled);
 
         let sender = tx_context::sender(ctx);
         let num_picks = vector::length(&picks);
@@ -175,10 +217,13 @@ module gostop_numbermatch::numbermatch {
             EInsufficientBankroll,
         );
 
-        let cap = option::borrow(&registry.game_cap);
+        let cap = cap_ref(&registry.id, &registry.game_cap);
 
-        // Collect the bet into BankrollPool.
-        bankroll_pool::collect_bet(pool, cap, payment, sender, clock);
+        // A play pays exactly once (the win, or the 20% refund on a loss), so
+        // it reserves the win and releases it below whatever the draw. The
+        // legacy collect_bet reserved the whole max_single_payout instead.
+        bankroll_pool::reserve_exposure(pool, cap, max_payout, clock);
+        bankroll_pool::collect_bet_no_reserve(pool, cap, payment, sender, clock);
 
         // ===== Phase 2: Random consumption (no abort past this point) =====
 
@@ -192,7 +237,7 @@ module gostop_numbermatch::numbermatch {
             num_picks * PAYOUT_PER_PICK // 20% refund on loss
         };
 
-        let payout_coin = bankroll_pool::pay_winner(
+        let payout_coin = bankroll_pool::pay_winner_no_release(
             pool,
             cap,
             payout,
@@ -201,6 +246,7 @@ module gostop_numbermatch::numbermatch {
             ctx,
         );
         transfer::public_transfer(payout_coin, sender);
+        bankroll_pool::release_exposure(pool, cap, max_payout, clock);
 
         let game_id = registry.next_game_id;
         registry.next_game_id = registry.next_game_id + 1;
@@ -245,7 +291,41 @@ module gostop_numbermatch::numbermatch {
     }
 
     public fun is_game_cap_installed(registry: &NumberMatchRegistry): bool {
-        option::is_some(&registry.game_cap)
+        cap_installed(&registry.id, &registry.game_cap)
+    }
+
+    // ===== Internal =====
+
+    /// Takes the two fields rather than the registry so callers can keep
+    /// mutating the registry's counters while the cap is borrowed.
+    fun cap_installed(id: &UID, slot: &Option<GameCap>): bool {
+        dof::exists_(id, GameCapKey {}) || option::is_some(slot)
+    }
+
+    fun cap_ref(id: &UID, slot: &Option<GameCap>): &GameCap {
+        if (dof::exists_(id, GameCapKey {})) {
+            dof::borrow(id, GameCapKey {})
+        } else {
+            option::borrow(slot)
+        }
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx);
+    }
+
+    #[test_only]
+    public fun play_for_testing(
+        registry: &mut NumberMatchRegistry,
+        pool: &mut BankrollPool,
+        payment: Coin<NUSDC>,
+        picks: vector<u8>,
+        r: &Random,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        play_game(registry, pool, payment, picks, r, clock, ctx);
     }
 
     // ===== Pure-logic tests =====

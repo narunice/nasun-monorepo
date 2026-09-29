@@ -52,6 +52,8 @@ module gostop_wheel::wheel_ledger_tests {
         scenario
     }
 
+    fun setup_default(): Scenario { setup() }
+
     fun spin_many(scenario: &mut Scenario, n: u64, bet: u64) {
         let mut registry = scenario.take_shared<WheelRegistry>();
         let mut pool = scenario.take_shared<BankrollPool>();
@@ -124,6 +126,79 @@ module gostop_wheel::wheel_ledger_tests {
         scenario.next_tx(SYSTEM);
         let second = scenario.take_from_sender<GameCap>();
         wheel::install_game_cap(&admin, &mut registry, second);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        ts::end(scenario);
+    }
+
+    // ---- legacy slot seal ----
+
+    /// Move the live cap out, then issue a second cap for the same game and
+    /// optionally revoke it, returning it for the seal.
+    fun moved_with_sentinel(scenario: &mut Scenario, revoke: bool): GameCap {
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::move_game_cap_to_field(&admin, &mut registry);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        bp::issue_game_cap(&bp_admin, GAME_ID, b"sentinel", 1, SYSTEM, scenario.ctx());
+        scenario.next_tx(SYSTEM);
+        let mut sentinel = scenario.take_from_sender<GameCap>();
+        if (revoke) {
+            let clk = clock::create_for_testing(scenario.ctx());
+            bp::revoke_game_cap(&bp_admin, &mut sentinel, &clk);
+            clock::destroy_for_testing(clk);
+        };
+        scenario.return_to_sender(bp_admin);
+        scenario.next_tx(SYSTEM);
+        sentinel
+    }
+
+    #[test]
+    fun test_sealed_slot_keeps_game_running() {
+        let mut scenario = setup_default();
+        let sentinel = moved_with_sentinel(&mut scenario, true);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::seal_legacy_slot(&admin, &mut registry, sentinel);
+        assert!(wheel::is_game_cap_installed(&registry), 5000);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        scenario.next_tx(SYSTEM);
+        spin_many(&mut scenario, 10, 50_000_000);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = wheel::ESentinelNotRevoked)]
+    fun test_seal_rejects_live_cap() {
+        let mut scenario = setup_default();
+        let sentinel = moved_with_sentinel(&mut scenario, false);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::seal_legacy_slot(&admin, &mut registry, sentinel);
+        ts::return_shared(registry);
+        scenario.return_to_sender(admin);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = wheel::EGameCapAlreadyInstalled)]
+    fun test_sealed_slot_refuses_install() {
+        let mut scenario = setup_default();
+        let sentinel = moved_with_sentinel(&mut scenario, true);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::seal_legacy_slot(&admin, &mut registry, sentinel);
+        ts::return_shared(registry);
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        bp::issue_game_cap(&bp_admin, GAME_ID, b"again", 1, SYSTEM, scenario.ctx());
+        scenario.return_to_sender(bp_admin);
+        scenario.next_tx(SYSTEM);
+        let another = scenario.take_from_sender<GameCap>();
+        let mut registry = scenario.take_shared<WheelRegistry>();
+        wheel::install_game_cap(&admin, &mut registry, another);
         ts::return_shared(registry);
         scenario.return_to_sender(admin);
         ts::end(scenario);

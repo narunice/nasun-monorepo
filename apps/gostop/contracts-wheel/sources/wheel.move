@@ -57,6 +57,7 @@ module gostop_wheel::wheel {
     const EGameCapNotInstalled: u64 = 4;
     const EGameCapMismatch: u64 = 5;
     const EGameCapNotInOption: u64 = 6;
+    const ESentinelNotRevoked: u64 = 7;
 
     // ===== Dynamic Field Keys =====
 
@@ -178,6 +179,24 @@ module gostop_wheel::wheel {
         assert!(option::is_some(&registry.game_cap), EGameCapNotInOption);
         let cap = option::extract(&mut registry.game_cap);
         dof::add(&mut registry.id, GameCapKey {}, cap);
+    }
+
+    /// Park a revoked GameCap in the emptied `game_cap` option. The
+    /// pre-upgrade code reads only that option: once it holds a revoked cap,
+    /// its install_game_cap aborts on the occupied slot and anything it tries
+    /// with the cap aborts on the revocation, so no stale script or config can
+    /// bring the unpaired path back. The live cap stays in the dynamic object
+    /// field, which is all the current code reads.
+    public entry fun seal_legacy_slot(
+        _admin: &AdminCap,
+        registry: &mut WheelRegistry,
+        sentinel: GameCap,
+    ) {
+        assert!(dof::exists_(&registry.id, GameCapKey {}), EGameCapNotInstalled);
+        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
+        assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
+        option::fill(&mut registry.game_cap, sentinel);
     }
 
     public entry fun set_paused(

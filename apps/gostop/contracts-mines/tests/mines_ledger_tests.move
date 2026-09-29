@@ -300,4 +300,90 @@ module gostop_mines::mines_ledger_tests {
         ts::end(scenario);
     }
 
+    fun reset(scenario: &mut Scenario) {
+        scenario.next_tx(SYSTEM);
+        let admin = scenario.take_from_sender<AdminCap>();
+        let bp_admin = scenario.take_from_sender<BpAdminCap>();
+        let mut registry = scenario.take_shared<MinesRegistry>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        mines::reset_legacy_exposure(&admin, &bp_admin, &mut registry, &mut pool, &clk);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        ts::return_shared(registry);
+        scenario.return_to_sender(bp_admin);
+        scenario.return_to_sender(admin);
+    }
+
+    #[test]
+    fun test_legacy_unit_survives_cap_change() {
+        let mut scenario = setup();
+        open_session(&mut scenario, ALICE, 1, true);
+        open_session(&mut scenario, BOB, 1, true);
+        reset(&mut scenario);
+        let (_, _, total) = exposure(&mut scenario);
+        assert!(total == 2 * CAP_MAX, 70);
+
+        // Halve the cap while both legacy sessions are open.
+        scenario.next_tx(SYSTEM);
+        {
+            let admin = scenario.take_from_sender<AdminCap>();
+            let bp_admin = scenario.take_from_sender<BpAdminCap>();
+            let mut registry = scenario.take_shared<MinesRegistry>();
+            let clk = clock::create_for_testing(scenario.ctx());
+            mines::update_max_payout_via_bp_admin(&admin, &bp_admin, &mut registry, CAP_MAX / 2, &clk);
+            clock::destroy_for_testing(clk);
+            ts::return_shared(registry);
+            scenario.return_to_sender(bp_admin);
+            scenario.return_to_sender(admin);
+        };
+
+        // Both settle at the pinned unit, not the new cap.
+        reveal(&mut scenario, ALICE, false);
+        cashout(&mut scenario, ALICE);
+        reveal(&mut scenario, BOB, true);
+        flush(&mut scenario);
+        let (_, _, total2) = exposure(&mut scenario);
+        assert!(total2 == 0, 71);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_sealed_slot_keeps_sessions_settling() {
+        let mut scenario = setup();
+        open_session(&mut scenario, ALICE, 1, false);
+        scenario.next_tx(SYSTEM);
+        {
+            let admin = scenario.take_from_sender<AdminCap>();
+            let mut registry = scenario.take_shared<MinesRegistry>();
+            mines::move_game_cap_to_field(&admin, &mut registry);
+            ts::return_shared(registry);
+            scenario.return_to_sender(admin);
+            let bp_admin = scenario.take_from_sender<BpAdminCap>();
+            bp::issue_game_cap(&bp_admin, GAME_ID, b"sentinel", 1, SYSTEM, scenario.ctx());
+            scenario.return_to_sender(bp_admin);
+        };
+        scenario.next_tx(SYSTEM);
+        {
+            let mut sentinel = scenario.take_from_sender<GameCap>();
+            let bp_admin = scenario.take_from_sender<BpAdminCap>();
+            let clk = clock::create_for_testing(scenario.ctx());
+            bp::revoke_game_cap(&bp_admin, &mut sentinel, &clk);
+            clock::destroy_for_testing(clk);
+            scenario.return_to_sender(bp_admin);
+            let admin = scenario.take_from_sender<AdminCap>();
+            let mut registry = scenario.take_shared<MinesRegistry>();
+            mines::seal_legacy_slot(&admin, &mut registry, sentinel);
+            ts::return_shared(registry);
+            scenario.return_to_sender(admin);
+        };
+        reveal(&mut scenario, ALICE, false);
+        cashout(&mut scenario, ALICE);
+        open_session(&mut scenario, BOB, 2, false);
+        reveal(&mut scenario, BOB, true);
+        flush(&mut scenario);
+        let (game, _, total) = exposure(&mut scenario);
+        assert!(game == 0 && total == 0, 80);
+        ts::end(scenario);
+    }
 }

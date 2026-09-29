@@ -47,6 +47,12 @@
 /// 21. test_reset_unattributed_keeps_paired: the reset discards the legacy
 ///     leak and keeps every paired reservation.
 /// 22. test_reserve_zero_aborts / test_release_zero_is_noop.
+///
+/// v0.0.7 batch reservation:
+///
+/// 23. test_batch_reserve_pairs_with_one_release: count x unit booked and
+///     released as one movement.
+/// 24. test_batch_unit_above_cap_aborts / test_batch_zero_count_aborts.
 #[test_only]
 module bankroll_pool::bankroll_pool_tests {
     use sui::test_scenario::{Self as ts, Scenario};
@@ -822,6 +828,61 @@ module bankroll_pool::bankroll_pool_tests {
         bp::release_exposure(&mut pool, &cap, 0, &clk);
         bp::release_legacy_exposure(&mut pool, &cap, 0, &clk);
         assert!(bp::open_exposure(&pool) == 5_000_000, 22001);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    // ---- v0.0.7 batch reservation ----
+
+    #[test]
+    fun test_batch_reserve_pairs_with_one_release() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        // Ten cards: more than one cap in total, one unit per card.
+        bp::reserve_exposure_batch(&mut pool, &cap, RESERVE_MAX, 10, &clk);
+        assert!(bp::open_exposure(&pool) == 10 * RESERVE_MAX, 23001);
+        assert!(bp::game_open_exposure(&pool, 1) == 10 * RESERVE_MAX, 23002);
+        bp::release_exposure(&mut pool, &cap, 10 * RESERVE_MAX, &clk);
+        assert!(bp::open_exposure(&pool) == 0, 23003);
+        assert!(bp::attributed_open_exposure(&pool) == 0, 23004);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EReserveExceedsCap)]
+    fun test_batch_unit_above_cap_aborts() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure_batch(&mut pool, &cap, RESERVE_MAX + 1, 1, &clk);
+
+        clock::destroy_for_testing(clk);
+        ts::return_shared(pool);
+        scenario.return_to_sender(cap);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = bp::EInvalidAmount)]
+    fun test_batch_zero_count_aborts() {
+        let mut scenario = begin_reserve_scenario();
+        let cap = scenario.take_from_sender<GameCap>();
+        let mut pool = scenario.take_shared<BankrollPool>();
+        let clk = clock::create_for_testing(scenario.ctx());
+
+        bp::reserve_exposure_batch(&mut pool, &cap, RESERVE_MAX, 0, &clk);
 
         clock::destroy_for_testing(clk);
         ts::return_shared(pool);

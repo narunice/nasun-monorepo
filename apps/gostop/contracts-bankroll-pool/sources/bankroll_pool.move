@@ -536,12 +536,29 @@ module bankroll_pool::bankroll_pool {
         amount: u64,
         clock: &Clock,
     ) {
+        reserve_exposure_batch(pool, cap, amount, 1, clock);
+    }
+
+    /// `count` reservations of `unit` each, booked as one movement: one
+    /// snapshot of `unit * count`, released later by one `release_exposure` of
+    /// the same total. For a round that can pay several times (a bulk scratch
+    /// card buy), where per-payout calls would write a snapshot row and three
+    /// dynamic fields per card. The bound stays per payout: `unit` is what one
+    /// payout can reach, so it is checked against `cap.max_single_payout`.
+    public fun reserve_exposure_batch(
+        pool: &mut BankrollPool,
+        cap: &GameCap,
+        unit: u64,
+        count: u64,
+        clock: &Clock,
+    ) {
         assert!(!cap.revoked, EGameCapRevoked);
         assert!(!pool.paused, EPaused);
         // A zero reservation pays nothing out and would only add a row to the
         // per-game reserve/release counts.
-        assert!(amount > 0, EInvalidAmount);
-        assert!(amount <= cap.max_single_payout, EReserveExceedsCap);
+        assert!(unit > 0 && count > 0, EInvalidAmount);
+        assert!(unit <= cap.max_single_payout, EReserveExceedsCap);
+        let amount = unit * count;
 
         let new_open = read_open_exposure(pool) + amount;
         assert_within_utilization_cap(pool, new_open);

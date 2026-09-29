@@ -68,6 +68,7 @@ module gostop_scratchcard::scratchcard {
     const EGameCapNotInstalled: u64 = 4;
     const EGameCapMismatch: u64 = 5;
     const EGameCapNotInOption: u64 = 6;
+    const ESentinelNotRevoked: u64 = 7;
 
     // ===== Dynamic Field Keys =====
 
@@ -167,6 +168,24 @@ module gostop_scratchcard::scratchcard {
         dof::add(&mut registry.id, GameCapKey {}, cap);
     }
 
+    /// Park a revoked GameCap in the emptied `game_cap` option. The
+    /// pre-upgrade code reads only that option: once it holds a revoked cap,
+    /// its install_game_cap aborts on the occupied slot and anything it tries
+    /// with the cap aborts on the revocation, so no stale script or config can
+    /// bring the unpaired path back. The live cap stays in the dynamic object
+    /// field, which is all the current code reads.
+    public entry fun seal_legacy_slot(
+        _admin: &AdminCap,
+        registry: &mut ScratchCardRegistry,
+        sentinel: GameCap,
+    ) {
+        assert!(dof::exists_(&registry.id, GameCapKey {}), EGameCapNotInstalled);
+        assert!(option::is_none(&registry.game_cap), EGameCapAlreadyInstalled);
+        assert!(bankroll_pool::game_cap_revoked(&sentinel), ESentinelNotRevoked);
+        assert!(bankroll_pool::game_cap_id(&sentinel) == GAME_ID_SELF, EGameCapMismatch);
+        option::fill(&mut registry.game_cap, sentinel);
+    }
+
     // ===== Core: Buy (single) =====
 
     /// Single-card buy. Equivalent to `buy_scratch_cards_bulk` with count=1,
@@ -235,16 +254,12 @@ module gostop_scratchcard::scratchcard {
         let cap = cap_ref(&registry.id, &registry.game_cap);
         let sender = tx_context::sender(ctx);
 
-        // Every card can pay once, up to MAX_PRIZE, so the round takes one
-        // reservation per card. A single reservation could not cover a bulk
-        // buy: its worst case is count * MAX_PRIZE and a reservation is
-        // bounded by one payout. Taken before any random is drawn, so a
-        // utilization cap rejects the buy instead of aborting mid-round.
-        let mut k: u8 = 0;
-        while (k < count) {
-            bankroll_pool::reserve_exposure(pool, cap, MAX_PRIZE, clock);
-            k = k + 1;
-        };
+        // Every card can pay once, up to MAX_PRIZE, so the round reserves
+        // MAX_PRIZE per card, booked as one batch and released as one total.
+        // Taken before any random is drawn, so a utilization cap rejects the
+        // buy instead of aborting mid-round.
+        let reserved = MAX_PRIZE * (count as u64);
+        bankroll_pool::reserve_exposure_batch(pool, cap, MAX_PRIZE, count as u64, clock);
 
         // Collect the entire bulk payment in one go (analytics attribute
         // the full amount to a single tx).
@@ -316,12 +331,8 @@ module gostop_scratchcard::scratchcard {
             i = i + 1;
         };
 
-        // One release per card, winners and losers alike.
-        let mut k: u8 = 0;
-        while (k < count) {
-            bankroll_pool::release_exposure(pool, cap, MAX_PRIZE, clock);
-            k = k + 1;
-        };
+        // Released whole, winners and losers alike.
+        bankroll_pool::release_exposure(pool, cap, reserved, clock);
     }
 
     // ===== Internal =====
