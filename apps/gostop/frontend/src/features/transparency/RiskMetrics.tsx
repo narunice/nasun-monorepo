@@ -7,16 +7,14 @@
  * restraint — no neon, no emoji, gold accents only where they earn their keep.
  *
  * Honest naming guard rails:
- *   - Open exposure (max liability) uses chain-authoritative bankroll_pool
- *     v0.0.4 open_exposure. When `active_exposure_chain_status === 'dormant'`
- *     (v0.0.4 published but dependent game contracts still linkage-frozen
- *     to v0.0.2/v0.0.3, lockstep upgrade pending) we render a provisional
- *     placeholder instead of a misleading 0. When it is 'degraded' the reserved
- *     total exceeds pool.balance, so both this cell and Utilization (which
- *     divides by the same numerator) withhold rather than publish a number
- *     that reads like a risk measurement. The UI does not attribute a cause:
- *     a leaked ledger and a genuinely over-committed pool both land here, and
- *     the backend enum docs carry that distinction.
+ *   - Open exposure (max liability) is the chain-authoritative bankroll_pool
+ *     open_exposure: the most every in-flight round can still pay (paired
+ *     reserve/release since v0.0.6). When `active_exposure_chain_status` is
+ *     'dormant' there is no usable reading and we render a placeholder
+ *     instead of a possibly stale figure. When it is 'degraded'
+ *     the reserved total exceeds pool.balance, so both this cell and
+ *     Utilization (which divides by the same numerator) withhold rather than
+ *     publish a ratio above 100%.
  *   - "Cumulative LP yield" allows negative values when the pool is
  *     underwater; the sign is preserved.
  */
@@ -66,17 +64,13 @@ export function RiskMetrics({ risk }: Props) {
   const unreliable = risk.data_quality === 'unreliable';
   const tvlDisplay = unreliable ? '—' : `${fmtUsdc(risk.tvl_raw)} NUSDC`;
   const cap = capLabel(risk.utilization_cap_bps);
-  // chain_status='dormant' means v0.0.4 is published but the dependent game
-  // contracts are still linkage-frozen to v0.0.2/v0.0.3. The raw value will
-  // be 0 (or stale) and must not be rendered as if it were a chain reading.
+  // chain_status='dormant' means the backend could not read open_exposure from
+  // chain and has no recent indexed reading to fall back on.
   const exposureDormant = risk.active_exposure_chain_status === 'dormant';
-  // chain_status='degraded' means open_exposure is not a liability figure, so it
-  // is withheld. It covers every live reading rather than only those above
-  // pool.balance, because the reserve/release pairing is broken in the deployed
-  // contracts. The copy therefore names that defect and not an excess: the
-  // reserved total sits either side of the balance from hour to hour, so any
-  // wording about exceeding it would be wrong much of the time. See
-  // RESERVATION_LEDGER_PAIRS_EXACTLY in the backend for the measured counts.
+  // chain_status='degraded' means the reserved total exceeds pool.balance.
+  // Since bankroll_pool v0.0.6 the ledger pairs every reservation with one
+  // release, so that is a real over-commitment rather than an accounting
+  // artifact, and the figure is withheld as utilization above 100%.
   const exposureDegraded = risk.active_exposure_chain_status === 'degraded';
   // Utilization divides by pool.balance but its numerator is this same
   // exposure figure, so it inherits the same unusability.
@@ -86,10 +80,10 @@ export function RiskMetrics({ risk }: Props) {
   // the tooltip still described a working measurement would leave the dash
   // unexplained, which is the failure mode this panel exists to avoid.
   const utilHint = exposureDegraded
-    ? 'Not currently measurable. Utilization is open exposure over pool balance, and the exposure figure is not a liability measure right now, so the ratio does not describe house risk. Restored once the reservation accounting is corrected on chain.'
+    ? 'Withheld: open exposure currently exceeds the pool balance, so the ratio would read above 100%. Each payout is still bounded by the pool balance check.'
     : exposureDormant
-      ? 'Not currently measurable. Utilization is open exposure over pool balance, and no recent on-chain exposure reading is available, so there is no numerator to divide. Restored once the dependent game contracts are rebound to bankroll_pool v0.0.4.'
-      : 'Pending round commitments as a share of pool balance. Live commitments include rounds awaiting resolution or claim.';
+      ? 'Not currently measurable: no recent on-chain exposure reading is available to divide.'
+      : 'Open exposure as a share of pool balance: how much of the pool the rounds still in play could claim at most.';
   const exposureLabel = exposureDormant
     ? 'Open exposure (provisional)'
     : exposureDegraded
@@ -99,10 +93,10 @@ export function RiskMetrics({ risk }: Props) {
     ? '—'
     : `${fmtUsdc(risk.active_exposure_raw)} NUSDC`;
   const exposureHint = exposureDormant
-    ? 'Awaiting v0.0.4 lockstep upgrade across dependent game contracts. The on-chain open_exposure dynamic field has not yet been initialized, so this number is provisional and rendered as a placeholder rather than a misleading 0 NUSDC. Will reflect chain truth once each game contract is rebound to bankroll_pool v0.0.4.'
+    ? 'No recent on-chain reading is available, so this is shown as a placeholder rather than a possibly stale figure.'
     : exposureDegraded
-      ? 'Withheld rather than shown as a liability it does not represent. Each bet reserves that game\u2019s maximum payout against the pool and is meant to release it when the round settles, but several settlement paths release nothing and one releases more than once, so the running total no longer tracks what the house actually owes and drifts in both directions. Correcting it needs a contract change. Player funds and payouts are unaffected: every payout is independently bounded by the pool balance check in pay_winner.'
-      : 'Chain-authoritative reading of bankroll_pool.open_exposure: sum of max_single_payout reserved across all in-flight rounds. Released back when each round settles via pay_winner or refund_bet. This is true max house liability, not a proxy.';
+      ? 'Withheld: the reserved total currently exceeds the pool balance, so the pool could not cover every open round at its maximum payout at once. Each payout is still bounded by the pool balance check, so no single payout can overdraw the pool.'
+      : 'Chain-authoritative reading of bankroll_pool.open_exposure: the most every round still in play can pay out. Each bet reserves its own maximum payout and releases it exactly once when the round settles, win or lose.';
   const largestPayoutDisplay = unreliable ? '—' : `${fmtUsdc(risk.largest_single_payout_raw)} NUSDC`;
   const lpDistDisplay = unreliable ? '—' : `${fmtUsdcSigned(risk.cumulative_lp_distributions_raw)} NUSDC`;
 

@@ -208,23 +208,19 @@ export interface RiskMetricsBlock {
     '30d': RiskWindowPnl;
   };
   /**
-   * Open exposure (max house liability) from bankroll_pool v0.0.4
-   * `open_exposure`, surfaced via OpenExposureSnapshot. Pair with
-   * `active_exposure_chain_status`: when 'dormant' the raw value is N/A
-   * (v0.0.4 published but game contracts linkage-frozen to v0.0.2/v0.0.3,
-   * lockstep upgrade pending), and when 'degraded' the reservation ledger has
-   * over-counted past pool.balance. Either way the dashboard renders a
-   * provisional placeholder rather than a misleading number.
+   * Open exposure (max house liability) from bankroll_pool `open_exposure`,
+   * surfaced via OpenExposureSnapshot: the most every in-flight round can
+   * still pay. Pair with `active_exposure_chain_status`: when 'dormant' there
+   * is no usable reading, and when 'degraded' the reservations
+   * exceed pool.balance. Either way the dashboard renders a placeholder.
    */
   active_exposure_raw: string;
   /**
-   * 'live' = recent snapshot present; 'dormant' = no snapshot or stale;
-   * 'degraded' = open_exposure is not usable as a liability figure, so it is
-   * withheld. The reservation ledger does not pair reserves with releases:
-   * several settlement paths release nothing and one releases more than once,
-   * which overstates in-flight liability by a wide margin. This covers every
-   * live reading, not only those above pool.balance. See the backend
-   * RiskMetricsResult docs for the measured per-game counts.
+   * 'live' = read from chain (or a recent indexed snapshot when that read
+   * fails); 'dormant' = no usable reading;
+   * 'degraded' = the paired reservations exceed pool.balance, so the figure is
+   * withheld as utilization above 100%. Before bankroll_pool v0.0.6 the
+   * ledger did not pair and every live reading was 'degraded'.
    */
   active_exposure_chain_status?: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
