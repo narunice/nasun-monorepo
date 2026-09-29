@@ -3,7 +3,7 @@
  * Sui RPC + Telegram HTTP-bound; verification is end-to-end on staging
  * (force-utilization spike → assert telegram delivery + cooldown).
  *
- * Here we just lock the v1 contract: threshold = 60.00% (6_000 bps), interval
+ * Here we just lock the v1 contract: threshold = 40.00% (4_000 bps), interval
  * 5 min, cooldown 30 min. Regressions to these constants would silently
  * shift alerting behavior — keep them in test guardrails so a future "tune
  * threshold" PR has to update both code and test.
@@ -13,8 +13,9 @@ import { describe, expect, it } from 'vitest';
 import { _RISK_ALERT_CONSTANTS } from './risk-alert.js';
 
 describe('risk-alert constants (v1 HG2 policy)', () => {
-  it('utilization threshold is 60.00% (6_000 bps)', () => {
-    expect(_RISK_ALERT_CONSTANTS.UTILIZATION_THRESHOLD_BPS).toBe(6_000);
+  it('utilization threshold is 40.00% (4_000 bps), below the 5_000 bps on-chain cap', () => {
+    // The cap refuses bets past 50%, so a threshold at or above it never fires.
+    expect(_RISK_ALERT_CONSTANTS.UTILIZATION_THRESHOLD_BPS).toBe(4_000);
   });
 
   it('interval is 5 minutes', () => {

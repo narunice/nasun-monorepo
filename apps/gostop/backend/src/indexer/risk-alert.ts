@@ -36,8 +36,13 @@
 import { alertingEnabled, sendTelegram } from './telegram.js';
 import { riskMetrics } from '../api/lib/risk-metrics.js';
 
-/** Threshold: utilization above this triggers an alert. HG2-derived policy. */
-const UTILIZATION_THRESHOLD_BPS = 6_000; // 60.00%
+/**
+ * Threshold: utilization above this triggers an alert. Kept below the on-chain
+ * utilization cap (5_000 bps since 2026-09-29), which refuses any bet that
+ * would reserve past it: an alert at or above the cap could never fire, so it
+ * sits at 80% of it to warn before bets start being refused.
+ */
+const UTILIZATION_THRESHOLD_BPS = 4_000; // 40.00%
 
 /** Tick interval — 5 min matches master plan §Tier 1.3 alert cadence. */
 const RISK_ALERT_INTERVAL_MS = 5 * 60_000;
