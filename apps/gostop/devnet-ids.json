@@ -114,6 +114,8 @@
     "upgradeTxDigestV0_0_4": "",
     "upgradeTxDigestV0_0_5": "BDd7meTZnGd97QTjoikKfrW8DyMt6rQDKBrnhMpDRVzw",
     "upgradeTxDigestV0_0_6": "GcMsq2zRk2ka9HghweBj53Y2eCm1Q5mGkPszQP5A3tra",
+    "ledgerCutoverTxDigest": "GPtUqYrwYpCL4XxdNUsKkGXBTF1hjKBmcdcYjT5Xej2g",
+    "ledgerCutoverNotes": "2026-09-29: move_game_cap_to_field on wheel, scratch card and mines (pre-upgrade code aborts EGameCapNotInstalled from here) plus mines::reset_legacy_exposure in one PTB. open_exposure 12,652,500 -> 150,000 NUSDC = 75 legacy mines sessions x 2,000.",
     "seedSharesTxDigest": "",
     "version": "v0.0.6",
     "upgradeNotes": "v8 fresh genesis 2026-06-19 (v1 = originalPackageId). v0.0.5 2026-09-28 (v2 0x70cb01f6): reservation ledger primitives. v0.0.6 2026-09-28 (v3 = packageId): per-game ledger. No struct change in either, so every event type still tags with originalPackageId.",

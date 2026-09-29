@@ -29,6 +29,8 @@
 
 import { createHash } from 'node:crypto';
 import { reader } from '../../db/client.js';
+import { BANKROLL_POOL } from '../../config/contracts.js';
+import { rpcCall } from '../../rpc.js';
 import { bankrollPnl, type DataQuality } from './bankroll-pnl.js';
 import {
   computeCumulativeLpDist,
@@ -91,53 +93,30 @@ export interface RiskMetricsResult {
   /** 24h / 7d / 30d net PnL with per-call data_quality. */
   pnl: Record<PnlWindowKey, RiskWindowPnl>;
   /**
-   * Open exposure (max house liability) — chain-authoritative reading from
-   * bankroll_pool v0.0.4 `open_exposure` field, surfaced via the
-   * OpenExposureSnapshot event. Equal to SUM(cap.max_single_payout) across
-   * all in-flight rounds (those whose collect_bet has fired but whose
-   * pay_winner / refund_bet has not yet).
-   *
-   * The equality above is what the ledger is supposed to maintain, not what it
-   * does; see `active_exposure_chain_status` below.
+   * Open exposure (max house liability): chain-authoritative reading of
+   * bankroll_pool `open_exposure`, surfaced via the OpenExposureSnapshot event.
+   * Since v0.0.6 it is the most every in-flight round can still pay (each
+   * reservation released exactly once when its round settles), plus the
+   * legacy mines sessions opened before the rebind at their max_single_payout.
    *
    * Pair with `active_exposure_chain_status` before rendering: when status
-   * is 'dormant' the raw value is meaningless (v0.0.4 published but game
-   * contracts still linkage-frozen to v0.0.2/v0.0.3) and the UI must show a
+   * is 'dormant' there is no recent reading and the UI must show a
    * provisional placeholder rather than 0 NUSDC. When status is 'degraded' the
-   * value is not a liability figure at all and must be withheld likewise.
+   * reservations exceed the pool balance and the figure is withheld likewise.
    */
   active_exposure_raw: string;
   /**
    * 'live'     → recent OpenExposureSnapshot event present, raw value usable.
-   * 'dormant'  → no snapshot or stale (>1h). Treat the raw value as N/A.
-   * 'degraded' → not usable as a house-liability figure, so consumers must
-   *              withhold it. This does not name a value range; while
-   *              RESERVATION_LEDGER_PAIRS_EXACTLY is false it is every 'live'
-   *              reading, whether above or below pool.balance.
+   * 'dormant'  → no usable reading (chain read failed and no recent indexed
+   *              snapshot to fall back on). Treat the raw value as N/A.
+   * 'degraded' → the paired reservations exceed pool.balance, so the figure
+   *              is not publishable as utilization: the pool could not cover
+   *              every open round at its maximum. Consumers withhold it.
    *
-   *              collect_bet reserves cap.max_single_payout and pay_winner /
-   *              refund_bet each release that same unit, so the ledger is
-   *              only meaningful while every reserve is matched by exactly
-   *              one release. That invariant does not hold, and it fails in
-   *              both directions:
-   *
-   *              Under-release (drifts up): rounds settling without calling
-   *              either. wheel `if (payout > 0)`, scratchcard's losing cards,
-   *              crash's non-cashout entries, and mines on a mine hit, where
-   *              reveal_cell does not even take &mut BankrollPool and so
-   *              cannot release.
-   *
-   *              Over-release (drifts down): scratchcard's bulk path calls
-   *              collect_bet once for all `count` cards but pay_winner once
-   *              per winning card, so any bulk with two or more winners
-   *              releases more than it reserved.
-   *
-   *              numbermatch is the only game with one collect_bet and one
-   *              unconditional pay_winner. Measured counts and the resulting
-   *              ~91x overstatement are on RESERVATION_LEDGER_PAIRS_EXACTLY.
-   *              While that is false this is every 'live' reading, not only
-   *              the ones exceeding the balance. Treat it as N/A exactly like
-   *              'dormant'.
+   *              Before bankroll_pool v0.0.6 (2026-09-28) the reservation
+   *              ledger did not pair reserves with releases and every live
+   *              reading was 'degraded'; see RESERVATION_LEDGER_PAIRS_EXACTLY
+   *              for the measurement and the fix.
    */
   active_exposure_chain_status: 'live' | 'dormant' | 'degraded';
   /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
@@ -223,60 +202,40 @@ function worstQuality(a: DataQuality, b: DataQuality): DataQuality {
 /**
  * Whether the deployed contracts pair every `open_exposure` reservation with
  * exactly one release. That pairing is the only thing that makes the field a
- * liability measure, and it does not hold.
+ * liability measure.
  *
- * Measured 2026-09-27 over the whole retained window of
- * gostop.bankroll_event (event_type='open_exposure_snapshot', reason_code
- * 0=reserve / 1=release):
+ * It did not hold before 2026-09-28. Measured 2026-09-27 over the whole
+ * retained window of gostop.bankroll_event (event_type='open_exposure_snapshot',
+ * reason_code 0=reserve / 1=release):
  *
  *   scratchcard   972,476 reserve / 1,192,865 release   net -220,389
  *   numbermatch   941,009 reserve /   941,009 release   net        0
  *   mines          90,217 reserve /    58,135 release   net  +32,082
  *   wheel         229,730 reserve /   103,588 release   net +126,142
  *
- * scratchcard's bulk path calls collect_bet once per purchase but pay_winner
- * once per winning card, so it over-releases; wheel's zero-multiplier
- * segments, scratchcard's losing cards and mines on a mine hit all release
- * nothing. numbermatch is the only exact pairing. Releases outnumbering
- * reserves is something a liability cannot do, which settles the question: the
- * figure is not one, at any value.
+ * open_exposure read 13,720,500 against at most 150,000 of true in-flight
+ * liability, ~91x.
  *
- * Scale, same moment: true in-flight liability is at most 150,000 NUSDC, being
- * 75 live MinesSession objects times a 2,000 max_single_payout, because wheel,
- * scratchcard and numbermatch settle inside a single transaction and hold
- * nothing at rest, and crash has had no round since 2026-05-08. open_exposure
- * read 13,720,500 against a 14,181,332 balance. It overstates by ~91x. There
- * is no solvency problem in that reading, only a broken instrument.
- *
- * Typed `boolean` rather than left to literal inference so the comparison
- * below stays compiled while this is false. Flip to true only once the games
- * are rebound to reserve_exposure / release_exposure (bankroll_pool v0.0.5,
- * live 2026-09-28), every old GameCap is revoked so the legacy path stops
- * leaking, AND open_exposure has been reset with admin_set_open_exposure.
+ * Fixed 2026-09-28 on chain: bankroll_pool v0.0.6 books reservations per game
+ * and releases each exactly once (reserve_exposure / release_exposure); wheel,
+ * scratch card and mines were upgraded in place onto it; their GameCaps moved
+ * out of the field the pre-upgrade code reads, so that code aborts; and
+ * mines::reset_legacy_exposure discarded the leak, leaving exactly the legacy
+ * mines sessions still open (75 x 2,000 = 150,000 at the reset). numbermatch
+ * still runs the legacy path, which pairs within one transaction. Set it back
+ * to false if a game is ever rebound to the unpaired legacy collect_bet.
  */
-const RESERVATION_LEDGER_PAIRS_EXACTLY: boolean = false;
+const RESERVATION_LEDGER_PAIRS_EXACTLY: boolean = true;
 
 /**
  * Downgrade a 'live' exposure reading to 'degraded' when `open_exposure` is not
- * usable as a house-liability figure.
+ * usable as utilization.
  *
- * While RESERVATION_LEDGER_PAIRS_EXACTLY is false that is every reading, not
- * just the ones exceeding the balance. The defect is a property of the
- * deployed packages, so it does not come and go with the value: withholding
- * only above the balance would publish a ~91x overstatement for as long as the
- * overstatement happened to stay under it, and would flip the public page
- * between a number and a placeholder as the two drifted past each other, which
- * is what it did between 2026-09-26 and 2026-09-27.
- *
- * The balance comparison is kept for when the pairing is fixed. It is the
- * right residual check then: a correctly-paired ledger reserving past the
- * balance is still not publishable, since collect_bet only enforces its
- * cumulative check when cap_bps > 0 and no cap is configured, so nothing on
- * chain prevents it.
- *
- * 'degraded' means "not usable as a liability figure". It does not by itself
- * name a cause, which is why the alert copy and the UI hint carry the
- * measurement above rather than inferring one from the value.
+ * With the ledger paired, that is a reservation total above the balance
+ * backing it: the pool could not cover every open round at its maximum, and
+ * nothing on chain prevents it while no utilization cap is configured. While
+ * RESERVATION_LEDGER_PAIRS_EXACTLY is false it is every reading instead,
+ * since an unpaired ledger is not a liability figure at any value.
  *
  * 'dormant' passes through untouched: it already means "no usable reading",
  * and layering a second reason on top would only obscure the first.
@@ -297,14 +256,9 @@ function classifyExposureStatus(
 }
 
 /**
- * Residual publishability check for once the pairing is fixed: a reservation
- * total above the balance backing it is still not a liability figure, since
- * collect_bet only enforces its cumulative check when cap_bps > 0 and no cap is
- * configured.
- *
- * Split out from classifyExposureStatus so it stays under test while
- * RESERVATION_LEDGER_PAIRS_EXACTLY gates the caller. Untested logic that
- * activates on a future flag flip is the thing to avoid here.
+ * Publishability check for a paired ledger: a reservation total above the
+ * balance backing it is not a utilization figure, and no cap is configured to
+ * stop reserve_exposure from getting there.
  *
  * A null balance means the chain read failed, so there is nothing to compare
  * and data_quality is already 'unreliable'. Zero is a real reading rather than
@@ -344,24 +298,29 @@ async function latestUtilizationCapBps(): Promise<number | null> {
 }
 
 /**
- * Active exposure status + raw value from indexed OpenExposureSnapshot events.
+ * Active exposure: the bankroll_pool `open_exposure` dynamic field, read from
+ * chain.
  *
- * v0.0.4 (§10.B): bankroll_pool emits OpenExposureSnapshot after every
- * collect_bet / pay_winner / refund_bet. Indexer writes one row with
- * event_type='open_exposure_snapshot' carrying chain's open_exposure_after.
+ * Read directly rather than from the latest indexed OpenExposureSnapshot so
+ * the figure does not depend on indexer lag or on recent activity. Deriving
+ * freshness from snapshot age used to hide a valid reading after a quiet hour,
+ * including the quiet that follows pausing bets in response to an
+ * exposure-exceeds-balance alert, which silenced that alert while the
+ * over-commitment was still on chain.
  *
- * Status semantics (used by the UI to avoid silently misleading "0 NUSDC"
- * readings when v0.0.4 is published but dormant — i.e. dependent game
- * contracts are still linkage-frozen to v0.0.2 / v0.0.3 of bankroll_pool):
- *   - 'live'    → at least one snapshot in the last DORMANT_THRESHOLD_MS
- *   - 'dormant' → no snapshot ever, or latest snapshot older than threshold
- *                  while games are presumed active
- *
- * The UI renders 'dormant' as a provisional state ('—' with explanatory hint)
- * so neither LPs nor investors mistake "no v0.0.4 plumbing" for "no
- * in-flight house liability".
+ * Status semantics:
+ *   - 'live'    → the chain read succeeded, or it failed and the latest
+ *                  indexed snapshot is younger than FALLBACK_SNAPSHOT_MAX_AGE_MS.
+ *                  Every write to the field emits a snapshot, so a recent row
+ *                  is the chain value as of the indexer head.
+ *   - 'dormant' → neither: no usable reading, rendered as a placeholder.
  */
-const DORMANT_THRESHOLD_MS = 60 * 60_000; // 1h since last OpenExposureSnapshot
+const FALLBACK_SNAPSHOT_MAX_AGE_MS = 60 * 60_000;
+
+const OPEN_EXPOSURE_FIELD_NAME = {
+  type: 'vector<u8>',
+  value: Array.from(Buffer.from('open_exposure')),
+};
 
 interface ActiveExposure {
   raw: bigint;
@@ -369,25 +328,46 @@ interface ActiveExposure {
   last_snapshot_ms: number | null;
 }
 
+/** null on a failed read. A pool whose field was never written reads 0. */
+async function fetchChainOpenExposure(): Promise<bigint | null> {
+  try {
+    const res = await rpcCall<{
+      data?: { content?: { fields?: { value?: string | number } } };
+      error?: { code?: string };
+    }>('suix_getDynamicFieldObject', [BANKROLL_POOL.bankrollPoolObjectId, OPEN_EXPOSURE_FIELD_NAME]);
+    if (res?.error?.code === 'dynamicFieldNotFound') return 0n;
+    const value = res?.data?.content?.fields?.value;
+    return value === undefined ? null : BigInt(String(value));
+  } catch (err) {
+    console.warn(
+      `[riskMetrics] open_exposure chain read failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return null;
+  }
+}
+
 async function activeExposure(asOfMs: number): Promise<ActiveExposure> {
   const sql = reader();
-  const rows = await sql<{ exposure: string | null; ts: string | null }[]>`
-    SELECT open_exposure_after::text AS exposure,
-           timestamp_ms::text       AS ts
-    FROM gostop.bankroll_event
-    WHERE event_type = 'open_exposure_snapshot'
-      AND open_exposure_after IS NOT NULL
-    ORDER BY timestamp_ms DESC, id DESC
-    LIMIT 1
-  `;
-  if (rows.length === 0) {
-    return { raw: 0n, status: 'dormant', last_snapshot_ms: null };
+  const [chain, rows] = await Promise.all([
+    fetchChainOpenExposure(),
+    sql<{ exposure: string | null; ts: string | null }[]>`
+      SELECT open_exposure_after::text AS exposure,
+             timestamp_ms::text       AS ts
+      FROM gostop.bankroll_event
+      WHERE event_type = 'open_exposure_snapshot'
+        AND open_exposure_after IS NOT NULL
+      ORDER BY timestamp_ms DESC, id DESC
+      LIMIT 1
+    `,
+  ]);
+  const ts = rows.length > 0 ? Number(rows[0]!.ts ?? '0') : null;
+  if (chain !== null) {
+    return { raw: chain, status: 'live', last_snapshot_ms: ts };
   }
-  const ts = Number(rows[0]!.ts ?? '0');
-  const raw = BigInt(rows[0]!.exposure ?? '0');
-  const status: 'live' | 'dormant' =
-    asOfMs - ts > DORMANT_THRESHOLD_MS ? 'dormant' : 'live';
-  return { raw, status, last_snapshot_ms: ts };
+  if (ts === null || asOfMs - ts > FALLBACK_SNAPSHOT_MAX_AGE_MS) {
+    return { raw: 0n, status: 'dormant', last_snapshot_ms: ts };
+  }
+  return { raw: BigInt(rows[0]!.exposure ?? '0'), status: 'live', last_snapshot_ms: ts };
 }
 
 /** Sui address pretty-print: 0xabcd…1234 (6 prefix + 4 suffix). */
@@ -738,6 +718,6 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
 export { worstQuality, matviewQuality, classifyExposureStatus, exposureExceedsBalance };
 
 export const _RISK_METRICS_CONSTANTS = {
-  DORMANT_THRESHOLD_MS,
+  FALLBACK_SNAPSHOT_MAX_AGE_MS,
   RESERVATION_LEDGER_PAIRS_EXACTLY,
 };

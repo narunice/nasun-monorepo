@@ -4,16 +4,10 @@
  * Polls `riskMetrics()` every RISK_ALERT_INTERVAL_MS and, when
  * `active_exposure_chain_status` is 'live', fires a Telegram message on
  * `utilization_ratio_bps > UTILIZATION_THRESHOLD_BPS`. 'degraded' means the
- * ratio's numerator is not a liability, and we report that instead of
- * thresholding it; 'dormant' means there is no recent numerator at all, and we
- * stay silent.
+ * paired reservations exceed the pool balance, a real over-commitment, and is
+ * reported as such rather than thresholded; 'dormant' means there is no recent
+ * numerator at all, and we stay silent.
  *
- * Note that 'live' is currently unreachable: risk-metrics classifies every live
- * reading as 'degraded' while RESERVATION_LEDGER_PAIRS_EXACTLY is false, so the
- * threshold rule below is dormant by construction rather than by cadence. That
- * is the intended state. There is no actionable utilization threshold while the
- * instrument producing the numerator is broken, and the branch is kept so it
- * resumes with the same wording once the reservation accounting is fixed.
  * v1 ships only the utilization rule (HG2-anchored policy decision); drawdown and
  * 3-sigma volatility alerts are deferred to v1.1 once `bankroll_daily_pnl`
  * has 30+ post-LP-launch days of history to calibrate thresholds against.
@@ -51,32 +45,9 @@ const RISK_ALERT_INTERVAL_MS = 5 * 60_000;
 /** Per-alert cooldown — prevents pager fatigue when utilization plateaus high. */
 const RISK_ALERT_COOLDOWN_MS = 30 * 60_000;
 
-/**
- * Per-key cooldown overrides.
- *
- * 'utilization_unmeasurable' reports a standing condition that only a
- * contract upgrade can clear, not an incident anyone can act on within the
- * hour. Repeating it every 30 min is precisely the pager fatigue that kept
- * the 2026-07-06 NSI outage invisible for seven weeks: the same line went out
- * on a fixed cadence until the channel stopped being read. Daily keeps it
- * present without training the operator to skim past it.
- *
- * Known limit: `lastFired` is in-process, so the first tick after an indexer
- * restart re-fires regardless of how recently the alert went out. That is
- * inherited from the 30-min keys, where losing a cooldown costs half an hour;
- * here it costs a day, so a deploy-heavy session can still produce several
- * copies. Steady state is the 48x reduction that matters, and making it
- * survive restarts needs durable alert state (a table plus a migration),
- * which is deliberately out of scope for an off-chain-only change. Revisit
- * alongside the bankroll_pool upgrade that clears the degraded condition.
- */
-const COOLDOWN_OVERRIDE_MS: Partial<Record<AlertKey, number>> = {
-  utilization_unmeasurable: 24 * 3_600_000,
-};
-
 type AlertKey =
   | 'utilization_high'
-  | 'utilization_unmeasurable'
+  | 'exposure_exceeds_balance'
   | 'lp_concentration_extreme';
 
 const lastFired = new Map<AlertKey, number>();
@@ -85,14 +56,10 @@ let intervalHandle: NodeJS.Timeout | null = null;
 
 
 
-function cooldownFor(key: AlertKey): number {
-  return COOLDOWN_OVERRIDE_MS[key] ?? RISK_ALERT_COOLDOWN_MS;
-}
-
 function shouldFire(key: AlertKey, now: number): boolean {
   const last = lastFired.get(key);
   if (last === undefined) return true;
-  return now - last >= cooldownFor(key);
+  return now - last >= RISK_ALERT_COOLDOWN_MS;
 }
 
 function fmtBpsPct(bps: number): string {
@@ -123,62 +90,41 @@ export async function runRiskAlertOnce(): Promise<void> {
 
   const now = Date.now();
 
-  // utilization_ratio_bps stays arithmetically correct but its numerator is not
-  // a liability, so the 60% threshold has nothing to say about it. Report the
-  // unusable instrument rather than alerting on its readings.
-  //
-  // The reservation ledger being unpaired is settled by event counts rather
-  // than inferred from the value, so the body may state it (see
-  // RESERVATION_LEDGER_PAIRS_EXACTLY). What the counts do not settle is whether
-  // the pool is *also* genuinely over-committed: collect_bet's cumulative check
-  // runs only when cap_bps > 0 and no cap is configured, so nothing on chain
-  // prevents that, and it is a solvency condition rather than an accounting
-  // artifact. The body therefore attributes the "not a solvency problem"
-  // reading to the dated measurement instead of asserting it of the present.
+  // Since bankroll_pool v0.0.6 every reservation is paired with exactly one
+  // release, so open_exposure is the most the open rounds can still pay. It
+  // only reads 'degraded' when that exceeds the pool balance, which is a real
+  // over-commitment and an incident, not an instrument fault.
   if (risk.active_exposure_chain_status === 'degraded') {
-    if (shouldFire('utilization_unmeasurable', now)) {
-      // State the ratio without characterising it. It sits either side of 100%
-      // from hour to hour, and the reason for withholding is the ledger defect
-      // rather than any particular value, so an "over 100%" style gloss would
-      // be wrong about as often as it was right.
+    if (shouldFire('exposure_exceeds_balance', now)) {
       const ratioLine = risk.tvl_raw === '0'
-        ? 'Ratio: n/a (pool balance is zero — nothing backs the reservations)'
-        : `Ratio: ${fmtBpsPct(risk.utilization_ratio_bps)} (not a risk ratio, see below)`;
+        ? 'Ratio: n/a (pool balance is zero, nothing backs the reservations)'
+        : `Ratio: ${fmtBpsPct(risk.utilization_ratio_bps)}`;
       const text = [
-        'GoStop Bankroll — utilization not measurable',
+        'GoStop Bankroll: open exposure exceeds pool balance',
         '',
         `Open exposure: ${risk.active_exposure_raw} NUSDC raw`,
         `Pool balance:  ${risk.tvl_raw} NUSDC raw`,
         ratioLine,
         '',
-        'open_exposure is not a house-liability figure and utilization built on it is not a risk ratio. Each reservation needs exactly one matching release and does not get one. Counted over the retained window on 2026-09-27: scratchcard 972,476 reserve against 1,192,865 release, mines 90,217 against 58,135, wheel 229,730 against 103,588, numbermatch 941,009 against 941,009. Releases outnumbering reserves is not something a liability can do.',
+        'If every open round paid its maximum, the pool could not cover it. Each payout is still bounded by the balance check in pay_winner, so an uncovered winner would see its payout abort rather than drain the pool, but that is a player-facing failure.',
         '',
-        'Scale at that same measurement: true in-flight liability was at most 150,000 NUSDC (75 live mines sessions at a 2,000 max payout; wheel, scratchcard and numbermatch settle in one transaction and hold nothing at rest; crash has had no round since 2026-05-08) against an open_exposure of 13,720,500, about 91x higher. On that date the gap was accounting, not solvency. Nothing recomputes it, so treat it as the last known reading rather than the current one: the counts prove the ledger is unusable, not that the pool is solvent today. Re-measure before relying on it. Payouts stay bounded independently by the pool balance check in pay_winner.',
+        'A utilization cap cannot help above 100%: MAX_CAP_BPS is 10000, so no admissible cap sits above this ratio. Pause new bets (set_paused) or add bankroll.',
         '',
-        'Do NOT set a utilization cap. The ratio crosses 100% from hour to hour, and above it no admissible cap exists at all since MAX_CAP_BPS is 10000. Below it a cap still has to clear both the current ratio and each game max_single_payout as a share of balance, or that game aborts on its first bet.',
-        '',
-        'Clearing this needs the games rebound to the paired ledger (reserve_exposure / release_exposure, live since bankroll_pool v0.0.5 on 2026-09-28), every old GameCap revoked, and open_exposure then reset with admin_set_open_exposure. This alert stands until then; it does not track the value.',
-        '',
-        `Cooldown ${Math.round(cooldownFor('utilization_unmeasurable') / 3_600_000)} h before re-fire.`,
+        `Cooldown ${Math.round(RISK_ALERT_COOLDOWN_MS / 60_000)} min before re-fire.`,
       ].join('\n');
 
       const ok = await sendTelegram('risk-alert', text);
       if (ok) {
-        lastFired.set('utilization_unmeasurable', now);
+        lastFired.set('exposure_exceeds_balance', now);
         console.log(
-          `[risk-alert] utilization_unmeasurable fired at ${fmtBpsPct(risk.utilization_ratio_bps)}`,
+          `[risk-alert] exposure_exceeds_balance fired at ${fmtBpsPct(risk.utilization_ratio_bps)}`,
         );
       }
     }
   } else if (risk.active_exposure_chain_status === 'dormant') {
-    // Same reason the API and the dashboard both render exposure as N/A here:
-    // there is no recent on-chain reading, so utilization_ratio_bps has no
-    // numerator worth thresholding. Correcting the TVL denominator made this
-    // matter — it shrank ~2.7x, so a stale numerator now crosses 60% far more
-    // readily than it used to. Stay silent rather than page on it: 'dormant'
-    // is an expected standing state (v0.0.4 published, game contracts still
-    // linkage-frozen) and the lockstep upgrade that clears it is already
-    // tracked, so an alert would add cadence without adding information.
+    // No usable reading: the chain read failed and there is no recent indexed
+    // snapshot to fall back on. Nothing to threshold, and a failing chain read
+    // already shows up as data_quality, so stay silent.
     console.log(
       '[risk-alert] utilization skipped — exposure dormant, no usable numerator',
     );
@@ -273,8 +219,4 @@ export const _RISK_ALERT_CONSTANTS = {
   UTILIZATION_THRESHOLD_BPS,
   RISK_ALERT_INTERVAL_MS,
   RISK_ALERT_COOLDOWN_MS,
-  COOLDOWN_OVERRIDE_MS,
 };
-
-/** Test-only — resolved per-key cooldown. */
-export { cooldownFor as _cooldownFor };

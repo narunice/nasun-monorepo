@@ -104,26 +104,24 @@ describe('walletHash (frontend self-match key)', () => {
 });
 
 describe('classifyExposureStatus', () => {
-  it('withholds every live reading while the reservation ledger does not pair', () => {
-    // The defect is a property of the deployed packages, not of the value, so
-    // the status does not track the number. Withholding only above the balance
-    // published a ~91x overstatement whenever the overstatement happened to
-    // stay under it, and flipped the public page between a figure and a
-    // placeholder as the two drifted past each other.
-    expect(classifyExposureStatus('live', 100n, 1_000n)).toBe('degraded');
-    expect(classifyExposureStatus('live', 1_000n, 1_000n)).toBe('degraded');
-    expect(classifyExposureStatus('live', 1_001n, 1_000n)).toBe('degraded');
-    expect(classifyExposureStatus('live', 0n, 0n)).toBe('degraded');
-    expect(classifyExposureStatus('live', 1_000n, null)).toBe('degraded');
+  it('publishes a paired reading at or below the balance', () => {
+    expect(classifyExposureStatus('live', 100n, 1_000n)).toBe('live');
+    expect(classifyExposureStatus('live', 1_000n, 1_000n)).toBe('live');
+    expect(classifyExposureStatus('live', 0n, 0n)).toBe('live');
+    // A failed balance read has nothing to compare; data_quality carries it.
+    expect(classifyExposureStatus('live', 1_000n, null)).toBe('live');
   });
 
-  it('withholds the production reading that is well below its balance', () => {
-    // 2026-09-27: exposure 13,720,500 against a 14,181,332 balance, so the
-    // old exceeds-the-balance gate called this 'live' and published it. True
-    // in-flight liability at that moment was at most 150,000.
+  it('withholds a reading above the balance', () => {
+    expect(classifyExposureStatus('live', 1_001n, 1_000n)).toBe('degraded');
+    expect(classifyExposureStatus('live', 1n, 0n)).toBe('degraded');
+  });
+
+  it('publishes the reading right after the 2026-09-28 reset', () => {
+    // 75 legacy mines sessions at 2,000 each against a ~14.3M balance.
     expect(
-      classifyExposureStatus('live', 13_720_500_000_000n, 14_181_332_551_413n),
-    ).toBe('degraded');
+      classifyExposureStatus('live', 150_000_000_000n, 14_298_625_070_000n),
+    ).toBe('live');
   });
 
   it("never overrides 'dormant' — one reason for an unusable value is enough", () => {
@@ -131,17 +129,17 @@ describe('classifyExposureStatus', () => {
     expect(classifyExposureStatus('dormant', 0n, 1_000n)).toBe('dormant');
   });
 
-  it('keeps the pairing flag false so the gate cannot be flipped by accident', () => {
-    // Flipping this is a claim about redeployed contracts plus a reset
-    // open_exposure, which needs a bankroll_pool upgrade. Locking it here
-    // makes that an explicit edit rather than a silent one.
-    expect(_RISK_METRICS_CONSTANTS.RESERVATION_LEDGER_PAIRS_EXACTLY).toBe(false);
+  it('locks the pairing flag on', () => {
+    // True is a claim about the deployed contracts (bankroll_pool v0.0.6 plus
+    // the rebound games and the legacy reset). Rebinding any game to the
+    // legacy collect_bet makes it false again, and this test forces that to
+    // be an explicit edit.
+    expect(_RISK_METRICS_CONSTANTS.RESERVATION_LEDGER_PAIRS_EXACTLY).toBe(true);
   });
 });
 
 describe('exposureExceedsBalance', () => {
-  // Gated out of classifyExposureStatus by the pairing flag today, so it is
-  // tested directly. It becomes the live check the moment that flag flips.
+  // The live check behind classifyExposureStatus, tested directly as well.
   it('is false below and at the balance', () => {
     expect(exposureExceedsBalance(100n, 1_000n)).toBe(false);
     // Equality is full utilization, not an excess: consistent with a pool that
