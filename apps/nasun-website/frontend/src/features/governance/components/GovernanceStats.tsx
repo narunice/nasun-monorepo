@@ -21,7 +21,9 @@ export const GovernanceStats: FC<GovernanceStatsProps> = ({ className = "" }) =>
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
 
-  const { stats, isLoading } = useVoteHistory();
+  // Stats only: no rows are rendered here, so no proposal or vote-record
+  // lookups are needed.
+  const { stats, isLoading } = useVoteHistory(0);
 
   if (!isConnected) {
     return null;
@@ -35,6 +37,13 @@ export const GovernanceStats: FC<GovernanceStatsProps> = ({ className = "" }) =>
         </div>
       </OuterBox>
     );
+  }
+
+  // Null means the visible proposal set could not be established, usually the
+  // hidden-proposals API being unreachable. A rate computed off a denominator
+  // we cannot verify would be a number nobody can act on, so nothing is shown.
+  if (!stats) {
+    return null;
   }
 
   const { totalProposals, votedProposals, participationRate } = stats;
@@ -57,7 +66,7 @@ export const GovernanceStats: FC<GovernanceStatsProps> = ({ className = "" }) =>
       <div className="w-full h-2 bg-nasun-nw2/30 rounded-full overflow-hidden">
         <div
           className="h-full bg-nasun-nw1 rounded-full transition-all duration-500"
-          style={{ width: `${Math.min(participationRate, 100)}%` }}
+          style={{ width: `${participationRate}%` }}
         />
       </div>
 

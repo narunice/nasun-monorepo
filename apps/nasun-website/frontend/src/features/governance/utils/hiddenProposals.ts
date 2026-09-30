@@ -12,6 +12,14 @@ interface HiddenProposalsResponse {
 }
 
 /**
+ * Shared so the governance list and the vote history resolve one list. They
+ * disagreeing on what is hidden is what let hidden proposals count toward
+ * participation while never appearing in the list they were counted against.
+ */
+export const HIDDEN_PROPOSALS_QUERY_KEY = ["hiddenProposals"] as const;
+export const HIDDEN_PROPOSALS_STALE_TIME = 30 * 1000;
+
+/**
  * Fetch hidden proposal IDs from the Admin API.
  * This is a public endpoint that doesn't require authentication.
  * Throws on error so callers (e.g. React Query) can handle failure explicitly.

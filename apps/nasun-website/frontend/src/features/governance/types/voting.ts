@@ -10,15 +10,32 @@ export type SuiID = {
 export type ProposalType = "Governance" | "Poll";
 
 // Vote history for My Account page
-export interface VoteHistory {
+interface VoteHistoryBase {
   proposalId: string;
   proposalTitle: string;
-  // Both read from the proposal's on-chain VoteRecord, never inferred from the
-  // vote proof NFT, which carries no direction and no power.
-  voteYes: boolean;
+  // Read from the proposal's on-chain vote record, never inferred from the vote
+  // proof NFT, which carries neither direction nor power.
   votingPower: number;
   proposalStatus: "Active" | "Passed" | "Failed" | "Delisted";
 }
+
+// A binary Yes/No vote, recorded as proposal::VoteRecord.
+export interface BinaryVoteHistory extends VoteHistoryBase {
+  kind: "binary";
+  voteYes: boolean;
+}
+
+// A single-select vote, recorded as multi_choice_proposal::MultiChoiceVoteRecord,
+// which stores a choice index and no direction. The two kinds are separate
+// because there is no Yes/No to report for a multi-choice vote.
+export interface MultiChoiceVoteHistory extends VoteHistoryBase {
+  kind: "multiChoice";
+  // Label of the chosen option, resolved through getChoiceLabel so a tweet
+  // choice reads as @handle rather than a URL.
+  choiceLabel: string;
+}
+
+export type VoteHistory = BinaryVoteHistory | MultiChoiceVoteHistory;
 
 // Governance participation statistics
 export interface GovernanceStats {

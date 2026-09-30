@@ -62,21 +62,32 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
       {/* Recent Votes */}
       <div className="space-y-2">
-        <h6 className="font-medium text-nasun-white/80 uppercase">Recent Votes</h6>
+        <h6 className="font-medium text-nasun-white/80 uppercase">Your Votes</h6>
         {history.length > 0 ? (
           <div className="space-y-2">
             {history.map((vote) => (
-              <div key={vote.proposalId} className="flex items-center justify-between">
+              <div key={vote.proposalId} className="flex items-center justify-between gap-2">
                 <span className="truncate max-w-[150px] text-nasun-white/80">
                   {vote.proposalTitle}
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded text-sm font-medium ${
-                    vote.voteYes ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-                  }`}
-                >
-                  {vote.voteYes ? "Yes" : "No"}
-                </span>
+                {vote.kind === "binary" ? (
+                  <span
+                    className={`px-2 py-0.5 rounded text-sm font-medium ${
+                      vote.voteYes ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                    }`}
+                  >
+                    {vote.voteYes ? "Yes" : "No"}
+                  </span>
+                ) : (
+                  /* A multi-choice vote has no Yes or No to report, only the
+                     option that was picked. */
+                  <span
+                    className="px-2 py-0.5 rounded text-sm font-medium bg-nasun-nw1/20 text-nasun-nw1 truncate max-w-[110px]"
+                    title={vote.choiceLabel}
+                  >
+                    {vote.choiceLabel}
+                  </span>
+                )}
               </div>
             ))}
           </div>

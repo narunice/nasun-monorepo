@@ -13,12 +13,17 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { FC, Suspense, useState } from "react";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
-import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
+import {
+  fetchHiddenProposalIds,
+  HIDDEN_PROPOSALS_QUERY_KEY,
+  HIDDEN_PROPOSALS_STALE_TIME,
+} from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
 
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useAuth } from "@/features/auth";
 import { VotingPowerSummary } from "./VotingPowerSummary";
+import { GovernanceStats } from "./GovernanceStats";
 
 type ProposalFilter = "all" | "active" | "expired";
 
@@ -43,7 +48,10 @@ const GovernanceSection = () => {
 
       {/* Voting Power (always visible when connected) */}
       {isConnected ? (
-        <VotingPowerSummary />
+        <>
+          <VotingPowerSummary />
+          <GovernanceStats />
+        </>
       ) : (
         <div className="flex items-center justify-end">
           <p className="text-sm text-nasun-white/50">
@@ -83,9 +91,9 @@ const ProposalList = () => {
     isError: isHiddenError,
     refetch: refetchHidden,
   } = useQuery({
-    queryKey: ["hiddenProposals"],
+    queryKey: HIDDEN_PROPOSALS_QUERY_KEY,
     queryFn: fetchHiddenProposalIds,
-    staleTime: 30 * 1000,
+    staleTime: HIDDEN_PROPOSALS_STALE_TIME,
   });
   const hiddenIds = new Set(hiddenIdsArray);
 

@@ -82,7 +82,7 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
       {/* Recent Votes */}
       <div className="space-y-4">
         <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-wider">
-          Recent Votes
+          Your Votes
         </h6>
         {history.length > 0 ? (
           <div className="space-y-3">
@@ -94,15 +94,26 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
                 <span className="truncate max-w-[200px] text-uju-primary font-light">
                   {vote.proposalTitle}
                 </span>
-                <span
-                  className={`px-2.5 py-1 rounded-lg text-sm font-normal ${
-                    vote.voteYes
-                      ? "bg-pado-4/10 text-pado-4"
-                      : "bg-red-500/10 text-red-400"
-                  }`}
-                >
-                  {vote.voteYes ? "YES" : "NO"}
-                </span>
+                {vote.kind === "binary" ? (
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-sm font-normal ${
+                      vote.voteYes
+                        ? "bg-pado-4/10 text-pado-4"
+                        : "bg-red-500/10 text-red-400"
+                    }`}
+                  >
+                    {vote.voteYes ? "YES" : "NO"}
+                  </span>
+                ) : (
+                  /* A multi-choice vote has no Yes or No to report, only the
+                     option that was picked. */
+                  <span
+                    className="px-2.5 py-1 rounded-lg text-sm font-normal bg-uju-primary/10 text-uju-primary truncate max-w-[140px]"
+                    title={vote.choiceLabel}
+                  >
+                    {vote.choiceLabel}
+                  </span>
+                )}
               </div>
             ))}
           </div>
