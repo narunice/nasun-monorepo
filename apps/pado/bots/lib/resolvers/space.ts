@@ -149,17 +149,42 @@ interface LL2Launch {
 //                   ceiling -- a week-long 429 loop. If this TTL is ever
 //                   misconfigured again, requestBudgetOk below still holds
 //                   the line; only resolution latency degrades, not quota.
-//   requestWindowStart/requestCountInWindow — see requestBudgetOk. Sized
-//                   for the launch count open today (one). If a second
-//                   SpaceX market is ever created before the first one
-//                   resolves, per-launch demand (RECENT_TTL_MS) leaves
-//                   little headroom for a second launch, especially
-//                   unauthenticated -- get a real LL2_API_KEY (35 req/hr)
-//                   before batch-creating another one while one is open.
+//                   2026-10-01: raised 5 -> 10 min. At 5 min a single
+//                   tracked launch spent 12 of the 14 req/hr budget, so a
+//                   second distinct launch could not have been served at
+//                   all. The cost is resolution latency bounded by the TTL,
+//                   and resolve deadlines are days out, so the trade is
+//                   strictly favourable.
+//   requestWindowStart/requestCountInWindow — see requestBudgetOk. The
+//                   unauthenticated budget is 14 req/hr (15 - SAFETY_MARGIN).
+//                   Cost is per *distinct* LaunchId, not per market: both
+//                   caches key on launchId, so any number of markets over
+//                   one launch is free. Per launch the ceiling is 6 req/hr
+//                   in every regime -- healthy (RECENT_TTL_MS), transient
+//                   failure (FAILURE_BACKOFF_MS, held equal to the TTL on
+//                   purpose) and 1 req/hr when parked by
+//                   PERMANENT_FAILURE_BACKOFF_MS. So two concurrent launches
+//                   fit (12/14) and three do not. Before opening a third,
+//                   raise RECENT_TTL_MS *and* FAILURE_BACKOFF_MS to 15 min
+//                   (4 req/hr each) -- prefer that to LL2_API_KEY, which
+//                   buys a 35 req/hr ceiling at the price of one more
+//                   external credential to rotate, a failure mode this repo
+//                   has already eaten twice elsewhere.
 //
 const TERMINAL_STATUS_IDS = new Set<number>([3, 4, 7]);
-const RECENT_TTL_MS = 5 * 60_000;
-const FAILURE_BACKOFF_MS = 5 * 60_000;
+const RECENT_TTL_MS = 10 * 60_000;
+// Transient failures (429, 5xx, network) must not be retried faster than the
+// healthy poll rate, or a failing launch costs more quota than a working one.
+// Kept equal to RECENT_TTL_MS so every regime below bills the same 6 req/hr;
+// raise both together.
+const FAILURE_BACKOFF_MS = 10 * 60_000;
+// A 4xx that is not 429 does not heal on its own: a typo'd LaunchId answers
+// 404 forever, a bad LL2_API_KEY answers 403 forever. Until 2026-10-02 these
+// set neither cache nor backoff, so such a launch re-requested on every
+// keeper tick and drained the whole shared window in ~14 minutes, starving
+// every healthy launch for the rest of the hour. Park it for an hour: the
+// operator has to fix the id or the key either way.
+const PERMANENT_FAILURE_BACKOFF_MS = 60 * 60_000;
 const REQUEST_WINDOW_MS = 60 * 60_000;
 // Trimmed once here so a stray trailing newline/space from .env parsing
 // (a recurring hazard in this repo) can't read as a non-empty key while
@@ -237,9 +262,14 @@ async function fetchLaunch(launchId: string): Promise<LL2Launch> {
     throw err;
   }
   if (!res.ok) {
-    if (res.status === 429 || res.status >= 500) {
-      failureBackoff.set(launchId, { until: now + FAILURE_BACKOFF_MS, reason: `HTTP ${res.status}` });
-    }
+    // Every non-ok response gets a backoff, not just the retryable ones --
+    // see PERMANENT_FAILURE_BACKOFF_MS for why the 4xx case is the dangerous
+    // one for the shared budget.
+    const transient = res.status === 429 || res.status >= 500;
+    failureBackoff.set(launchId, {
+      until: now + (transient ? FAILURE_BACKOFF_MS : PERMANENT_FAILURE_BACKOFF_MS),
+      reason: `HTTP ${res.status}`,
+    });
     throw new Error(`LL2 HTTP ${res.status} ${res.statusText}`);
   }
   const body = (await res.json()) as LL2Launch;
