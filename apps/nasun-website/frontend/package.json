@@ -96,7 +96,7 @@
     "@types/react-slick": "^0.23.13",
     "@types/slick-carousel": "^1.6.40",
     "@vitejs/plugin-react": "^4.6.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.4.20",
     "depcheck": "^1.4.7",
     "eslint": "^10.4.0",
