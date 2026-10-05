@@ -1,0 +1,90 @@
+# /etc/systemd/system/nasun-ai-host.service
+#
+# Box-hosted AI host. Replaces the `baram/executor` Lambda that sat behind the
+# prod API Gateway, which the 2026-07 AWS exit removed without migrating -- the
+# reason every trader cycle had been failing at `infer(hostUrl)` since. Serves
+# /infer, /execute-capability, /execute, /record, /result, /info, /health.
+#
+# Callers are local only: chat-server (:3101) and the per-agent nasun-ai-runtime
+# processes, both on this box. The listener binds 127.0.0.1 and nginx does NOT
+# route to this port -- do not add a route. API Gateway used to enforce an API
+# key in front of the Lambda; HOST_API_KEY keeps that as defence in depth on top
+# of the loopback bind.
+#
+# Unlike the sibling box services, this one does NOT set IPAddressDeny=any:
+# /infer calls external LLM providers over HTTPS, so egress must stay open. The
+# other hardening directives match the siblings.
+#
+# Secrets:
+#   - LoadCredential puts the executor signing key on a per-service ramfs at
+#     mode 0400 ($CREDENTIALS_DIRECTORY/executor-key). src/secrets.ts refuses a
+#     key file that is group- or other-readable, which this satisfies. Install
+#     the key at /etc/nasun/nasun-ai-host/executor.key (root:root 0600); it is
+#     the `nasun-ai-executor-prod` keystore entry, i.e. the executor registered
+#     on chain. A different key means every settlement aborts.
+#   - EnvironmentFile carries the LLM provider API keys. Keep it root:root 0600
+#     and out of the repo. At least one of GROQ_API_KEY / CEREBRAS_API_KEY /
+#     OPENROUTER_API_KEY / DEEPSEEK_API_KEY / MISTRAL_API_KEY /
+#     SAMBANOVA_API_KEY / GEMINI_API_KEY must be set, or startup fails fast.
+#
+# Deploy: `node build.mjs` then scp dist/server.mjs to /srv/nasun/nasun-ai-host/.
+# See docs/box-services-deploy.md. esbuild does not typecheck -- run
+# `npx tsc -p tsconfig.json` first.
+
+[Unit]
+Description=Nasun AI host (/infer + AER settlement for nasun-ai-runtime agents)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/nasun-ai-host
+ExecStart=/usr/bin/node /srv/nasun/nasun-ai-host/server.mjs
+Restart=on-failure
+RestartSec=2
+
+# Writable state for the 7-day result cache (/var/lib/nasun-ai-host).
+StateDirectory=nasun-ai-host
+
+LoadCredential=executor-key:/etc/nasun/nasun-ai-host/executor.key
+EnvironmentFile=/etc/nasun/nasun-ai-host/provider-keys.env
+
+Environment=HOST_BIND=127.0.0.1
+Environment=HOST_PORT=4500
+Environment=EXECUTOR_KEY_PATH=%d/executor-key
+Environment=RESULT_DB_PATH=/var/lib/nasun-ai-host/results.db
+
+# Local fullnode: the box runs its own, so inference and settlement do not
+# depend on the public RPC edge being reachable.
+Environment=SUI_RPC_URL=http://127.0.0.1:9000
+
+# On-chain ids, from packages/devnet-config/devnet-ids.json (`baram`). They must
+# match the AGENT_GLOBAL_* keys in the chat-server .env, because the agent signs
+# against the capability these ids resolve.
+Environment=BARAM_PACKAGE_ID=0x61172579f109c1fcdbb379389fb33bffa58bf47711bda4fa38e71938a329f743
+Environment=BARAM_REGISTRY_ID=0x492b7dd12a2deb511023a5400c139e9c82941402df853b0b4eefc58f6e10137e
+Environment=AER_PACKAGE_ID=0x3fdb58e558e170c85e0770fd71999dd1e8c0d5cfae8483750f922f942b7aee5f
+Environment=AER_REGISTRY_ID=0xa5855705c77505ea68d3519dc8808db01ecea26fed888c36500d7bf15d2e62ba
+
+# Intentionally empty: the executor / attestation / compliance / staking /
+# budget packages were not deployed in v8 (baram-TEE deferred, see the
+# `_deferred_v8` note in devnet-ids.json). sui.ts treats this as a supported
+# rollout state -- appendExecutorHeartbeat returns early when the three are
+# unset and the AER submission proceeds unchanged. Fill them in only once the
+# executor package is actually published, or every settlement PTB will abort
+# against a package that does not exist.
+Environment=EXECUTOR_PACKAGE_ID=
+Environment=EXECUTOR_REGISTRY_ID=
+Environment=EXECUTOR_PROCESSED_REQUESTS_ID=
+
+# Atomic-swap PTB path stays off, matching the runtime's PR1A_SWAP_DISABLED.
+# Enabling it needs DEEPBOOK_PACKAGE_ALLOWLIST, DEEPBOOK_POOL_ALLOWLIST and
+# DEEP_TYPE filled in first; the handler validates against them at the boundary.
+Environment=LAMBDA_SWAP_DISABLED=true
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target
