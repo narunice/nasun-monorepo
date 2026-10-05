@@ -3,6 +3,7 @@
  */
 
 import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 import { resolveStrategyPreset, type StrategyPreset } from './presets/strategies.js';
@@ -49,18 +50,29 @@ function requireHttpsUrl(raw: string, name: string): string {
   return raw;
 }
 
-// PR2.A: when AGENT_SECRET_PARAM is set, fetch the bech32 keypair from
-// AWS SSM Parameter Store at startup. Falls back to AGENT_PRIVATE_KEY
-// for the legacy single-tenant nasun-ai-runtime PM2 process.
-async function loadKeypairFromParam(paramName: string): Promise<Ed25519Keypair> {
-  const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
-  const client = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
-  const resp = await client.send(new GetParameterCommand({
-    Name: paramName,
-    WithDecryption: true,
-  }));
-  const value = resp.Parameter?.Value;
-  if (!value) throw new Error(`vault: empty parameter ${paramName}`);
+// When AGENT_SECRET_PATH is set, read the secret key from the box keypair
+// vault that chat-server wrote it to (apps/nasun-website/chat-server/src/
+// agent-vault-store.ts). Falls back to AGENT_PRIVATE_KEY for the legacy
+// single-tenant nasun-ai-runtime PM2 process.
+//
+// This replaced an SSM Parameter Store fetch when the 2026-07 AWS exit
+// decommissioned the prod account. chat-server and this process run as the
+// same unix user on the same host, so the file is readable here and nowhere
+// else; the store module documents that trust boundary in full.
+async function loadKeypairFromPath(secretPath: string): Promise<Ed25519Keypair> {
+  let value: string;
+  try {
+    value = (await readFile(secretPath, 'utf8')).trim();
+  } catch (err) {
+    // Name the path but never the cause's message: fs errors are safe here,
+    // yet this is the one code path holding key material and a future reader
+    // should not have to re-derive that.
+    throw new Error(
+      `vault: cannot read agent secret at ${secretPath} `
+      + `(${(err as { code?: string }).code ?? 'unknown error'})`,
+    );
+  }
+  if (!value) throw new Error(`vault: empty agent secret at ${secretPath}`);
   return loadKeypair(value);
 }
 
@@ -282,8 +294,8 @@ function loadVaultConfig(): VaultConfig {
 }
 
 // PR2.A: split into two phases. loadConfigBaseSync() returns everything
-// that does NOT need the keypair; enrichWithKeypair() awaits the SSM
-// fetch (or falls back to AGENT_PRIVATE_KEY env) and returns the full
+// that does NOT need the keypair; enrichWithKeypair() awaits the vault read
+// (or falls back to AGENT_PRIVATE_KEY env) and returns the full
 // Config. loadConfig() preserves the legacy single-call API for tests
 // and existing callers, but is now async.
 export async function loadConfig(): Promise<Config> {
@@ -422,14 +434,14 @@ export function loadConfigBaseSync() {
 }
 
 /**
- * Resolve the agent keypair (SSM Parameter Store if AGENT_SECRET_PARAM is
- * set, else AGENT_PRIVATE_KEY env) and merge it into the base config.
+ * Resolve the agent keypair (the box vault if AGENT_SECRET_PATH is set, else
+ * AGENT_PRIVATE_KEY env) and merge it into the base config.
  */
 export async function enrichWithKeypair(
   base: ReturnType<typeof loadConfigBaseSync>,
 ): Promise<Config> {
-  const keypair = process.env.AGENT_SECRET_PARAM
-    ? await loadKeypairFromParam(process.env.AGENT_SECRET_PARAM)
+  const keypair = process.env.AGENT_SECRET_PATH
+    ? await loadKeypairFromPath(process.env.AGENT_SECRET_PATH)
     : loadKeypair(requireEnv('AGENT_PRIVATE_KEY'));
   return { ...base, keypair, agentAddress: keypair.toSuiAddress() } as const;
 }

@@ -70,7 +70,7 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 - **Idempotency DB**: `~/.nasun-ai-runtime/processed_jobs.db` (SQLite). 마이그레이션 시 보존 필요
 - **PM2 운영 모드 2가지**:
   - **Single daemon** (`ecosystem.nasun-ai-runtime.cjs`, id 58, `PRESET=trader`, `WAKE_PORT=4400`): 기본/standalone
-  - **Per-agent spawn** (`agent-template.config.cjs`): chat-server `agent-orchestrator`가 사용자별 agent마다 동적으로 spawn. `AGENT_SECRET_PARAM`(SSM Parameter Store)로 keypair 주입, 각 agent마다 별도 `WAKE_PORT`/`CAPABILITY_ID`/`STRATEGY`/`MAX_NOTIONAL_QUOTE_RAW`
+  - **Per-agent spawn** (`agent-template.config.cjs`): chat-server `agent-orchestrator`가 사용자별 agent마다 동적으로 spawn. `AGENT_SECRET_PATH`(box keypair vault 파일 경로)로 keypair 주입, 각 agent마다 별도 `WAKE_PORT`/`CAPABILITY_ID`/`STRATEGY`/`MAX_NOTIONAL_QUOTE_RAW`
 - **/wake bind**: `127.0.0.1` 만 (외부 노출 금지). chat-server가 같은 EC2 내에서 호출
 
 ## 환경변수
@@ -78,7 +78,7 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 **On-chain identifiers (invariant)**:
 - `BARAM_PACKAGE_ID`, `BARAM_REGISTRY_ID`, `BARAM_AER_PACKAGE_ID`
 - `BUDGET_ID`, `CAPABILITY_ID`, `ESCROW_ID`
-- `EXECUTOR_ADDRESS`, `AGENT_PRIVATE_KEY` 또는 `AGENT_SECRET_PARAM`
+- `EXECUTOR_ADDRESS`, `AGENT_PRIVATE_KEY` 또는 `AGENT_SECRET_PATH`
 - `COIN_NUSDC_TYPE`, `COIN_NBTC_TYPE`
 
 **Infra**:
@@ -99,7 +99,7 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 
 1. **Lambda env update는 REPLACE not MERGE**: 일부 키만 보내면 나머지 env 전부 삭제. baram-executor 5/17 drift 사고에서 22개 env 중 21개 silent wipe + `AER_PACKAGE_ID=null` 포함. CDK diff는 template OK로 보이므로 무력. 전체 env JSON 직접 푸시 또는 CDK deploy (feedback_lambda_env_replace_not_merge.md, project_2026_05_17_baram_executor_phase_e_drift.md).
 2. **chat-server 새 env 키 도입 시 delete+start**: pm2 startOrRestart로는 부족. ecosystem 파일 parse-time env resolution 특성 (feedback_pm2_daemon_env_resolution.md, feedback_pm2_hard_restart_for_new_env.md).
-3. **Agent별 keypair는 SSM**: `AGENT_SECRET_PARAM` 경유. .env 파일에 직접 저장 금지. orchestrator가 spawn 시 execFile로 주입하되 daemon이 parse-time에 다시 resolve하므로 JSON 리터럴로 baked-in 또는 per-spawn config 파일 작성.
+3. **Agent별 keypair는 box vault**: `AGENT_SECRET_PATH` 경유 (`~/.nasun-ai-vault/<agent>.key`, 0600). 2026-10-05에 SSM Parameter Store에서 이전 — AWS 탈출로 prod 계정이 사라졌기 때문. 신뢰 경계와 불변식은 `apps/nasun-website/chat-server/src/agent-vault-store.ts` 헤더 참조. .env 파일에 키 직접 저장 금지. orchestrator가 spawn 시 execFile로 주입하되 daemon이 parse-time에 다시 resolve하므로 JSON 리터럴로 baked-in 또는 per-spawn config 파일 작성.
 4. **stdout은 spawn 검증 끝나기 전까지 /dev/null 금지**: 보안 로그 누락 + 스타트업 디버깅 불가. 검증 후에만 /dev/null로 redirect (feedback_pm2_daemon_env_resolution.md).
 5. **AI agent 자금 UX**: Budget(추론료)과 Agent Wallet(매매자본)을 사용자에게 명확히 분리 표시 필요. 현재 UI는 두 funds가 혼동되는 상태 — PR2.A 안정화 후 PR2.B에서 별도 처리 예정 (project_nasun_ai_agent_funds_ux_revamp.md).
 6. **fast/slow 모드는 Opus 4.6 이상**: Fast mode for Claude Code uses Claude Opus with faster output. AI agent도 Opus 4.6/4.7 family를 default로 사용.

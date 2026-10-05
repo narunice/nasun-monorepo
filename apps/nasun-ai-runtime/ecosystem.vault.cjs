@@ -30,7 +30,7 @@
  *                           to run)
  *   Agent key (one of):
  *     AGENT_PRIVATE_KEY   = the vault.agent_address key, OR
- *     AGENT_SECRET_PARAM  = SSM Parameter Store path holding it (preferred)
+ *     AGENT_SECRET_PATH   = box vault file holding it (preferred)
  *   LLM seam (optional; absent -> deterministic mean-reversion band):
  *     LLM_API_URL, LLM_API_KEY, LLM_MODEL
  *

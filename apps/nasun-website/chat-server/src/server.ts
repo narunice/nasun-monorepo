@@ -563,7 +563,6 @@ async function handleHttpRequest(
           await spawnAgentPm2({
             agentAddress: row.agent_address,
             pm2Name: row.pm2_name,
-            paramName: row.param_name,
             wakePort: row.wake_port,
           });
           results.push({ pm2Name: row.pm2_name, ok: true });

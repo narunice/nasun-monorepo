@@ -1,37 +1,24 @@
 // PR2.A — 7-day grace cron + boot catch-up.
 //
-// SSM Parameter Store has no native recovery window, so we model one
-// here: DELETE soft-deletes the row (deleted_at = now), and this cron
-// hard-deletes both the SSM Parameter and the row only when the grace
-// window has fully elapsed.
+// The keypair store has no native recovery window, so we model one here:
+// DELETE soft-deletes the row (deleted_at = now), and this cron hard-deletes
+// both the stored secret and the row only when the grace window has fully
+// elapsed.
 //
 // Boot catch-up: chat-server restart could leave deleted_at + 7d < now
 // rows lingering. startVaultPurgeCron() runs the purge once at startup
 // before scheduling the hourly tick.
+//
+// Custody moved from SSM Parameter Store to the box (agent-vault-store.ts), so
+// the AGENT_VAULT_RETIRED branch that skipped the remote delete is gone: a
+// local unlink has no account left to fail against, and skipping it would now
+// leak private keys that outlive their rows.
 
-import {
-  SSMClient,
-  DeleteParameterCommand,
-} from '@aws-sdk/client-ssm';
 import { getDb } from './store.js';
-
-// AWS-exit retire gate (mirrors agent-vault-routes.isVaultRetired; read inline to
-// avoid a module cycle). When set, the SSM parameter delete is skipped and only the
-// local SQLite row is reaped -- the orphaned parameter dies with the prod account.
-function isVaultRetired(): boolean {
-  return process.env.AGENT_VAULT_RETIRED === '1';
-}
+import { deleteSecret } from './agent-vault-store.js';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const PURGE_INTERVAL_MS = 60 * 60 * 1000;
-
-let ssmClient: SSMClient | null = null;
-function getSsm(): SSMClient {
-  if (!ssmClient) {
-    ssmClient = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
-  }
-  return ssmClient;
-}
 
 let lastRunAt = 0;
 
@@ -47,44 +34,29 @@ export async function runVaultPurge(forceImmediate = false): Promise<void> {
   lastRunAt = Date.now();
   const cutoff = forceImmediate ? Date.now() + 1 : Date.now() - SEVEN_DAYS_MS;
   const rows = getDb().prepare(
-    `SELECT param_name, agent_address FROM agent_keys
+    `SELECT agent_address FROM agent_keys
      WHERE deleted_at IS NOT NULL AND deleted_at < ?`
-  ).all(cutoff) as { param_name: string; agent_address: string }[];
+  ).all(cutoff) as { agent_address: string }[];
 
   for (const row of rows) {
-    // Retired routine sweep: the prod SSM account is being decommissioned, so the
-    // hourly cron skips the remote delete (which would only log auth failures once
-    // the account is gone) and reaps the local row. The orphaned parameter dies with
-    // the account. The kill-switch path (forceImmediate) is deliberately excluded:
-    // its whole purpose is to purge private keys from SSM on demand, a security
-    // guarantee that must hold for as long as the account is still alive, so it falls
-    // through to the best-effort DeleteParameter below (which tolerates a post-
-    // suspension auth failure the same way it tolerates ParameterNotFound).
-    if (isVaultRetired() && !forceImmediate) {
-      try {
-        getDb().prepare(`DELETE FROM agent_keys WHERE agent_address = ?`)
-          .run(row.agent_address);
-        console.log(`[vault-purge] reaped ${row.agent_address} (retired, SSM delete skipped)`);
-      } catch (err) {
-        console.error(`[vault-purge] retired reap failed ${row.agent_address}: ${(err as Error).message}`);
-      }
-      continue;
-    }
     try {
-      await getSsm().send(new DeleteParameterCommand({ Name: row.param_name }));
+      // deleteSecret is idempotent: false means it was already gone (an earlier
+      // failed cleanup, or a pre-exit row whose secret only ever lived in the
+      // retired SSM account). Either way the row is safe to reap -- what must
+      // never happen is reaping the row while a readable secret survives it.
+      const removed = await deleteSecret(row.agent_address);
       getDb().prepare(`DELETE FROM agent_keys WHERE agent_address = ?`)
         .run(row.agent_address);
-      console.log(`[vault-purge] purged ${row.agent_address}`);
+      console.log(
+        removed
+          ? `[vault-purge] purged ${row.agent_address}`
+          : `[vault-purge] no stored secret; row reaped: ${row.agent_address}`,
+      );
     } catch (err) {
-      const errName = (err as { name?: string }).name;
-      if (errName === 'ParameterNotFound') {
-        // Already gone (manual aws cli or earlier failed cleanup) — drop the row.
-        getDb().prepare(`DELETE FROM agent_keys WHERE agent_address = ?`)
-          .run(row.agent_address);
-        console.log(`[vault-purge] orphan SQLite row reaped: ${row.agent_address}`);
-        continue;
-      }
-      console.error(`[vault-purge] failed ${row.agent_address}: ${errName ?? (err as Error).message}`);
+      console.error(
+        `[vault-purge] failed ${row.agent_address}: `
+        + `${(err as { name?: string }).name ?? (err as Error).message}`,
+      );
     }
   }
 }

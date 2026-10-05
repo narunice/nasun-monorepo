@@ -31,7 +31,6 @@ export interface VaultStatusResponse {
 
 export interface VaultUploadResult {
   ok: true;
-  paramName: string;
   pm2Name: string;
   wakePort: number;
 }
