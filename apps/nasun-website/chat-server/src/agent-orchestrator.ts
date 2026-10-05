@@ -9,16 +9,31 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { writeFile, unlink } from 'node:fs/promises';
+import { writeFile, unlink, access } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getDb } from './store.js';
+import { secretPathFor } from './agent-vault-store.js';
 import { fetchCapabilityEscrowId } from './sui-capability-utils.js';
 import { readAgentProfileIsActive, invalidateAgentProfileCache } from './sui-client.js';
 
 const exec = promisify(execFile);
 
 const PM2_BIN = process.env.PM2_BIN ?? '/usr/bin/pm2';
-const PM2_HOME = process.env.PM2_HOME ?? '/home/ec2-user/.pm2';
-const RUNTIME_CWD = process.env.NASUN_AI_RUNTIME_CWD ?? '/home/ec2-user/nasun-ai-runtime';
+// Both of these used to default to /home/ec2-user/* — the prod-EC2 layout that
+// the 2026-07 AWS exit replaced with the Hetzner box (home dir /home/nasun).
+// PM2_HOME survived the move only by luck: the pm2 daemon injects it into
+// chat-server's own env, so the dead default was never read. RUNTIME_CWD had no
+// such backstop and nothing in the repo ever set NASUN_AI_RUNTIME_CWD, so every
+// spawn wrote its ecosystem file into a directory that does not exist and failed
+// — silently enough that no agent ran a single cycle between the migration and
+// 2026-10-05. Default off the running process instead of naming a host:
+// homedir()/.pm2 is pm2's own default, and the runtime is a sibling app in this
+// monorepo, two levels above apps/nasun-website/chat-server/{src,dist}.
+const PM2_HOME = process.env.PM2_HOME ?? resolve(homedir(), '.pm2');
+const RUNTIME_CWD = process.env.NASUN_AI_RUNTIME_CWD
+  ?? resolve(dirname(fileURLToPath(import.meta.url)), '../../../nasun-ai-runtime');
 // Per-spawn ecosystem config files are written to RUNTIME_CWD at spawn time
 // with env values baked in as JSON literals (not process.env[k] references).
 // Reason: pm2's daemon — not the CLI — resolves the env block at spawn time.
@@ -55,6 +70,21 @@ function assertSafeName(pm2Name: string): void {
   }
 }
 
+// The 2026-07 regression surfaced as a bare ENOENT from writeFile several
+// frames into the spawn, which read like a transient disk error rather than a
+// host-layout mistake. Check the directory up front so the failure names both
+// the path and the override that fixes it.
+async function assertRuntimeDirPresent(): Promise<void> {
+  try {
+    await access(RUNTIME_CWD);
+  } catch {
+    throw new Error(
+      `runtime_dir_missing: ${RUNTIME_CWD} does not exist. Deploy `
+      + `apps/nasun-ai-runtime to this host or set NASUN_AI_RUNTIME_CWD.`,
+    );
+  }
+}
+
 const pm2Env = (extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
   ...process.env,
   PM2_HOME,
@@ -80,7 +110,6 @@ async function pm2List(): Promise<Pm2ProcessLite[]> {
 export interface SpawnOptions {
   agentAddress: string;
   pm2Name: string;
-  paramName: string;
   wakePort: number;
 }
 
@@ -336,6 +365,7 @@ function readAlphaPausedFlag(agentAddress: string): boolean {
 
 export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   assertSafeName(opts.pm2Name);
+  await assertRuntimeDirPresent();
 
   // Phase 6: orchestrator-side enabled gate. The whole point of this
   // refactor is that the user's `enabled:false` toggle must be binding.
@@ -357,13 +387,13 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   const envBlock: Record<string, string> = {
     NODE_ENV: 'production',
     PRESET: 'trader',
-    // SSM keypair fetch requires AWS_REGION on the agent's process.env.
-    // chat-server itself has it; we forward explicitly because the baked-
-    // env approach (vs the prior process.env-passthrough template) means
-    // nothing leaks in by accident.
-    AWS_REGION: process.env.AWS_REGION ?? 'ap-northeast-2',
     PM2_AGENT_NAME: opts.pm2Name,
-    AGENT_SECRET_PARAM: opts.paramName,
+    // Derived here rather than taken from agent_keys.param_name: that column
+    // still holds SSM parameter names for rows created before the AWS exit,
+    // and the resume / restore / respawn paths all fed it straight through to
+    // the runtime. Computing it from the address keeps one convention, owned
+    // by the store, for every spawn path.
+    AGENT_SECRET_PATH: secretPathFor(opts.agentAddress),
     AGENT_ADDRESS: opts.agentAddress,
     WAKE_PORT: String(opts.wakePort),
     // AGENT_PRIVATE_KEY intentionally absent — keypair lives only inside
@@ -643,7 +673,6 @@ export async function reconcileAgentState(
         await spawnAgentPm2({
           agentAddress: lower,
           pm2Name: vault.pm2_name,
-          paramName: vault.param_name,
           wakePort: vault.wake_port,
         });
         action = 'spawn';
