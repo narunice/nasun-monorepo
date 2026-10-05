@@ -14,6 +14,14 @@ Nasun AI agent의 **실행 런타임**. 외부 LLM(Claude/OpenAI-호환)을 호�
 
 > **Why 별도 앱으로 분리 (baram/agent-runner의 후신)**: 이전 `apps/baram/agent-runner/`는 frontend·smart-contract·bot이 한 디렉토리에 섞여 있어 배포 사이클·의존성·secret 관리가 얽혀 있었음. baram frontend가 nasun-website의 Uju 섹션으로 흡수되면서 agent runtime만 떼어내 독립 운영. **onchain `baram::*` Move 모듈명은 invariant이므로 패키지 이름과 env var prefix(`BARAM_*`)는 유지**. 사용자 facing 텍스트는 "Nasun AI"로 통일 (feedback_no_baram_branding.md).
 
+> **Host(`/infer` + `/execute-capability`)는 box 서비스다**: 구현체는
+> [apps/nasun-website/box-services/nasun-ai-host/](../nasun-website/box-services/nasun-ai-host/),
+> 유닛은 `nasun-ai-host.service`, 리스너는 `127.0.0.1:4500`. 2026-10-05에 `baram/executor`
+> Lambda에서 포팅했다 - AWS 탈출이 그 API Gateway를 이전 없이 지웠고, 그래서 2026-07 ~ 10
+> 사이 trader cycle이 전부 `infer(hostUrl)`에서 죽어 있었다. 에이전트의 `HOST_URL`은
+> chat-server `.env`의 `AGENT_GLOBAL_HOST_URL`에서 오며, 이 값이 다시 `execute-api`를 가리키게
+> 되면 cycle이 조용히 멈춘다(배포 스크립트가 이를 하드 실패로 검사한다).
+
 > **Why TEE 없이 일반 LLM (v1)**: 첫 퍼블릭 프로토타입은 일반 LLM. TEE/Nitro Enclave는 장기 로드맵. `tee_verified=false`가 v1 정상 상태. narrative에서 "TEE 제공"으로 표현 금지 (project_baram_no_tee_v1.md).
 
 ---
@@ -27,7 +35,7 @@ apps/nasun-ai-runtime/
 │   ├── config.ts                   # 환경변수 로드/검증
 │   ├── wake-server.ts              # Hono /wake 서버 (127.0.0.1:WAKE_PORT)
 │   ├── wake-router.ts              # /wake 요청을 trigger_type 별 dispatch
-│   ├── host-client.ts              # Host /infer + /execute-capability 호출 (LLM + AER settlement)
+│   ├── host-client.ts              # Host /infer + /execute-capability 호출 (LLM + AER settlement)  ← Host 구현체는 apps/nasun-website/box-services/nasun-ai-host/
 │   ├── executor-client.ts          # Lambda /execute, /record (Model A: lambda, Model B: record)
 │   ├── llm-client.ts               # OpenAI-호환 Chat Completions (Groq/Together/Ollama 등)
 │   ├── nasun-ai-client.ts          # Baram on-chain — Budget check + Request creation
