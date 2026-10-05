@@ -21,7 +21,10 @@
 #     key file that is group- or other-readable, which this satisfies. Install
 #     the key at /etc/nasun/nasun-ai-host/executor.key (root:root 0600); it is
 #     the `nasun-ai-executor-prod` keystore entry, i.e. the executor registered
-#     on chain. A different key means every settlement aborts.
+#     on chain. Any of the three keystore export forms works (bech32
+#     `suiprivkey1...`, 64 hex chars, base64 of 32 bytes) -- secrets.ts
+#     normalizes them. EXECUTOR_EXPECTED_ADDRESS below turns a wrong key into a
+#     refusal to start instead of an abort on every settlement.
 #   - EnvironmentFile carries the LLM provider API keys. Keep it root:root 0600
 #     and out of the repo. At least one of GROQ_API_KEY / CEREBRAS_API_KEY /
 #     OPENROUTER_API_KEY / DEEPSEEK_API_KEY / MISTRAL_API_KEY /
@@ -52,6 +55,10 @@ EnvironmentFile=/etc/nasun/nasun-ai-host/provider-keys.env
 Environment=HOST_BIND=127.0.0.1
 Environment=HOST_PORT=4500
 Environment=EXECUTOR_KEY_PATH=%d/executor-key
+# The on-chain registered executor. Must equal AGENT_GLOBAL_EXECUTOR_ADDRESS in
+# the chat-server .env; the agent's /infer preflight rejects a mismatch with
+# `executor_mismatch`, so disagreement here is silent until a cycle runs.
+Environment=EXECUTOR_EXPECTED_ADDRESS=0x6f516935f336545fa89365f53e0cbd9f5e02399d08eb309fee6e8e130262ee8f
 Environment=RESULT_DB_PATH=/var/lib/nasun-ai-host/results.db
 
 # Local fullnode: the box runs its own, so inference and settlement do not

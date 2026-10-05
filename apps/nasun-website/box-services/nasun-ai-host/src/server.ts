@@ -24,7 +24,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
-import { handler, type HostRequest } from './handler';
+import { handler, initialize, type HostRequest } from './handler';
 import { pruneExpiredResults } from './services/resultStore';
 
 const PORT = Number(process.env.HOST_PORT ?? 4500);
@@ -136,11 +136,24 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, BIND, () => {
-  console.log(`[nasun-ai-host] listening on http://${BIND}:${PORT}`);
-  if (!process.env.HOST_API_KEY) {
-    console.log('[nasun-ai-host] HOST_API_KEY unset; loopback bind is the only access control');
-  }
+// Initialize before listening, and exit rather than serve if it fails. The
+// Lambda initialized lazily on the first request because that was the only
+// option it had; here, a missing provider key, an unreadable executor key or
+// one belonging to the wrong executor would otherwise show up as a generic 500
+// on every route -- visible only to whoever curls /health. With Restart=on-
+// failure the service instead crash-loops with the reason in the journal,
+// matching how the issuer service treats a failed self-check. None of this
+// touches the network: initSui and initProviders only construct clients.
+initialize().then(() => {
+  server.listen(PORT, BIND, () => {
+    console.log(`[nasun-ai-host] listening on http://${BIND}:${PORT}`);
+    if (!process.env.HOST_API_KEY) {
+      console.log('[nasun-ai-host] HOST_API_KEY unset; loopback bind is the only access control');
+    }
+  });
+}).catch((err) => {
+  console.error(`[nasun-ai-host] startup failed: ${(err as Error).message}`);
+  process.exit(1);
 });
 
 const pruneTimer = setInterval(() => {

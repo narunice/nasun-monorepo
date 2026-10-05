@@ -14,6 +14,7 @@
  */
 
 import { readFile, stat } from 'node:fs/promises';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 // Provider name -> env var holding its API key. A missing or empty value
 // skips that provider, exactly as a missing SSM parameter did; ai.ts narrows
@@ -55,9 +56,40 @@ export function loadProviderApiKeys(): Record<string, string | null> {
 }
 
 /**
- * Read the executor signing key. `EXECUTOR_KEY_PATH` is the intended source;
- * `EXECUTOR_PRIVATE_KEY` stays available for local development, where there is
- * no key file to protect.
+ * Normalize a secret key to the hex seed `initSui` expects.
+ *
+ * initSui does `Buffer.from(key, 'hex')` and nothing else -- that is the
+ * ported Lambda's code and it stays that way. The Lambda was fed from Secrets
+ * Manager, where the value was already hex. A box operator installs the key
+ * from the keystore instead, and `sui keytool` exports bech32
+ * (`suiprivkey1...`), which hex-decodes to ZERO bytes rather than failing
+ * loudly: Ed25519Keypair then throws on every request and the service answers
+ * a generic 500 forever, including on /health. So the conversion happens here,
+ * accepting the same three forms the agent runtime's loadKeypair does.
+ */
+function toHexSeed(raw: string, source: string): string {
+  if (raw.startsWith('suiprivkey1')) {
+    const { secretKey, schema } = decodeSuiPrivateKey(raw);
+    if (schema !== 'ED25519') {
+      throw new Error(`executor key from ${source} is ${schema}; must be ED25519`);
+    }
+    return Buffer.from(secretKey).toString('hex');
+  }
+  if (/^(0x)?[0-9a-fA-F]{64}$/.test(raw)) {
+    return raw.replace(/^0x/, '').toLowerCase();
+  }
+  const decoded = Buffer.from(raw, 'base64');
+  if (decoded.length === 32) return decoded.toString('hex');
+  throw new Error(
+    `executor key from ${source} is not a recognized secret key. `
+    + 'Supported: bech32 (suiprivkey1...), 64 hex chars, or base64 of 32 bytes.',
+  );
+}
+
+/**
+ * Read the executor signing key and return it as a hex seed.
+ * `EXECUTOR_KEY_PATH` is the intended source; `EXECUTOR_PRIVATE_KEY` stays
+ * available for local development, where there is no key file to protect.
  */
 export async function loadExecutorPrivateKey(): Promise<string> {
   const inline = process.env.EXECUTOR_PRIVATE_KEY;
@@ -81,12 +113,12 @@ export async function loadExecutorPrivateKey(): Promise<string> {
     const value = (await readFile(keyPath, 'utf8')).trim();
     if (!value) throw new Error(`executor key file is empty: ${keyPath}`);
     console.log(`[Secrets] Executor key loaded from ${keyPath}`);
-    return value;
+    return toHexSeed(value, keyPath);
   }
 
   if (inline && inline.trim()) {
     console.warn('[Secrets] Executor key taken from EXECUTOR_PRIVATE_KEY; prefer EXECUTOR_KEY_PATH');
-    return inline.trim();
+    return toHexSeed(inline.trim(), 'EXECUTOR_PRIVATE_KEY');
   }
 
   throw new Error('executor key missing: set EXECUTOR_KEY_PATH (preferred) or EXECUTOR_PRIVATE_KEY');

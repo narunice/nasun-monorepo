@@ -181,10 +181,24 @@ async function loadSecrets(): Promise<void> {
   console.log('[Secrets] Loaded successfully');
 }
 
+// The Lambda could rely on `initialized` alone: one container handled one
+// request at a time, so the flag was never read mid-initialization. A long-
+// lived server takes concurrent first requests, and both would get past the
+// flag and run the whole body -- opening a second DatabaseSync handle on the
+// same file. Hold the in-flight promise so the second caller awaits the first.
+let initializing: Promise<void> | null = null;
+
 /**
  * Initialize services (once per process start)
  */
-async function initialize(): Promise<void> {
+export async function initialize(): Promise<void> {
+  if (initialized) return;
+  if (initializing) return initializing;
+  initializing = initializeOnce().finally(() => { initializing = null; });
+  return initializing;
+}
+
+async function initializeOnce(): Promise<void> {
   if (initialized) return;
 
   await loadSecrets();
@@ -206,6 +220,22 @@ async function initialize(): Promise<void> {
     executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
     executorProcessedRequestsId: process.env.EXECUTOR_PROCESSED_REQUESTS_ID || '',
   });
+
+  // Fail at boot on the wrong executor key rather than on every settlement.
+  // The key must belong to the executor registered on chain; a different one
+  // does not error here, it makes each AER submission abort, which reads as an
+  // on-chain problem rather than a misinstalled file.
+  const expectedExecutor = process.env.EXECUTOR_EXPECTED_ADDRESS?.trim();
+  if (expectedExecutor) {
+    const actual = getExecutorAddress();
+    if (actual.toLowerCase() !== expectedExecutor.toLowerCase()) {
+      throw new Error(
+        `executor key mismatch: key resolves to ${actual}, `
+        + `EXECUTOR_EXPECTED_ADDRESS is ${expectedExecutor}`,
+      );
+    }
+    console.log(`[Init] Executor address matches EXECUTOR_EXPECTED_ADDRESS (${actual})`);
+  }
 
   // Initialize the local result store (if configured). Unconfigured is a
   // supported deploy: /infer and /execute-capability never touch it.

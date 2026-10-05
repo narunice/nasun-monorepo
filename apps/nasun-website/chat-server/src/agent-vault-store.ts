@@ -114,13 +114,29 @@ export async function putSecret(
   }
 }
 
-/** Presence check standing in for the routes' GetParameter existence probes. */
+/**
+ * Presence check standing in for the routes' GetParameter existence probes.
+ *
+ * Only a genuine absence returns false. Swallowing every error here would make
+ * EACCES or a misconfigured AGENT_VAULT_DIR indistinguishable from a purged
+ * key, and the routes turn false into a terminal 410 `already_purged` -- they
+ * would tell a user their agent was gone because a directory was unreadable.
+ * A malformed address is an absence, not an error, because it cannot name a
+ * stored secret.
+ */
 export async function hasSecret(agentAddress: string): Promise<boolean> {
+  let path: string;
   try {
-    await access(secretPathFor(agentAddress));
-    return true;
+    path = secretPathFor(agentAddress);
   } catch {
     return false;
+  }
+  try {
+    await access(path);
+    return true;
+  } catch (err) {
+    if ((err as { code?: string }).code === 'ENOENT') return false;
+    throw err;
   }
 }
 

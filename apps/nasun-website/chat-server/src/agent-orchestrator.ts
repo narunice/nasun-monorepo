@@ -14,7 +14,7 @@ import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getDb } from './store.js';
-import { secretPathFor } from './agent-vault-store.js';
+import { hasSecret, secretPathFor } from './agent-vault-store.js';
 import { fetchCapabilityEscrowId } from './sui-capability-utils.js';
 import { readAgentProfileIsActive, invalidateAgentProfileCache } from './sui-client.js';
 
@@ -333,6 +333,28 @@ export class AgentDisabledError extends Error {
   }
 }
 
+/**
+ * No stored secret for this agent, so a spawn could only crash-loop.
+ *
+ * The rows that hit this are the pre-AWS-exit ones: their keys only ever
+ * existed as SSM parameters in the decommissioned account, so there is nothing
+ * on the box to read. Without this check the runtime boots, fails to read
+ * AGENT_SECRET_PATH, exits, and pm2 restarts it forever -- while the vault
+ * sanity check and reconcile both see a pm2 entry and report `running`.
+ *
+ * It extends AgentDisabledError on purpose: every spawn caller already treats
+ * that as "do not spawn, leave a log line, carry on", which is exactly the
+ * right handling here. The distinct name and message are what tell an operator
+ * which of the two it was.
+ */
+export class AgentSecretMissingError extends AgentDisabledError {
+  constructor(agentAddress: string) {
+    super(agentAddress);
+    this.message = `agent_secret_missing:${agentAddress}`;
+    this.name = 'AgentSecretMissingError';
+  }
+}
+
 function readEnabledFlag(agentAddress: string): boolean {
   const row = getDb().prepare(
     `SELECT config_json FROM nasun_ai_trader_configs WHERE agent_address = ?`,
@@ -379,6 +401,10 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
     throw new AgentDisabledError(opts.agentAddress.toLowerCase());
   }
 
+  if (!await hasSecret(opts.agentAddress)) {
+    throw new AgentSecretMissingError(opts.agentAddress.toLowerCase());
+  }
+
   // Resolve all per-agent + global trader env BEFORE invoking pm2 so a
   // partial-config row fails fast and pm2 never adopts an idle process.
   const perAgent = await perAgentTraderEnv(opts.agentAddress);
@@ -396,8 +422,10 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
     AGENT_SECRET_PATH: secretPathFor(opts.agentAddress),
     AGENT_ADDRESS: opts.agentAddress,
     WAKE_PORT: String(opts.wakePort),
-    // AGENT_PRIVATE_KEY intentionally absent — keypair lives only inside
-    // the spawned process closure, fetched from SSM on startup.
+    // AGENT_PRIVATE_KEY intentionally absent — the keypair lives only inside
+    // the spawned process closure, read from the box vault at startup. The
+    // path is baked in; the key itself never touches the spawn config, which
+    // is written to disk.
     ...globalEnv,
     ...perAgent,
     // Explicit blocklist (override anything that may leak via
@@ -588,7 +616,6 @@ export async function withAgentLock<T>(agentAddress: string, fn: () => Promise<T
 
 interface VaultRow {
   pm2_name: string;
-  param_name: string;
   wake_port: number;
   profile_id: string | null;
   deleted_at: number | null;
@@ -597,7 +624,7 @@ interface VaultRow {
 
 function readVaultRow(agentAddress: string): VaultRow | null {
   const row = getDb().prepare(
-    `SELECT pm2_name, param_name, wake_port, profile_id, deleted_at, paused_at
+    `SELECT pm2_name, wake_port, profile_id, deleted_at, paused_at
        FROM agent_keys
       WHERE agent_address = ?
       ORDER BY (deleted_at IS NULL) DESC, COALESCE(deleted_at, created_at) DESC

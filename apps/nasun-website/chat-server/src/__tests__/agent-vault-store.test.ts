@@ -5,7 +5,7 @@
 // when the directory already exists.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, statSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, statSync, mkdirSync, readFileSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -136,8 +136,22 @@ describe('hasSecret / deleteSecret', () => {
 
   it('returns false rather than throwing for a bad address', async () => {
     // hasSecret feeds a 410 branch in the routes, so a malformed address must
-    // read as "no secret" rather than crashing the request.
+    // read as "no secret" rather than crashing the request. A malformed
+    // address cannot name a stored secret, so absence is the honest answer.
     await expect(hasSecret('../../etc/passwd')).resolves.toBe(false);
+  });
+
+  it('surfaces an unreadable vault instead of reporting it purged', async () => {
+    // The routes turn false into a terminal 410 already_purged. If an
+    // unreadable directory also returned false, a permissions mistake would
+    // tell users their agent's key was deleted.
+    await putSecret(AGENT, KEY, { overwrite: false });
+    chmodSync(vaultDir(), 0o000);
+    try {
+      await expect(hasSecret(AGENT)).rejects.toThrow();
+    } finally {
+      chmodSync(vaultDir(), 0o700);
+    }
   });
 
   it('deletes once and is idempotent afterwards', async () => {

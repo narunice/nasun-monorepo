@@ -544,13 +544,12 @@ async function handleHttpRequest(
       const { spawnAgentPm2, stopAgentPm2, AgentDisabledError } = await import('./agent-orchestrator.js');
       const { getDb } = await import('./store.js');
       const rows = getDb().prepare(
-        `SELECT agent_address, pm2_name, param_name, wake_port
+        `SELECT agent_address, pm2_name, wake_port
            FROM agent_keys
           WHERE deleted_at IS NULL`,
       ).all() as Array<{
         agent_address: string;
         pm2_name: string;
-        param_name: string;
         wake_port: number;
       }>;
 

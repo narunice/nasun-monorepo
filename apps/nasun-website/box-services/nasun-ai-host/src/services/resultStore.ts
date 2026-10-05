@@ -24,17 +24,34 @@
  *     (the /infer and /execute-capability paths never touch this store).
  */
 
-import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { ResultRecord } from '../types';
 
-let db: DatabaseSync | null = null;
+// Loaded lazily, and typed structurally, so `node:sqlite` is required only
+// when a result store is actually configured. A top-level import would make
+// the whole service refuse to start on a Node without it, even though the
+// /infer and /execute-capability paths never touch this store.
+interface SqliteStatement {
+  run(...params: unknown[]): { changes: number | bigint };
+  get(...params: unknown[]): unknown;
+}
+interface SqliteDatabase {
+  exec(sql: string): void;
+  prepare(sql: string): SqliteStatement;
+}
+
+let db: SqliteDatabase | null = null;
 
 const TTL_DAYS = 7;
 
 export function initResultStore(config: { dbPath: string }): void {
   mkdirSync(dirname(config.dbPath), { recursive: true });
+  // require() rather than a static import: see the note on SqliteDatabase.
+  // node:sqlite landed in Node 22; the bundle's banner provides createRequire.
+  const { DatabaseSync } = require('node:sqlite') as {
+    DatabaseSync: new (path: string) => SqliteDatabase;
+  };
   const handle = new DatabaseSync(config.dbPath);
   handle.exec('PRAGMA journal_mode = WAL');
   handle.exec(`

@@ -45,7 +45,7 @@ export async function triggerKillSwitch(reason: string): Promise<{
     .run(now);
   const affectedAgents = updateRes.changes;
 
-  // 3. Forced purge: SSM DeleteParameter on every soft-deleted row right now.
+  // 3. Forced purge: unlink the stored secret for every soft-deleted row now.
   await runVaultPurge(true);
 
   // 4. Clear endpoints so chat routing instantly breaks.

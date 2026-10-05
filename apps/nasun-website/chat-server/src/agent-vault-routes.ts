@@ -354,10 +354,10 @@ export async function handleVaultUpload(
   await withAgentLock(agentAddress, async () => {
     // Already-active short-circuit
     const existing = getDb()
-      .prepare(`SELECT pm2_name, wake_port, deleted_at, param_name
+      .prepare(`SELECT pm2_name, wake_port, deleted_at
                 FROM agent_keys WHERE agent_address = ?`)
       .get(agentAddress) as
-        | { pm2_name: string; wake_port: number; deleted_at: number | null; param_name: string }
+        | { pm2_name: string; wake_port: number; deleted_at: number | null }
         | undefined;
     if (existing && existing.deleted_at === null) {
       writeJson(res, 409, corsHeaders, { error: 'already_active' });
@@ -616,10 +616,10 @@ export async function handleVaultRestore(
 
   // Defense-in-depth: same wallet_address binding as delete.
   const row = getDb().prepare(
-    `SELECT param_name, pm2_name, deleted_at FROM agent_keys
+    `SELECT pm2_name, deleted_at FROM agent_keys
      WHERE agent_address = ? AND wallet_address = ?`
   ).get(agentAddress.toLowerCase(), result.entry.wallet) as
-    { param_name: string; pm2_name: string; deleted_at: number | null } | undefined;
+    { pm2_name: string; deleted_at: number | null } | undefined;
   if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_vaulted' }); return; }
   if (row.deleted_at === null) { writeJson(res, 409, corsHeaders, { error: 'still_active' }); return; }
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -742,10 +742,10 @@ export async function handleVaultResume(
   // Defense-in-depth: same wallet_address binding as delete/restore. The row
   // must be TTL-paused (deleted_at IS NULL, paused_at IS NOT NULL).
   const row = getDb().prepare(
-    `SELECT param_name, pm2_name, paused_at FROM agent_keys
+    `SELECT pm2_name, paused_at FROM agent_keys
      WHERE agent_address = ? AND wallet_address = ? AND deleted_at IS NULL`
   ).get(agentAddress.toLowerCase(), result.entry.wallet) as
-    { param_name: string; pm2_name: string; paused_at: number | null } | undefined;
+    { pm2_name: string; paused_at: number | null } | undefined;
   if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_active' }); return; }
   if (row.paused_at === null) { writeJson(res, 409, corsHeaders, { error: 'not_paused' }); return; }
 

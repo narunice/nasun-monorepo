@@ -29,7 +29,7 @@ await build({
   bundle: true,
   platform: 'node',
   format: 'esm',
-  target: 'node20',
+  target: 'node22',  // node:sqlite (result store) needs 22; the box runs 22.x
   minify: false, // keep readable for box-side audit
   banner,
   legalComments: 'none',
