@@ -68,33 +68,49 @@ const PROVIDER_CATALOG: Record<string, ProviderConfig> = {
 
 // Canonical model name -> ordered list of (provider, provider-model) attempts.
 //
-// 2026-05-21 audit (rebuilt after live trace showed 7/7 providers failing
-// simultaneously at 12:44 KST):
-//   - groq        kept first: fastest when within 100k TPD free quota.
-//   - mistral     promoted: most reliable free completion in the 5/20 window.
-//   - gemini      promoted + model id refreshed (`2.0-flash` is deprecated,
-//                 use `2.5-flash`); huge free RPD quota.
-//   - openrouter  flaky 429 but free Llama 70B; mid-chain.
-//   - sambanova   needs key refresh (5/20 logs show `D41c3e*****5e36` =>
-//                 401). Kept in chain so it self-heals once key is rotated.
-//   - cerebras    DOWNGRADED from `llama3.3-70b` (chronic 404 -- no longer
-//                 in public catalog) to `llama3.1-8b`. 8B quality drift is
-//                 acceptable as a last-quality fallback; better than a
-//                 hard-skip slot.
-//   - deepseek    last: paid balance required (chronic 402); only useful
-//                 if operator funds it.
+// The canonical key is a ROUTING LABEL, not a claim about which model answers.
+// modelVersionTag() records this label on chain precisely so that an identical
+// (prompt, model) yields an identical `modelVersion` no matter which fallback
+// served the call; the provider and its real model id are surfaced off-chain
+// through InferResponse.provider / .model. That is why the label still reads
+// `llama-3.3-70b-versatile` even though no slot serves Llama any more --
+// renaming it would break AER determinism against every record written so far,
+// and the agents plus 81 stored trader configs send this exact string.
 //
-// All providers map to a Llama-3.3-70B-class output (or closest available);
-// gemini-2.5-flash and llama3.1-8b are quality-degraded fallbacks. The
-// chain is the safety net -- one bad slot is fine, the next succeeds.
+// 2026-10-05 audit. Every slot of the 2026-05-21 chain was dead, so /infer
+// could not have answered at all; each entry below was called with the
+// production OpenAI-SDK path and the live keys before being written down:
+//   - groq        openai/gpt-oss-120b, then qwen/qwen3.8-27b. Both verified.
+//                 Llama 3.3 is gone from the catalog entirely (404). Groq is
+//                 first because it is fastest and the key pool holds five
+//                 keys, so it absorbs per-key rate limits internally.
+//   - gemini      gemini-2.5-flash verified. Largest free RPD of the set.
+//   - openrouter  qwen/qwen3.8-27b:free verified. The old
+//                 meta-llama/llama-3.3-70b-instruct:free slug is no longer
+//                 free -- OpenRouter answers 404 and names the paid slug.
+//   - mistral     mistral-small-latest still exists and the key authenticates,
+//                 but every call returned 429. Kept so it self-heals when the
+//                 quota frees up.
+//   - cerebras    gpt-oss-120b exists but the account answers 402. Kept so it
+//                 self-heals if funded. llama3.1-8b is gone (404).
+//   - sambanova   401: the key is invalid, exactly as the 5/21 note predicted
+//                 it would be. Kept so it self-heals once rotated.
+//   - deepseek    402, insufficient balance. Last, as before.
+//
+// Three slots work today (groq x2, gemini, openrouter). The dead ones stay in
+// the chain on purpose: a slot that fails costs one request and advances, and
+// leaving them means a funded card or a rotated key is picked up without a
+// code change. What is NOT acceptable is the state this replaced, where all
+// seven were dead at once and the chain had nothing left to try.
 const FALLBACK_CHAIN: Record<string, ProviderModel[]> = {
   'llama-3.3-70b-versatile': [
-    { provider: 'groq',       model: 'llama-3.3-70b-versatile' },
-    { provider: 'mistral',    model: 'mistral-small-latest' },
+    { provider: 'groq',       model: 'openai/gpt-oss-120b' },
+    { provider: 'groq',       model: 'qwen/qwen3.8-27b' },
     { provider: 'gemini',     model: 'gemini-2.5-flash' },
-    { provider: 'openrouter', model: 'meta-llama/llama-3.3-70b-instruct:free' },
+    { provider: 'openrouter', model: 'qwen/qwen3.8-27b:free' },
+    { provider: 'mistral',    model: 'mistral-small-latest' },
+    { provider: 'cerebras',   model: 'gpt-oss-120b' },
     { provider: 'sambanova',  model: 'Meta-Llama-3.3-70B-Instruct' },
-    { provider: 'cerebras',   model: 'llama3.1-8b' },
     { provider: 'deepseek',   model: 'deepseek-chat' },
   ],
 };
