@@ -16,6 +16,7 @@
 
 import { getDb } from './store.js';
 import { deleteSecret } from './agent-vault-store.js';
+import { pruneStaleEndpoints } from './baram-agent-registry.js';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const PURGE_INTERVAL_MS = 60 * 60 * 1000;
@@ -58,6 +59,22 @@ export async function runVaultPurge(forceImmediate = false): Promise<void> {
         + `${(err as { name?: string }).name ?? (err as Error).message}`,
       );
     }
+  }
+
+  // Housekeeping for baram_agent_endpoints. pruneStaleEndpoints() existed but
+  // nothing ever called it, so the table only ever grew: as of 2026-10-06 it
+  // held 10 rows against zero running agents, seven of them orphans whose
+  // agent_keys row this cron had already reaped. Nothing routed to them --
+  // every consumer gates on isEndpointFresh() -- but an unbounded table of
+  // dead wake URLs is still the wrong resting state, and the hourly purge is
+  // the natural owner. Pruning a live agent's row is harmless: the freshness
+  // check already treats anything past the cutoff as unusable, and the agent
+  // re-registers on its next heartbeat.
+  try {
+    const pruned = pruneStaleEndpoints();
+    if (pruned > 0) console.log(`[vault-purge] pruned ${pruned} stale wake endpoint(s)`);
+  } catch (err) {
+    console.error(`[vault-purge] endpoint prune failed: ${(err as Error).message}`);
   }
 }
 
