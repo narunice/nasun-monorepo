@@ -30,8 +30,8 @@ set -euo pipefail
 
 BUNDLE_SRC=/tmp/nasun-ai-host-server.mjs
 UNIT_SRC=/tmp/nasun-ai-host.service
-BUNDLE_SHA=3a433cf8fab3d346a2c45204474523ac360f10e6115f002e465997c73d0b0733
-UNIT_SHA=d6c3e6c46e05ceec4d1ea997475e62e42f16c7b0485314e3c67196ec2e2bc69a
+BUNDLE_SHA=e7a8ec147304d202447bacc6c0838513477e3911ec9b6fd282780f9ae954648b
+UNIT_SHA=4bdcf8474ec2cae902d9cdcd9856d35043cdbc686b06ecdb5cbd39a3be305d9b
 
 SRV_DIR=/srv/nasun/nasun-ai-host
 SECRET_DIR=/etc/nasun/nasun-ai-host
@@ -73,6 +73,9 @@ sudo systemctl daemon-reload
 ok "daemon-reload"
 
 sudo systemctl enable nasun-ai-host >/dev/null 2>&1
+# Clears any start-limit counter left by a previous failed install, so a
+# re-run is not refused for having crash-looped earlier.
+sudo systemctl reset-failed nasun-ai-host >/dev/null 2>&1 || true
 sudo systemctl restart nasun-ai-host
 info "waiting for $HEALTH_URL ..."
 

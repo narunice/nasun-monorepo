@@ -17,8 +17,11 @@
 #
 # Secrets:
 #   - LoadCredential puts the executor signing key on a per-service ramfs at
-#     mode 0400 ($CREDENTIALS_DIRECTORY/executor-key). src/secrets.ts refuses a
-#     key file that is group- or other-readable, which this satisfies. Install
+#     $CREDENTIALS_DIRECTORY/executor-key. systemd stages it mode 0440, not
+#     0400: the group bit is how this unit's own user reads it, and the ramfs
+#     directory is 0700 and reachable by no other service. src/secrets.ts knows
+#     that path is systemd-staged and only requires it to not be world-
+#     readable there; outside it the strict 0600 rule still applies. Install
 #     the key at /etc/nasun/nasun-ai-host/executor.key (root:root 0600); it is
 #     the `nasun-ai-executor-prod` keystore entry, i.e. the executor registered
 #     on chain. Any of the three keystore export forms works (bech32

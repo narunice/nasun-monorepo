@@ -17,7 +17,8 @@ import { loadExecutorPrivateKey, loadProviderApiKeys, AI_PROVIDER_ENV } from './
 let tmp: string;
 let saved: Record<string, string | undefined>;
 
-const TRACKED = ['EXECUTOR_KEY_PATH', 'EXECUTOR_PRIVATE_KEY', ...Object.values(AI_PROVIDER_ENV)];
+const TRACKED = ['EXECUTOR_KEY_PATH', 'EXECUTOR_PRIVATE_KEY', 'CREDENTIALS_DIRECTORY',
+  ...Object.values(AI_PROVIDER_ENV)];
 
 beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), 'ai-host-secrets-'));
@@ -97,6 +98,38 @@ describe('loadExecutorPrivateKey', () => {
   it('refuses a key file that group or other can read', async () => {
     const seed = randomBytes(32).toString('hex');
     process.env.EXECUTOR_KEY_PATH = writeKey(seed, 0o644);
+    await expect(loadExecutorPrivateKey()).rejects.toThrow(/must not be readable by group or other/);
+  });
+
+  // systemd's LoadCredential stages the key at 0440 on a per-service ramfs.
+  // The first box install crash-looped because the strict rule rejected that,
+  // so both halves of the relaxation are pinned here.
+  it('accepts systemd 0440 inside CREDENTIALS_DIRECTORY', async () => {
+    const seed = randomBytes(32).toString('hex');
+    process.env.CREDENTIALS_DIRECTORY = tmp;
+    process.env.EXECUTOR_KEY_PATH = writeKey(seed, 0o440);
+    expect(await loadExecutorPrivateKey()).toBe(seed);
+  });
+
+  it('still refuses world-readable inside CREDENTIALS_DIRECTORY', async () => {
+    const seed = randomBytes(32).toString('hex');
+    process.env.CREDENTIALS_DIRECTORY = tmp;
+    process.env.EXECUTOR_KEY_PATH = writeKey(seed, 0o444);
+    await expect(loadExecutorPrivateKey()).rejects.toThrow(/must not be world-readable/);
+  });
+
+  it('does not relax a path merely prefixed by CREDENTIALS_DIRECTORY', async () => {
+    // `/run/credentials/x` must not loosen `/run/credentials/x-evil`; the
+    // check joins on a separator rather than comparing string prefixes.
+    const seed = randomBytes(32).toString('hex');
+    process.env.CREDENTIALS_DIRECTORY = `${tmp}-other`;
+    process.env.EXECUTOR_KEY_PATH = writeKey(seed, 0o440);
+    await expect(loadExecutorPrivateKey()).rejects.toThrow(/must not be readable by group or other/);
+  });
+
+  it('keeps the strict rule when no credentials directory is set', async () => {
+    const seed = randomBytes(32).toString('hex');
+    process.env.EXECUTOR_KEY_PATH = writeKey(seed, 0o440);
     await expect(loadExecutorPrivateKey()).rejects.toThrow(/must not be readable by group or other/);
   });
 

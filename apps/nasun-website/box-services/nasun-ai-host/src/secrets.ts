@@ -14,6 +14,7 @@
  */
 
 import { readFile, stat } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 // Provider name -> env var holding its API key. A missing or empty value
@@ -101,13 +102,27 @@ export async function loadExecutorPrivateKey(): Promise<string> {
         `executor key unreadable at EXECUTOR_KEY_PATH=${keyPath} (${err.code ?? 'unknown error'})`,
       );
     });
-    // 0o077 is the group+other bits. A signing key those can read is a
-    // misconfiguration, not a warning: refusing to boot is what keeps a
-    // loosened file from being noticed only after it has been used.
-    if (info.mode & 0o077) {
+    // A signing key that others can read is a misconfiguration, not a
+    // warning: refusing to boot is what keeps a loosened file from being
+    // noticed only after it has been used.
+    //
+    // How strict depends on who staged the file. systemd's LoadCredential
+    // writes into a per-service ramfs at mode 0440 -- the group bit is how the
+    // unit's own user reads it -- and that directory is 0700 and reachable by
+    // no other service, so the group bit there is not an exposure. Demanding
+    // 0400 inside it is what made the first install crash-loop. Everywhere
+    // else the file is operator-installed and the strict rule is what catches
+    // a chmod mistake, so only the credentials path is relaxed, and only to
+    // "not world-readable".
+    const credDir = process.env.CREDENTIALS_DIRECTORY;
+    const staged = Boolean(credDir && resolve(keyPath).startsWith(resolve(credDir) + sep));
+    const forbidden = staged ? 0o007 : 0o077;
+    if (info.mode & forbidden) {
       throw new Error(
         `executor key at ${keyPath} is mode ${(info.mode & 0o777).toString(8)}; `
-        + 'must not be readable by group or other (chmod 600)',
+        + (staged
+          ? 'must not be world-readable'
+          : 'must not be readable by group or other (chmod 600)'),
       );
     }
     const value = (await readFile(keyPath, 'utf8')).trim();
