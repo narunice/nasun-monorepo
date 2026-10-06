@@ -68,6 +68,17 @@ function parseBudgetFields(fields: Record<string, unknown>, fallbackId: string):
 }
 
 async function fetchBudgetsForOwner(ownerAddress: string): Promise<BudgetInfo[]> {
+  // Guard the id the way useExecutors guards tierRegistryId. An empty origin
+  // builds the type string `::budget::BudgetReceipt`, which the RPC rejects
+  // outright (-32602 Invalid params) rather than returning nothing -- so this
+  // hook threw on every call, and the thirteen components that use it,
+  // including the Quickstart wizard, could not render. The ids were simply
+  // never backfilled after the v8 reset folded the budget module into the
+  // main baram package.
+  if (!BARAM.budgetTypeOrigin) {
+    console.warn('[useBudgets] budgetTypeOrigin is unset; cannot list budgets');
+    return [];
+  }
   const receiptType = `${BARAM.budgetTypeOrigin}::budget::BudgetReceipt`;
   const budgetIds: string[] = [];
   let cursor: string | null | undefined = undefined;
