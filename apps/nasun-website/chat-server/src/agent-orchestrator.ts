@@ -180,6 +180,16 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
     HOST_URL:             pick('HOST_URL'),
     COIN_NBTC_TYPE:       pick('COIN_NBTC_TYPE'),
     COIN_NUSDC_TYPE:      pick('COIN_NUSDC_TYPE'),
+    // Trading venue. The runtime's TRADER_CONFIG carried these as literals
+    // until 2026-10-07, by which point the pool and the DEEP package did not
+    // exist on chain and the agent read a funded escrow as empty. They are
+    // forwarded explicitly rather than left to pm2's daemon-env inheritance:
+    // chat-server's own env happens to carry POOL_NBTC_NUSDC and
+    // DEEPBOOK_PACKAGE, and a child inheriting them by luck is exactly how
+    // the dead PM2_HOME default went unnoticed for three months.
+    POOL_NBTC_NUSDC:      pick('POOL_NBTC_NUSDC'),
+    DEEPBOOK_PACKAGE:     pick('DEEPBOOK_PACKAGE'),
+    DEEP_TYPE:            pick('DEEP_TYPE'),
     CHAT_SERVER_BASE_URL: process.env.AGENT_GLOBAL_CHAT_SERVER_BASE_URL
                           ?? 'http://127.0.0.1:3101',
     RPC_URL:              process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',

@@ -22,13 +22,61 @@ import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { StrategyPreset } from './strategies.js';
 import type { ActionCallSpecWire } from '../host-client.js';
 
-// ===== Devnet constants (NBTC/NUSDC pool) =====
+// ===== Trading venue (NBTC/NUSDC pool) =====
+//
+// Every id below used to be a literal, and by 2026-10 every one had rotted.
+// Verified against the chain on 2026-10-07: the hardcoded pool
+// (0xa2b755ae...) and DEEP package (0x71afcf8e...) did not exist at all, and
+// the coin types named a pre-v8 token generation. The consequence was quiet
+// rather than loud -- fetchAgentBalances read 0 for an escrow holding 20
+// NUSDC, so the agent could only ever decide HOLD "No NUSDC balance", and a
+// swap would have targeted a pool that is not there.
+//
+// They come from the environment now, which is the path the orchestrator
+// already used for the coin types; the venue ids simply follow it. Source of
+// truth stays packages/devnet-config/devnet-ids.json, forwarded by
+// chat-server's globalTraderEnv(). The DEEP type is not optional even though
+// these pools are whitelisted and the fee is zero: it is a type argument to
+// pool::swap_exact_quote_for_base, so a wrong one fails the whole PTB.
+//
+// Resolved lazily through getters, not at module load, because non-trader
+// presets import this module and must not be made to require trader env.
+// Amounts and decimals stay literal -- they are not ids and cannot go stale
+// against a redeploy.
+
+function requireVenueEnv(name: string, shape: RegExp, hint: string): string {
+  const raw = (process.env[name] ?? '').trim();
+  if (!raw) {
+    throw new Error(
+      `${name} is required for the trader preset and is unset. `
+      + `chat-server's globalTraderEnv() forwards it; expected ${hint}.`,
+    );
+  }
+  if (!shape.test(raw)) {
+    throw new Error(`${name}="${raw}" is not ${hint}`);
+  }
+  return raw;
+}
+
+const OBJECT_ID = /^0x[0-9a-fA-F]{1,64}$/;
+const TYPE_NAME = /^0x[0-9a-fA-F]{1,64}::[A-Za-z_][\w]*::[A-Za-z_][\w]*$/;
+
 export const TRADER_CONFIG = {
-  pool: '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0',
-  baseType: '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nbtc::NBTC',
-  quoteType: '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC',
-  deepType: '0x71afcf8eaeb282bad050ef78931205a15c9e49638f2a7c67bde2c372251e1c3e::deep::DEEP',
-  deepbookPackage: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
+  get pool() {
+    return requireVenueEnv('POOL_NBTC_NUSDC', OBJECT_ID, 'a Sui object id');
+  },
+  get baseType() {
+    return requireVenueEnv('COIN_NBTC_TYPE', TYPE_NAME, 'a Move type name');
+  },
+  get quoteType() {
+    return requireVenueEnv('COIN_NUSDC_TYPE', TYPE_NAME, 'a Move type name');
+  },
+  get deepType() {
+    return requireVenueEnv('DEEP_TYPE', TYPE_NAME, 'a Move type name');
+  },
+  get deepbookPackage() {
+    return requireVenueEnv('DEEPBOOK_PACKAGE', OBJECT_ID, 'a Sui package id');
+  },
   baseDecimals: 8,
   quoteDecimals: 6,
   // User decision: medium (per-trade 2 NUSDC, daily 20 NUSDC)

@@ -88,6 +88,12 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 - `BUDGET_ID`, `CAPABILITY_ID`, `ESCROW_ID`
 - `EXECUTOR_ADDRESS`, `AGENT_PRIVATE_KEY` 또는 `AGENT_SECRET_PATH`
 - `COIN_NUSDC_TYPE`, `COIN_NBTC_TYPE`
+- **Trading venue** (trader preset, 2026-10-07 이후 필수): `POOL_NBTC_NUSDC`,
+  `DEEPBOOK_PACKAGE`, `DEEP_TYPE`. 이전에는 `presets/trader.ts`의 `TRADER_CONFIG`에
+  하드코딩돼 있었고, 2026-10에는 **풀과 DEEP 패키지가 체인에 아예 없었다** — 그 결과
+  `fetchAgentBalances`가 20 NUSDC 든 escrow를 0으로 읽어 에이전트가 영구 HOLD였다.
+  chat-server `globalTraderEnv()`가 전달하며, 미설정 시 trader 필드 접근 시점에
+  이름을 명시하며 throw한다(getter 기반이라 비-trader preset은 영향 없음).
 
 **Infra**:
 - `BARAM_API_KEY`, `BARAM_CHAT_SERVER_HMAC_SECRET`

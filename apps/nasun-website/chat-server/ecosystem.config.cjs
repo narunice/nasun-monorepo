@@ -54,6 +54,12 @@ module.exports = {
         GENESIS_PASS_API_URL: 'https://api.nasun.io',
         DEEPBOOK_PACKAGE: '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00',
         POOL_NBTC_NUSDC: '0x1addff570f17f0e12fa14c5f986806ce21bd5cc0542c4548ebf011a56eb26ec9',
+        // Type argument to pool::swap_exact_quote_for_base. Read off the
+        // DeepBook package's own signature on 2026-10-07, not inferred: a
+        // wrong DEEP type fails the whole swap PTB even though these pools
+        // are whitelisted and the fee is zero. Forwarded to agents by
+        // agent-orchestrator's globalTraderEnv().
+        DEEP_TYPE: '0x642e81bd21a2dea6dd90d41a5f6bc18d6e63c0442f901d12198a894ed3b6a15a::deep::DEEP',
         POOL_NASUN_NUSDC: '0x91f5e123cd1211347dd8dc8a92bfde99a2153844d795c2ccfe6ad43d4a26ec03',
         POOL_NETH_NUSDC: '0x2fb410e4505fabc13b2791e801969cd9691ad2dc47173fb1b3d7e7811cc37209',
         POOL_NSOL_NUSDC: '0xbdcaa69717ffcc5ce67a983903c0d77adabe944ad8d478e618345f66ee7e01c6',
