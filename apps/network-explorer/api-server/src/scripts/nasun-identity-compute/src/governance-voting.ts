@@ -7,14 +7,55 @@
 // Lambda (box has no DynamoDB); (2) the voting identity + vote-claim/release guard run over the :3211
 // identity loopback (box PG governance_votes, which the Lambda already writes today); (3) the Oracle key
 // arrives via systemd-creds; (4) Sui RPC uses the timeout-wrapped client. resolveVotingIdentity has NO
-// DynamoDB fallback (box is SoT): a 404 = unregistered wallet -> {} (base power, no guard, parity); a 5xx/
-// transport error THROWS -> 500 (the loopback IS the SoT, so we must not issue a cert without it).
+// DynamoDB fallback (box is SoT): a 404 = unregistered wallet -> {}; a 5xx/transport error THROWS -> 500
+// (the loopback IS the SoT, so we must not issue a cert without it).
+//
+// DIVERGENCE from the Lambda (deliberate, 2026-10-07): the Lambda issued a certificate to an unregistered
+// wallet at base power and skipped its own duplicate-vote guard, because that guard keys on identityId.
+// checkVoteEligibility closes that. See config.ts GOVERNANCE.requireRegisteredIdentity.
 
 import { bcs } from '@mysten/sui/bcs';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { GOVERNANCE } from './config';
 import { RouteAbort } from './http';
-import { makeSuiClient } from './governance-sponsor';
+import { getProposalType, makeSuiClient } from './governance-sponsor';
+import {
+  checkRegistrationGate,
+  checkVoteEligibility,
+  hasVerifiedSocial,
+  POLL_PROPOSAL_TYPE,
+  type VotePolicy,
+} from './governance-eligibility';
+
+// Flags live in config.ts (both default ON); the decision logic lives in governance-eligibility.ts and
+// takes them as an argument, so it stays testable without config's credential loading.
+function votePolicy(): VotePolicy {
+  return {
+    requireRegisteredIdentity: GOVERNANCE.requireRegisteredIdentity,
+    requireVerifiedSocialForBinding: GOVERNANCE.requireVerifiedSocialForBinding,
+  };
+}
+
+// Proposal types are admin-set and effectively static, so cache them briefly. /certificate takes no JWT,
+// which means anyone can post a known registered wallet address and make the box spend Sui RPC egress on
+// a registry lookup per request; the cache collapses that to one lookup per proposal per window.
+const PROPOSAL_TYPE_TTL_MS = 60_000;
+const proposalTypeCache = new Map<string, { type: number; at: number }>();
+
+async function cachedProposalType(proposalId: string): Promise<number> {
+  const hit = proposalTypeCache.get(proposalId);
+  const now = Date.now();
+  if (hit && now - hit.at < PROPOSAL_TYPE_TTL_MS) return hit.type;
+
+  const type = await getProposalType(makeSuiClient(), proposalId);
+  proposalTypeCache.set(proposalId, { type, at: now });
+  // The map only ever holds live proposal ids, but drop expired entries so a long-lived process cannot
+  // accumulate one per id ever queried.
+  for (const [id, entry] of proposalTypeCache) {
+    if (now - entry.at >= PROPOSAL_TYPE_TTL_MS) proposalTypeCache.delete(id);
+  }
+  return type;
+}
 
 // Oracle keypair, cached. The cert signature is a RAW Ed25519 signature over the message bytes; the box
 // uses @mysten/sui Ed25519Keypair.sign (already bundled) rather than @noble/ed25519 (not a box dependency).
@@ -279,7 +320,18 @@ export async function handleVotingPower(walletAddress: string): Promise<{ status
   const power = calculateVotingPower(rank, hasLinkedX, isTelegramMember);
   return {
     status: 200,
-    body: { totalVotingPower: power.total, rank: power.rank, breakdown: power.breakdown },
+    body: {
+      totalVotingPower: power.total,
+      rank: power.rank,
+      breakdown: power.breakdown,
+      // Additive: lets the UI say why a vote will be refused instead of surprising the voter with a 403
+      // from /certificate. Unknown fields are ignored by the current frontend. No proposalId is in scope
+      // here, so only the universal gate is answered; hasVerifiedSocial lets the UI warn ahead of a
+      // binding proposal.
+      canVote: checkRegistrationGate(profile, votePolicy()).eligible,
+      hasVerifiedSocial: hasVerifiedSocial(profile),
+      socialRequiredForBindingVotes: GOVERNANCE.requireVerifiedSocialForBinding,
+    },
   };
 }
 
@@ -295,6 +347,32 @@ export async function handleCertificate(body: any): Promise<{ status: number; bo
   // Identity-based duplicate-vote prevention via the box governance_votes guard (vote-claim = INSERT ON
   // CONFLICT DO NOTHING -> claimed). On a non-fresh claim, self-heal: check on-chain whether the vote
   // actually landed; a genuine duplicate -> 409, a stale row -> release + reclaim.
+  // Sybil gate runs BEFORE the claim: a refused voter must not consume this identity's one claim row for
+  // the proposal.
+  //
+  // Registration is checked first and the proposal type is fetched only when the social tier is actually
+  // armed AND could refuse. This route is PUBLIC (no JWT), so an unauthenticated caller must not be able
+  // to make the box issue a Sui RPC per request just by posting an unregistered wallet. getProposalType
+  // degrades to 0 (Governance) on a registry miss or RPC error, which is the fail-closed side here.
+  const policy = votePolicy();
+
+  // The proposal type is resolved only when the social tier could actually refuse, and only for a wallet
+  // that already passed registration. This route is PUBLIC (no JWT), so an unauthenticated caller must
+  // not be able to make the box spend Sui RPC egress just by posting a wallet address. Poll is the cheap
+  // assumption; a type that cannot be read comes back as 0 (Governance), the fail-closed side.
+  let proposalType = POLL_PROPOSAL_TYPE;
+  const needsTypeLookup = policy.requireVerifiedSocialForBinding
+    && checkRegistrationGate(profile, policy).eligible
+    && !hasVerifiedSocial(profile);
+  if (needsTypeLookup) {
+    proposalType = await cachedProposalType(proposalId as string);
+  }
+
+  const eligibility = checkVoteEligibility(profile, proposalType, policy);
+  if (!eligibility.eligible) {
+    return { status: 403, body: { error: eligibility.error, code: eligibility.code } };
+  }
+
   if (profile.identityId) {
     const claimed = await voteClaim(profile.identityId, proposalId as string);
     if (!claimed) {

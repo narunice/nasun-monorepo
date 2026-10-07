@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc && mkdir -p dist/data && (cp src/data/*.json dist/data/ 2>/dev/null || true)",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/__tests__/*.test.ts\"",
     "lint:sql": "bash scripts/check-sql-antipatterns.sh"
   },
   "dependencies": {

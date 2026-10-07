@@ -98,8 +98,13 @@ function extractProposalIdFromTx(tx: Transaction): string | null {
 
 // Parity with index.ts:203-252 getProposalType: 0=Governance (NOT sponsored), 1=Poll (sponsored).
 // Defaults to 0 (Governance) on any registry miss / RPC error -- fail-closed against sponsoring an
-// unknown proposal type (the lambda's safe default).
-async function getProposalType(suiClient: SuiClient, proposalId: string): Promise<number> {
+// unknown proposal type (the lambda's safe default). The same default is what proposal.move's
+// get_proposal_type returns for an unregistered proposal, so the two layers agree.
+//
+// Exported so the certificate route reuses it: the Sybil gate asks for a verified social account only on
+// binding Governance proposals, and "unknown type" has to resolve to Governance there for the same reason
+// it does here.
+export async function getProposalType(suiClient: SuiClient, proposalId: string): Promise<number> {
   if (!GOVERNANCE.proposalTypeRegistryId) {
     console.warn('[compute] PROPOSAL_TYPE_REGISTRY_ID not configured, defaulting to Governance');
     return 0;

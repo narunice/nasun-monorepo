@@ -551,6 +551,27 @@ export const GOVERNANCE = {
     const o = Number(process.env.COMPUTE_GOVERNANCE_RANK_TIMEOUT_MS);
     return Number.isFinite(o) && o > 0 ? o : 4000;
   })(),
+
+  // --- Sybil gate on /certificate -------------------------------------------------------------------
+  // These two default to ON, unlike every cutover flag above. Those flags stage a migration, so an unset
+  // var must leave the route inert; these close a hole, so an unset var must leave voting GATED. Set the
+  // var to '0' to relax one.
+  //
+  // requireRegisteredIdentity: an unregistered wallet used to get base power 10 AND skip the
+  // governance_votes dedup entirely (resolveVotingIdentity 404 -> {} -> no identityId -> no voteClaim), so
+  // one person could add 10 power per throwaway wallet with no trace. /certificate is the only producer of
+  // the Oracle signature that voting_power::mint_certificate verifies, so gating it also closes the
+  // sponsored Poll path without touching Move.
+  //
+  // requireVerifiedSocialForBinding: an identity is free to create (wallet login), so registration alone
+  // only makes a vote attributable and dedupable. One linked social per vote is the first real cost.
+  // Scoped to binding Governance proposals on purpose: a stuffed Poll distorts a sentiment number, a
+  // stuffed Governance vote decides something and cannot be recounted afterwards. See
+  // governance-eligibility.ts for why a Poll vote's referral payoff does not multiply.
+  // NOTE: this is a LOWER bar than the referral gate's own social path, which wants X and Google and
+  // Telegram plus bonus points; it is sized to a vote, not to a referral code.
+  requireRegisteredIdentity: process.env.COMPUTE_GOVERNANCE_REQUIRE_IDENTITY !== '0',
+  requireVerifiedSocialForBinding: process.env.COMPUTE_GOVERNANCE_REQUIRE_SOCIAL !== '0',
 };
 
 // --- Ship1 ecosystem NFT-activation + genesis-pass/check (de-Lambda of ecosystem-api + genesis-pass/check) ---
