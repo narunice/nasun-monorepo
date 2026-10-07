@@ -31,7 +31,7 @@ set -euo pipefail
 BUNDLE_SRC=/tmp/nasun-ai-host-server.mjs
 UNIT_SRC=/tmp/nasun-ai-host.service
 BUNDLE_SHA=f498796e2f98b1ba4e7c0375c6544ba54fd1a5bc281172e040f68efd61b77cd4
-UNIT_SHA=4bdcf8474ec2cae902d9cdcd9856d35043cdbc686b06ecdb5cbd39a3be305d9b
+UNIT_SHA=fb342cef1a732afbbaad84e472a55c695773b772db4063193c24aa6934e9dd3c
 
 SRV_DIR=/srv/nasun/nasun-ai-host
 SECRET_DIR=/etc/nasun/nasun-ai-host
