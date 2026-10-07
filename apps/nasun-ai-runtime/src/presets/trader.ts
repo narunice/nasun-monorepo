@@ -48,8 +48,9 @@ function requireVenueEnv(name: string, shape: RegExp, hint: string): string {
   const raw = (process.env[name] ?? '').trim();
   if (!raw) {
     throw new Error(
-      `${name} is required for the trader preset and is unset. `
-      + `chat-server's globalTraderEnv() forwards it; expected ${hint}.`,
+      `${name} is unset. Per-user agents get it from chat-server's `
+      + `globalTraderEnv(); the operator-run vault agent gets it from its own `
+      + `.env (ecosystem.vault.cjs). Expected ${hint}.`,
     );
   }
   if (!shape.test(raw)) {

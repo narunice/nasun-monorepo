@@ -156,6 +156,31 @@ interface TraderConfig {
   agentProfileId?: string;
 }
 
+/**
+ * The trading venue ids, shared by the trader and vault presets. Kept here
+ * rather than in presets/trader.ts so the boot path and the point-of-use
+ * getters cannot disagree about which variables are needed.
+ */
+export const VENUE_ENV_VARS = [
+  'POOL_NBTC_NUSDC',
+  'DEEPBOOK_PACKAGE',
+  'COIN_NBTC_TYPE',
+  'COIN_NUSDC_TYPE',
+  'DEEP_TYPE',
+] as const;
+
+function assertVenueEnv(): void {
+  const missing = VENUE_ENV_VARS.filter((k) => !(process.env[k] ?? '').trim());
+  if (missing.length > 0) {
+    throw new Error(
+      `missing trading venue env: ${missing.join(', ')}. `
+      + 'Per-user agents get these from chat-server globalTraderEnv(); the '
+      + 'operator-run vault agent gets them from its own .env (see '
+      + 'ecosystem.vault.cjs).',
+    );
+  }
+}
+
 function requireTypeName(raw: string, name: string): string {
   if (!/^0x[0-9a-fA-F]{1,64}::[A-Za-z_][A-Za-z0-9_]{0,254}::[A-Za-z_][A-Za-z0-9_]{0,254}(<.+>)?$/.test(raw)) {
     throw new Error(`${name} must be a Move TypeName (<addr>::<mod>::<Type>): got "${raw.slice(0, 32)}..."`);
@@ -354,6 +379,13 @@ export function loadConfigBaseSync() {
   // Trader preset uses the host /execute-capability path; everything else
   // still routes through the Lambda /execute path (which is itself slated
   // for retirement in Plan E but kept alive for non-trader presets in C2).
+  // TRADER_CONFIG resolves the trading venue from env through getters, and
+  // BOTH the trader and vault presets read them -- vault-trade.ts touches
+  // .pool/.baseType/.quoteType/.deepbookPackage on every cycle. Validate here
+  // so either preset fails at boot naming the variable, rather than mid-cycle
+  // from inside a PTB builder. Presets that never trade are untouched.
+  if (preset === 'trader' || preset === 'vault') assertVenueEnv();
+
   const trader = preset === 'trader' ? loadTraderConfig() : null;
   // Vault preset signs execute_trade directly with the agent key; it does
   // not use the host /execute-capability or Lambda /execute paths.

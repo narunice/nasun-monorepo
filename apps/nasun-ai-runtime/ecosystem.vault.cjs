@@ -23,6 +23,13 @@
  *   Baram contracts (unconditional requireEnv):
  *     BARAM_PACKAGE_ID, BARAM_REGISTRY_ID, BUDGET_ID, BARAM_API_KEY,
  *     EXECUTOR_ADDRESS
+ *   Trading venue (shared with the trader preset; vault-trade.ts reads these
+ *   every cycle via TRADER_CONFIG, and config.ts now asserts them at boot):
+ *     POOL_NBTC_NUSDC, DEEPBOOK_PACKAGE, COIN_NBTC_TYPE, COIN_NUSDC_TYPE,
+ *     DEEP_TYPE
+ *     Source of truth: packages/devnet-config/devnet-ids.json. These were
+ *     hardcoded literals in presets/trader.ts until 2026-10-07, by which point
+ *     the pool and the DEEP package no longer existed on chain.
  *   Vault identity (loadVaultConfig):
  *     VAULT_ID            = managed vault object id
  *     AGENT_PROFILE_ID    = vault.agent_profile_id (cross-checked on-chain;
