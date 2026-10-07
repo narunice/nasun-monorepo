@@ -699,7 +699,10 @@ function validateInferBody(body: InferRequest): FieldError | null {
  * PR1.A: actionCall/escrow/spend MUST be null. If any are present, callers
  * get 400 with reason='swap_in_pr1_5' so PR1.5 enablement is visible.
  */
-function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldError | null {
+// Exported for the same reason validateSwapWireShape is: the swap-path
+// invariants it enforces are worth asserting directly rather than only
+// through a fully mocked request.
+export function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldError | null {
   if (!isSafeRequestId(body.requestId)) return { field: 'requestId', reason: 'invalid_request_id' };
   if (typeof body.promptHash !== 'string' || !HEX32_LOWER.test(body.promptHash.toLowerCase())) {
     return { field: 'promptHash', reason: 'invalid_prompt_hash' };
@@ -747,6 +750,16 @@ function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldErr
   if (swapFieldsPresent === 3) {
     const shapeErr = validateSwapWireShape(body.actionCall!, body.escrow!, body.spend!);
     if (shapeErr) return shapeErr;
+    // The swap path authorizes against escrow.capabilityId (the capability is
+    // fetched from it, and owner / version / pause / revoked are all checked
+    // there) but the AER records body.capabilityId. Both are only shape-
+    // checked as 0x + 1..64 hex, so without this they can disagree: a body
+    // carrying `0x6` passes, the real capability still gates the swap, and the
+    // report lands with a capability_id that hex-decodes to zero bytes. Tie
+    // the recorded id to the authorized one.
+    if (body.capabilityId.toLowerCase() !== body.escrow!.capabilityId.toLowerCase()) {
+      return { field: 'capabilityId', reason: 'capability_id_escrow_mismatch' };
+    }
   }
   if (!body.envelope || typeof body.envelope !== 'object') {
     return { field: 'envelope', reason: 'invalid_envelope' };

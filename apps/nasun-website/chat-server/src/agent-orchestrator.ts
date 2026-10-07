@@ -189,7 +189,16 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
     // the dead PM2_HOME default went unnoticed for three months.
     POOL_NBTC_NUSDC:      pick('POOL_NBTC_NUSDC'),
     DEEPBOOK_PACKAGE:     pick('DEEPBOOK_PACKAGE'),
-    DEEP_TYPE:            pick('DEEP_TYPE'),
+    // Forwarded but NOT required: DEEP_TYPE lives only in
+    // ecosystem.config.cjs, and the canonical deploy ends in
+    // `pm2 startOrRestart`, which this repo documents as not refreshing a
+    // newly added env key. Required here, one ordinary deploy would make
+    // every upload / restore / resume / reconcile throw
+    // missing_global_trader_env and no agent could be activated at all --
+    // trading the old silent breakage for a louder, wider one. The runtime's
+    // own getter still refuses to build a swap without it, which is the right
+    // place to stop: precisely at the agent that needs it.
+    DEEP_TYPE:            pick('DEEP_TYPE', { required: false }),
     CHAT_SERVER_BASE_URL: process.env.AGENT_GLOBAL_CHAT_SERVER_BASE_URL
                           ?? 'http://127.0.0.1:3101',
     RPC_URL:              process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',

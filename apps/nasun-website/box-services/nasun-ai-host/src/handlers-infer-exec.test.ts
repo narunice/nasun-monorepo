@@ -15,7 +15,7 @@ import {
   sha256Hex0x,
   type ActionCallHashInput,
 } from './_shared/canonical-hash';
-import { validateSwapWireShape } from './handler';
+import { validateSwapWireShape, validateExecuteCapabilityBody } from './handler';
 import type { ActionCallSpecWire, EscrowBlock, SpendBlock } from './types';
 
 describe('canonical-hash', () => {
@@ -190,4 +190,64 @@ describe('validateSwapWireShape (PR1.5 swap wire validator)', () => {
     s.amount = '1.5';
     expect(validateSwapWireShape(happyActionCall(), happyEscrow(), s)?.reason).toBe('invalid_spend_amount');
   });
+
+  // The swap path fetches the capability from escrow.capabilityId and checks
+  // owner / version / pause / revoked against it, but the AER records
+  // body.capabilityId. Both are only shape-checked as 0x + 1..64 hex, so
+  // without an equality check a body can authorize against the real
+  // capability while writing a different id -- `0x6` hex-decodes to zero
+  // bytes -- into the permanent record. Reuses the happy wire fixtures above
+  // so this asserts the pairing rather than re-deriving a valid swap body.
+  describe('body.capabilityId must equal escrow.capabilityId', () => {
+    function swapBody(overrides: Record<string, unknown> = {}) {
+      return {
+        requestId: 1,
+        promptHash: '0x' + 'a'.repeat(64),
+        result: 'ok',
+        resultHash: '0x' + '1'.repeat(64),
+        executionTimeMs: 10,
+        model: 'llama-3.3-70b-versatile',
+        wake: {},
+        replay: {},
+        proposal: {},
+        capabilityId: CAP_ID,
+        agentAddress: '0x' + '1'.repeat(64),
+        principalAddress: '0x' + '2'.repeat(64),
+        expectedCapabilityVersion: '1',
+        envelopeHash: '0x' + 'e'.repeat(64),
+        actionCallHash: '0x' + 'f'.repeat(64),
+        sig2: 'z'.repeat(64),
+        envelope: {},
+        lineage: {},
+        actionCall: happyActionCall(),
+        escrow: happyEscrow(),
+        spend: happySpend(),
+        ...overrides,
+      } as never;
+    }
+
+    it('rejects a capabilityId that differs from the escrow block', () => {
+      const err = validateExecuteCapabilityBody(swapBody({ capabilityId: '0x' + 'd'.repeat(64) }));
+      expect(err).toEqual({ field: 'capabilityId', reason: 'capability_id_escrow_mismatch' });
+    });
+
+    it('rejects the short-id shape that would record zero bytes', () => {
+      const err = validateExecuteCapabilityBody(swapBody({ capabilityId: '0x6' }));
+      expect(err).toEqual({ field: 'capabilityId', reason: 'capability_id_escrow_mismatch' });
+    });
+
+    it('accepts the matching pair the runtime actually sends', () => {
+      // trader-cycle sets both from trader.capabilityId, so the live happy
+      // path is unaffected by the check.
+      expect(validateExecuteCapabilityBody(swapBody())).toBeNull();
+    });
+
+    it('does not apply on the HOLD path, which carries no escrow', () => {
+      const err = validateExecuteCapabilityBody(
+        swapBody({ actionCall: null, escrow: null, spend: null }),
+      );
+      expect(err?.reason).not.toBe('capability_id_escrow_mismatch');
+    });
+  });
+
 });
