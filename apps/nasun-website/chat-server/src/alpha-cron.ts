@@ -196,7 +196,7 @@ async function phaseExpire(): Promise<void> {
   // Re-queue: a 24h test window is one turn. When it ends the tester goes to
   // the BACK of the waitlist (fresh joined_at) and waits for their turn to
   // come around again, at which point they resume the SAME paused agent
-  // (funds + SSM key preserved) via /vault/agent/:addr/resume. Without this
+  // (funds + vault key preserved) via /vault/agent/:addr/resume. Without this
   // UPSERT the paused wallet had no waitlist row at all — a dead end.
   const tx = getDb().transaction((batch: ExpiredAgentRow[]) => {
     const dropEndpoint = getDb().prepare(
@@ -309,7 +309,7 @@ async function phaseInvite(): Promise<void> {
 // "Active and pending" view: counts paused/exempt out (matches countActiveAgents)
 // AND adds rows in 'invited' status so a freshly issued invite doesn't get
 // re-issued on the next tick before the user can claim it. We do NOT subtract
-// `pendingSlots` (alpha-guards in-memory): the SSM-in-flight race window is
+// `pendingSlots` (alpha-guards in-memory): the vault-write race window is
 // short (seconds) and the cron only runs once per minute — racing the cron
 // with a vault-upload that just decremented pendingSlots would only cause one
 // extra invite at worst, and the per-wallet cap + Genesis Pass requirement

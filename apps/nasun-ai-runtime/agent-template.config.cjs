@@ -21,8 +21,8 @@
  *               (optional) TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
  *
  * AGENT_PRIVATE_KEY is intentionally absent — the keypair lives only
- * inside the spawned process closure, fetched from SSM Parameter Store
- * at startup via loadKeypairFromParam.
+ * inside the spawned process closure, read at startup from the box keypair
+ * vault at AGENT_SECRET_PATH via loadKeypairFromPath.
  */
 
 'use strict';

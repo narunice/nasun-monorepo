@@ -5,15 +5,15 @@
 //   - per-wallet slot exemption check (santa, admin)
 //   - waitlist 'invited' verification
 //   - per-wallet cap (1 active agent / wallet)
-//   - system cap (8) + in-memory `pendingSlots` mutex for the SSM-put gap
+//   - system cap (8) + in-memory `pendingSlots` mutex for the vault-write gap
 //   - Genesis Pass eligibility (6h cache + Lambda refresh, fail-closed)
 //
 // Why an in-memory mutex: better-sqlite3 is synchronous, so all SQL races
-// inside a single tick are impossible. But createAgent must await SSM
-// PutParameter before the agent_keys INSERT, which yields the event loop.
+// inside a single tick are impossible. But createAgent must await the vault
+// write before the agent_keys INSERT, which yields the event loop.
 // Two concurrent uploads can both pass the SQL count and only collide at
 // INSERT time. The pendingSlots counter holds a reservation across the
-// SSM await so cap=8 stays correct under contention.
+// vault await so cap=8 stays correct under contention.
 
 import { getDb } from './store.js';
 import { setGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassStatus } from './store.js';
@@ -95,7 +95,7 @@ export function getSystemCap(): number {
 let pendingSlots = 0;
 
 /**
- * Wraps an async fn (SSM put + SQL insert) with a slot reservation that
+ * Wraps an async fn (vault write + SQL insert) with a slot reservation that
  * survives await boundaries. Throws `alpha_full` when the cap (active +
  * pending) would be exceeded.
  *
@@ -270,7 +270,7 @@ export interface GuardContext {
 
 /**
  * The single createAgent gate. Called from `handleVaultUpload` AND
- * `handleVaultRestore` before any SSM/SQL mutation. Throws GuardError
+ * `handleVaultRestore` before any vault/SQL mutation. Throws GuardError
  * on rejection; returns a context flag the caller passes to
  * `withSlotReservation` so the in-memory cap counter stays consistent.
  *
@@ -285,7 +285,7 @@ export interface GuardContext {
  *      activating two agents in quick succession
  *
  * System cap (step 4) is enforced inside `withSlotReservation` so the
- * caller can scope the reservation around the SSM call.
+ * caller can scope the reservation around the vault write.
  */
 export function enforceAlphaGuards(
   walletAddress: string,
@@ -334,7 +334,7 @@ export function enforceAlphaGuards(
 
 /**
  * Read-only gate for the web chat surface. Unlike `enforceAlphaGuards`,
- * this is NOT a createAgent context — there is no SSM put, no per-wallet
+ * this is NOT a createAgent context — there is no vault write, no per-wallet
  * cap collision, no new slot to reserve. The user already passed
  * `enforceAlphaGuards` when their agent was created; this function only
  * verifies that the wallet still has the right to use the runtime they
