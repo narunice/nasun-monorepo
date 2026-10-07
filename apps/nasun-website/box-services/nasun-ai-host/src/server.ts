@@ -106,10 +106,14 @@ const server = createServer(async (req, res) => {
     body = await readBody(req);
   } catch (err) {
     const tooLarge = (err as Error).message === 'body_too_large';
+    // Destroy only once the response has actually gone out. send() queues it;
+    // a synchronous destroy here tears down the socket the reply is sitting
+    // on, so the caller can see ECONNRESET instead of the 413 -- the very
+    // race this is meant to avoid. 'finish' fires when the response has been
+    // handed to the socket, after which dropping the rest of the refused
+    // upload is safe.
+    res.once('finish', () => req.destroy());
     send(res, tooLarge ? 413 : 400, { error: tooLarge ? 'body_too_large' : 'bad_request' });
-    // Now that the status is on the wire, drop the rest of the upload rather
-    // than reading a body we have already refused.
-    req.destroy();
     return;
   }
 

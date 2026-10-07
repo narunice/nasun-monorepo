@@ -30,7 +30,7 @@ set -euo pipefail
 
 BUNDLE_SRC=/tmp/nasun-ai-host-server.mjs
 UNIT_SRC=/tmp/nasun-ai-host.service
-BUNDLE_SHA=e7a8ec147304d202447bacc6c0838513477e3911ec9b6fd282780f9ae954648b
+BUNDLE_SHA=f498796e2f98b1ba4e7c0375c6544ba54fd1a5bc281172e040f68efd61b77cd4
 UNIT_SHA=4bdcf8474ec2cae902d9cdcd9856d35043cdbc686b06ecdb5cbd39a3be305d9b
 
 SRV_DIR=/srv/nasun/nasun-ai-host
@@ -127,7 +127,10 @@ else
   sed -i 's|^AGENT_GLOBAL_HOST_URL=.*|AGENT_GLOBAL_HOST_URL=http://127.0.0.1:4500|' .env
   sed -i '/^AGENT_VAULT_RETIRED=/d' .env
 
-  new_url=$(grep -E '^AGENT_GLOBAL_HOST_URL=' .env | head -1 | cut -d= -f2-)
+  # `|| true` matches the read on the line above: without it, set -e aborts
+  # here when the key is absent -- after the sed edits and before the
+  # diagnostic below could say what went wrong.
+  new_url=$(grep -E '^AGENT_GLOBAL_HOST_URL=' .env | head -1 | cut -d= -f2- || true)
   [ "$new_url" = "http://127.0.0.1:4500" ] || die "HOST_URL rewrite did not take: $new_url"
   [ "$(grep -c '^AGENT_VAULT_RETIRED=' .env || true)" = "0" ] || die "AGENT_VAULT_RETIRED still present"
   ok "AGENT_GLOBAL_HOST_URL -> http://127.0.0.1:4500"

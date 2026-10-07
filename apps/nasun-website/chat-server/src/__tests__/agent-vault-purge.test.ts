@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { initStore, closeStore, getDb } from '../store.js';
 import { DEFAULT_CONFIG } from '../types.js';
 import { runVaultPurge } from '../agent-vault-purge.js';
-import { hasSecret, putSecret, secretPathFor } from '../agent-vault-store.js';
+import { SecretExistsError, hasSecret, putSecret, secretPathFor } from '../agent-vault-store.js';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const KEY = 'suiprivkey1qtestkeymaterialplaceholder';
@@ -110,6 +110,37 @@ describe('runVaultPurge grace window', () => {
     await putSecret(a, KEY, { overwrite: false });
 
     await runVaultPurge(true);
+
+    expect(await hasSecret(a)).toBe(false);
+    expect(agentRowCount()).toBe(0);
+  });
+});
+
+describe('orphaned secret recovery', () => {
+  it('a secret with no row is overwritable, not a permanent 409', async () => {
+    // The window: putSecret lands, then the agent_keys INSERT dies. On the
+    // retry the upload sees no row, so it exclusive-creates and would hit
+    // SecretExistsError forever. Nothing can use a secret without a row --
+    // every spawn path resolves the agent through it -- so the upload route
+    // overwrites. This asserts the store primitive that recovery rests on.
+    const a = agent(20);
+    await putSecret(a, 'stranded-key', { overwrite: false });
+    expect(agentRowCount()).toBe(0);
+
+    await expect(putSecret(a, 'stranded-key', { overwrite: false }))
+      .rejects.toBeInstanceOf(SecretExistsError);
+    await expect(putSecret(a, 'fresh-key', { overwrite: true })).resolves.toBeUndefined();
+    expect(await hasSecret(a)).toBe(true);
+  });
+
+  it('purge collects a stranded secret once its row is reaped', async () => {
+    // Belt and braces: even if an orphan is never retried, the row-less
+    // secret is not immortal -- a later soft-deleted row for the same agent
+    // reaps it on schedule.
+    const a = insertAgent(21, Date.now() - SEVEN_DAYS_MS - 1000);
+    await putSecret(a, KEY, { overwrite: true });
+
+    await runVaultPurge();
 
     expect(await hasSecret(a)).toBe(false);
     expect(agentRowCount()).toBe(0);

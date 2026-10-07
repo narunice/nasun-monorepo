@@ -2,7 +2,7 @@
 //
 // Endpoints (mounted under /api/nasun-ai/vault/* by server.ts):
 //   POST   /api/nasun-ai/vault/challenge      — mint sig challenge
-//   POST   /api/nasun-ai/vault/upload         — upload keypair → SSM + spawn PM2
+//   POST   /api/nasun-ai/vault/upload         — upload keypair → vault + spawn PM2
 //   DELETE /api/nasun-ai/vault/agent/:addr    — soft delete + stop PM2
 //   POST   /api/nasun-ai/vault/agent/:addr/restore — restore within 7-day grace
 //   GET    /api/nasun-ai/vault/agent/:addr/status  — public-read minimal status
@@ -13,14 +13,15 @@
 // SuiClient — SQLite never trusted as source of truth (defense-in-depth
 // vs. a hypothetical config-route compromise).
 //
-// Bulk /list endpoint is intentionally absent: each PM2 process fetches
-// only its own SSM Parameter, so chat-server has no shared bearer that,
-// if leaked, dumps every tenant's keypair.
+// Bulk /list endpoint is intentionally absent: each PM2 process reads only
+// its own vault file, so chat-server has no shared bearer that, if leaked,
+// dumps every tenant's keypair.
 
 import { randomBytes, createHash } from 'node:crypto';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   SecretExistsError,
+  deleteSecret,
   hasSecret,
   putSecret,
   secretPathFor,
@@ -379,19 +380,30 @@ export async function handleVaultUpload(
           await putSecret(agentAddress, agentSecretKey, { overwrite: Boolean(existing) });
         } catch (err) {
           if (err instanceof SecretExistsError) {
-            writeJson(res, 409, corsHeaders, { error: 'already_vaulted' });
+            // Exclusive create only runs when there is no agent_keys row at
+            // all, so a stored secret here is an orphan left by an attempt
+            // that died between the write and the INSERT. Nothing can use it
+            // -- every spawn path resolves the agent through its row -- and
+            // the caller just proved ownership of this agent, so overwrite.
+            // Answering 409 instead would leave the agent permanently
+            // un-activatable with no way for the user to clear it.
+            console.warn(
+              `[vault-upload] orphan secret with no row for ${agentAddress}; overwriting`,
+            );
+            await putSecret(agentAddress, agentSecretKey, { overwrite: true });
+          } else {
+            // Never echo the error message itself: it is produced while
+            // handling the secret value and fs errors quote the path, not the
+            // content, but the body must not be able to reach a log line by
+            // any route.
+            const e = err as { name?: string; code?: string };
+            console.error(
+              `[vault-upload] vault write failed for ${agentAddress}: `
+              + `name=${e.name ?? 'unknown'} code=${e.code ?? 'n/a'}`,
+            );
+            writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
             return;
           }
-          // Never echo the error message itself: it is produced while handling
-          // the secret value and fs errors quote the path, not the content, but
-          // the body must not be able to reach a log line by any route.
-          const e = err as { name?: string; code?: string };
-          console.error(
-            `[vault-upload] vault write failed for ${agentAddress}: `
-            + `name=${e.name ?? 'unknown'} code=${e.code ?? 'n/a'}`,
-          );
-          writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
-          return;
         }
 
         const wakePort = existing ? existing.wake_port : allocatePort();
@@ -405,22 +417,46 @@ export async function handleVaultUpload(
         const stampExpiry = !guard.slotExempt && isAlphaGateEnabled();
         const expiresAt = stampExpiry ? now + getAgentTtlMs() : null;
 
-        if (existing) {
-          getDb().prepare(
-            `UPDATE agent_keys
-             SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
-                 wake_port = ?, last_used_at = ?,
-                 expires_at = ?, paused_at = NULL, warned_at = NULL,
-                 profile_id = COALESCE(?, profile_id)
-             WHERE agent_address = ?`
-          ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, profileId, agentAddress);
-        } else {
-          getDb().prepare(
-            `INSERT INTO agent_keys
-               (agent_address, wallet_address, capability_id, param_name, pm2_name,
-                wake_port, created_at, expires_at, profile_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt, profileId);
+        // The secret is already on disk at this point. If the row write
+        // fails we have to take it back off, or the next attempt meets a
+        // secret with no row -- recoverable now (see the orphan branch
+        // above), but there is no reason to manufacture that state. Only
+        // undo what this request created: on the `existing` path the secret
+        // predates us and belongs to a row that is still there.
+        try {
+          if (existing) {
+            getDb().prepare(
+              `UPDATE agent_keys
+               SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
+                   wake_port = ?, last_used_at = ?,
+                   expires_at = ?, paused_at = NULL, warned_at = NULL,
+                   profile_id = COALESCE(?, profile_id)
+               WHERE agent_address = ?`
+            ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, profileId, agentAddress);
+          } else {
+            getDb().prepare(
+              `INSERT INTO agent_keys
+                 (agent_address, wallet_address, capability_id, param_name, pm2_name,
+                  wake_port, created_at, expires_at, profile_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt, profileId);
+          }
+        } catch (err) {
+          if (!existing) {
+            await deleteSecret(agentAddress).catch((cleanupErr) => {
+              console.error(
+                `[vault-upload] row write failed AND secret cleanup failed for `
+                + `${agentAddress}: ${(cleanupErr as Error).message}. `
+                + `A stored secret now has no row; the next upload overwrites it.`,
+              );
+            });
+          }
+          console.error(
+            `[vault-upload] row write failed for ${agentAddress}: `
+            + `${(err as Error).message}`,
+          );
+          writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
+          return;
         }
 
         // Stamp slot_exempt=1 on the new row when guard granted exemption
