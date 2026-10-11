@@ -2,30 +2,27 @@
  * Structured proposal card rendered inside the assistant turn when the wake
  * outcome includes a `proposal` artifact (`@nasun/baram-sdk` Proposal).
  *
- * Why a dedicated card vs. plain markdown: the proposal has a hard expiry,
- * a click-through CTA, and a small fixed schema. Rendering it as markdown
- * would lose the live countdown and make the CTA brittle. The card here
- * derives its TG deep link from `proposal.tgDeepLink ?? fallback`, so a
- * future chat-server upgrade that supplies the field activates without a
- * frontend redeploy.
+ * Why a dedicated card vs. plain markdown: the proposal has a hard expiry, a
+ * decision to make, and a small fixed schema. Rendering it as markdown would
+ * lose the live countdown and leave nothing to act on.
+ *
+ * The card used to offer only "Open in Telegram", and that link could never
+ * work: the bot's /start reads its payload as a session sid, so
+ * `proposal_<id>` fell through to bindTelegramUser and came back as "link
+ * already used". Confirm and Cancel now answer in place, through
+ * POST /api/nasun-ai/chat/proposal/{confirm,cancel}.
  */
 
 import { useEffect, useState } from 'react';
-import type { WakeProposal } from '../../types/chat';
+import type { Message, WakeProposal } from '../../types/chat';
 
 interface ProposalCardProps {
   proposal: WakeProposal;
-}
-
-const FALLBACK_BOT = 'https://t.me/nasun_ai_bot';
-
-function buildDeepLink(p: WakeProposal): string {
-  if (p.tgDeepLink && /^https:\/\/t\.me\//.test(p.tgDeepLink)) return p.tgDeepLink;
-  // Server may add tgDeepLink later. Fallback uses the proposal_id as a start
-  // parameter so the bot can deep-link the user to the right confirm prompt
-  // when the server-side wiring lands. Until then the bot just opens to its
-  // default greeting and the user finishes from there.
-  return `${FALLBACK_BOT}?start=proposal_${encodeURIComponent(p.proposal_id)}`;
+  /** Absent is treated as 'pending'. */
+  status?: Message['proposalStatus'];
+  /** Omitted in read-only contexts (history replay), which hides the buttons. */
+  onConfirm?: () => void;
+  onCancel?: () => void;
 }
 
 function formatCountdown(msLeft: number): string {
@@ -39,12 +36,24 @@ function formatCountdown(msLeft: number): string {
 function formatSize(quoteRaw: string, symbol: string): string {
   // size_quote_raw is the quote-token amount in smallest units (string). We
   // don't have on-card access to per-token decimals, so show the raw string
-  // verbatim with a unit suffix. The Telegram deep-link surface is where the
-  // user does the actual numeric review; this card is a glance affordance.
+  // verbatim with a unit suffix.
   return `${quoteRaw} ${symbol}`;
 }
 
-export function ProposalCard({ proposal }: ProposalCardProps) {
+function settledLabel(status: Message['proposalStatus']): string | null {
+  switch (status) {
+    case 'confirmed':
+      return 'Confirmed. Submitting to the chain.';
+    case 'cancelled':
+      return 'Cancelled. Your agent is free to trade again.';
+    case 'resolved':
+      return 'Already answered.';
+    default:
+      return null;
+  }
+}
+
+export function ProposalCard({ proposal, status, onConfirm, onCancel }: ProposalCardProps) {
   const expiresAtMs = new Date(proposal.expires_at).getTime();
   const [now, setNow] = useState<number>(Date.now());
 
@@ -55,7 +64,14 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
 
   const msLeft = expiresAtMs - now;
   const expired = msLeft <= 0;
-  const deepLink = buildDeepLink(proposal);
+  const submitting = status === 'submitting';
+  const settled = settledLabel(status);
+  // While an answer is in flight, keep showing the buttons (disabled) even if
+  // the countdown lapses: the confirm may already have been accepted, and
+  // swapping in "expired before it was answered" would state the opposite.
+  // The countdown is only a client-side hint anyway; the server re-checks
+  // expiry on every answer, so a stale clock cannot buy a trade.
+  const actionable = (!expired || submitting) && !settled && !!onConfirm && !!onCancel;
   const sideClass =
     proposal.side === 'BUY'
       ? 'text-emerald-300 bg-emerald-500/10 border-emerald-400/30'
@@ -85,35 +101,32 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
       {proposal.summary && (
         <p className="mt-2 text-uju-secondary leading-relaxed">{proposal.summary}</p>
       )}
-      <a
-        href={expired ? undefined : deepLink}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => {
-          if (expired) e.preventDefault();
-        }}
-        className={`mt-3 inline-flex items-center gap-1 text-sm rounded-md px-2 py-1 transition-colors ${
-          expired
-            ? 'border border-uju-border/40 text-uju-secondary/50 cursor-not-allowed'
-            : 'border border-pado-2/40 text-pado-2 hover:bg-pado-2/10'
-        }`}
-        aria-disabled={expired}
-      >
-        Open in Telegram
-        <svg
-          className="w-3.5 h-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-          />
-        </svg>
-      </a>
+      {actionable && (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={submitting}
+            className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold bg-pado-2 text-uju-bg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Submitting...' : 'Confirm'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm border border-uju-border/60 text-uju-secondary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      {settled && <p className="mt-3 text-sm text-uju-secondary">{settled}</p>}
+      {expired && !settled && !submitting && (
+        <p className="mt-3 text-sm text-uju-secondary/70">
+          This proposal expired before it was answered. Ask again for a fresh one.
+        </p>
+      )}
     </div>
   );
 }

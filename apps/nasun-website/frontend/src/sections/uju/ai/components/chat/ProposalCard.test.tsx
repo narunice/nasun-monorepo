@@ -1,6 +1,11 @@
 /**
- * ProposalCard tests — countdown ticking, expired-state disable, deep-link
- * resolution (server-provided vs fallback).
+ * ProposalCard tests: countdown ticking, and the Confirm / Cancel contract.
+ *
+ * The card used to offer only "Open in Telegram", pointing at a link that
+ * could never work (/start reads its payload as a session sid, so
+ * proposal_<id> came back as "link already used"). What matters now is that
+ * the buttons appear exactly when the proposal can still be answered, and
+ * never once it is expired or settled.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -73,51 +78,106 @@ describe('ProposalCard countdown', () => {
   });
 });
 
-describe('ProposalCard deep link', () => {
-  it('uses tgDeepLink when server supplied a valid t.me URL', () => {
-    const p = baseProposal({ tgDeepLink: 'https://t.me/nasun_ai_bot?confirm=abc' });
-    render(<ProposalCard proposal={p} />);
-    const link = screen.getByText('Open in Telegram').closest('a');
-    expect(link?.getAttribute('href')).toBe('https://t.me/nasun_ai_bot?confirm=abc');
-  });
-
-  it('rejects non-t.me deep links and falls back', () => {
-    const p = baseProposal({ tgDeepLink: 'https://evil.example.com/phish?x=1' });
-    render(<ProposalCard proposal={p} />);
-    const link = screen.getByText('Open in Telegram').closest('a');
-    expect(link?.getAttribute('href')).toContain('https://t.me/nasun_ai_bot');
-    expect(link?.getAttribute('href')).not.toContain('evil.example.com');
-  });
-
-  it('falls back to bot URL + proposal_id when tgDeepLink absent', () => {
-    render(<ProposalCard proposal={baseProposal()} />);
-    const link = screen.getByText('Open in Telegram').closest('a');
-    expect(link?.getAttribute('href')).toBe(
-      'https://t.me/nasun_ai_bot?start=proposal_01HWGAH7XJW7CCNMPVQAB8YN3K',
+describe('ProposalCard actions', () => {
+  it('offers Confirm and Cancel while the proposal is live', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <ProposalCard proposal={baseProposal()} onConfirm={onConfirm} onCancel={onCancel} />,
     );
-  });
-});
 
-describe('ProposalCard expired CTA', () => {
-  it('disables the link when expired', () => {
+    screen.getByRole('button', { name: 'Confirm' }).click();
+    screen.getByRole('button', { name: 'Cancel' }).click();
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Open in Telegram')).not.toBeInTheDocument();
+  });
+
+  it('renders read-only when no handlers are supplied', () => {
+    // History replay: the card is a record of what was agreed, not a control.
+    render(<ProposalCard proposal={baseProposal()} />);
+    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+  });
+
+  it('disables both buttons while an answer is in flight', () => {
+    render(
+      <ProposalCard
+        proposal={baseProposal()}
+        status="submitting"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Submitting...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  });
+
+  it.each([
+    ['confirmed', 'Confirmed. Submitting to the chain.'],
+    ['cancelled', 'Cancelled. Your agent is free to trade again.'],
+    ['resolved', 'Already answered.'],
+  ] as const)('replaces the buttons once %s', (status, label) => {
+    render(
+      <ProposalCard
+        proposal={baseProposal()}
+        status={status}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+  });
+
+  it('offers no action once expired', () => {
+    // The server re-checks expiry on every answer, so this is about not
+    // inviting a click that is guaranteed to fail.
     const proposal = baseProposal({
       expires_at: new Date('2026-05-22T11:59:00Z').toISOString(),
     });
-    render(<ProposalCard proposal={proposal} />);
-    const link = screen.getByText('Open in Telegram').closest('a')!;
-    expect(link.getAttribute('aria-disabled')).toBe('true');
-    expect(link.className).toMatch(/cursor-not-allowed/);
+    render(
+      <ProposalCard proposal={proposal} onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(screen.getByText(/expired before it was answered/)).toBeInTheDocument();
   });
 
-  it('preventDefault on click when expired', () => {
+  it('keeps the in-flight state when the countdown lapses mid-answer', () => {
     const proposal = baseProposal({
       expires_at: new Date('2026-05-22T11:59:00Z').toISOString(),
     });
-    render(<ProposalCard proposal={proposal} />);
-    const link = screen.getByText('Open in Telegram').closest('a')!;
-    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-    const prevented = !link.dispatchEvent(event);
-    expect(prevented).toBe(true);
+    render(
+      <ProposalCard
+        proposal={proposal}
+        status="submitting"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    // The confirm may already have been accepted; saying "expired before it
+    // was answered" would state the opposite of what happened.
+    expect(screen.getByRole('button', { name: 'Submitting...' })).toBeInTheDocument();
+    expect(screen.queryByText(/expired before it was answered/)).not.toBeInTheDocument();
+  });
+
+  it('stops offering Confirm the moment the countdown runs out', () => {
+    const proposal = baseProposal({
+      expires_at: new Date('2026-05-22T12:00:30Z').toISOString(),
+    });
+    render(
+      <ProposalCard proposal={proposal} onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
   });
 });
 

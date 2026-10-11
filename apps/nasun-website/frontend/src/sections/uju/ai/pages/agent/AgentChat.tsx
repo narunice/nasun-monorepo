@@ -85,7 +85,15 @@ export function AgentChat({
     void load(walletAddress, agentId);
   }, [walletAddress, agentId, load]);
 
-  const { busy, submit, retry, retryable, errorMessage } = useChatWake({
+  const {
+    busy,
+    submit,
+    retry,
+    retryable,
+    errorMessage,
+    confirmProposal,
+    cancelProposal,
+  } = useChatWake({
     capabilityId,
     agentAddress,
   });
@@ -184,7 +192,16 @@ export function AgentChat({
                 </p>
               </div>
             ) : (
-              <MessageList messages={messages} onRetry={handleRetry} />
+              <MessageList
+                messages={messages}
+                onRetry={handleRetry}
+                onConfirmProposal={(proposalId, messageId) =>
+                  void confirmProposal(proposalId, messageId)
+                }
+                onCancelProposal={(proposalId, messageId) =>
+                  void cancelProposal(proposalId, messageId)
+                }
+              />
             )}
           </div>
         </div>

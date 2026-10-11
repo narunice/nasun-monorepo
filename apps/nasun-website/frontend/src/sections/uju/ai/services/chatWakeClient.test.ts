@@ -14,6 +14,8 @@ import {
   postChatChallenge,
   postChatSession,
   postChatWake,
+  postProposalCancel,
+  postProposalConfirm,
   getChatWakeStatus,
 } from './chatWakeClient';
 
@@ -189,5 +191,58 @@ describe('AgentChatApiError', () => {
     expect(e.httpStatus).toBe(503);
     expect(e.message).toBe('agent_offline');
     expect(e).toBeInstanceOf(Error);
+  });
+});
+
+describe('proposal confirm / cancel', () => {
+  it('posts a confirm and returns the job to poll', async () => {
+    mockFetchOnce(202, { jobId: '01HWGAH7XJW7CCNMPVQAB8YN3K', status: 'pending' });
+
+    const res = await postProposalConfirm({
+      chatToken: 'tok',
+      proposalId: '01HWGAH7XJW7CCNMPVQAB8YN3L',
+      idempotencyKey: 'idem-key-0001',
+    });
+
+    expect(res.jobId).toBe('01HWGAH7XJW7CCNMPVQAB8YN3K');
+    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/api/nasun-ai/chat/proposal/confirm');
+    expect(JSON.parse(init.body as string)).toEqual({
+      chatToken: 'tok',
+      proposalId: '01HWGAH7XJW7CCNMPVQAB8YN3L',
+      idempotencyKey: 'idem-key-0001',
+    });
+  });
+
+  it('posts a cancel without an idempotency key', async () => {
+    mockFetchOnce(200, { ok: true, status: 'cancelled' });
+
+    const res = await postProposalCancel({
+      chatToken: 'tok',
+      proposalId: '01HWGAH7XJW7CCNMPVQAB8YN3L',
+    });
+
+    expect(res).toEqual({ ok: true, status: 'cancelled' });
+    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/api/nasun-ai/chat/proposal/cancel');
+    expect(JSON.parse(init.body as string)).not.toHaveProperty('idempotencyKey');
+  });
+
+  it('surfaces the server error code verbatim', async () => {
+    mockFetchOnce(409, { error: 'proposal_not_pending' });
+
+    // The code is what the UI maps to copy, so it must not be swallowed or
+    // rewritten into an HTTP-status sentinel.
+    await expect(
+      postProposalConfirm({ chatToken: 'tok', proposalId: 'x', idempotencyKey: 'k' }),
+    ).rejects.toBeInstanceOf(AgentChatApiError);
+
+    // A fresh Response: the body above is already consumed, and reusing it
+    // would let parseResponse fall back to an http_409 sentinel and pass this
+    // assertion without ever reading the server's code.
+    mockFetchOnce(409, { error: 'proposal_not_pending' });
+    await expect(
+      postProposalConfirm({ chatToken: 'tok', proposalId: 'x', idempotencyKey: 'k' }),
+    ).rejects.toMatchObject({ code: 'proposal_not_pending', httpStatus: 409 });
   });
 });

@@ -38,9 +38,6 @@ export interface WakeProposal {
   max_slippage_bps: number;
   confidence: number;
   expires_at: string;
-  /** Optional Telegram deep link. Server may add later; if absent, frontend
-   * falls back to `https://t.me/nasun_ai_bot?start=proposal_{id}`. */
-  tgDeepLink?: string;
 }
 
 export interface Message {
@@ -51,8 +48,16 @@ export interface Message {
   metadata?: MessageMetadata;
   failed?: boolean;
   /** Wake-mode assistant turn may attach a proposal artifact. Rendered as a
-   * structured card with countdown + "Open in Telegram" CTA. */
+   * structured card with countdown + Confirm / Cancel. */
   proposal?: WakeProposal;
+  /**
+   * How this turn's proposal was answered. Absent is treated as 'pending'.
+   *
+   * 'resolved' means the server reported it already answered (or expired)
+   * without telling us which, so the card settles without claiming an
+   * outcome it does not know.
+   */
+  proposalStatus?: 'pending' | 'submitting' | 'confirmed' | 'cancelled' | 'resolved';
   /** Reason code from chatWakeReasons whitelist when a turn fails. */
   wakeReason?: string;
   /** Retry control for wake-mode failures. true → render Retry button, which

@@ -168,6 +168,43 @@ export function getChatWakeStatus(
   return getWithAuth<WakePollResponse>(`/api/nasun-ai/chat/wake/${jobId}`, bearer, signal);
 }
 
+// --- POST /proposal/{confirm,cancel} ---
+
+export interface ProposalConfirmPayload {
+  chatToken: string;
+  proposalId: string;
+  idempotencyKey: string;
+}
+
+/**
+ * Confirm returns a jobId, not a result: execution takes 60-120s, so the
+ * caller polls `getChatWakeStatus` exactly as it does after sending a
+ * message. Replaying the same idempotencyKey hands back the original job
+ * rather than executing twice.
+ */
+export function postProposalConfirm(
+  payload: ProposalConfirmPayload,
+  signal?: AbortSignal,
+): Promise<WakeResponse> {
+  return postJson<WakeResponse>('/api/nasun-ai/chat/proposal/confirm', payload, signal);
+}
+
+export interface ProposalCancelResponse {
+  ok: boolean;
+  status: 'cancelled';
+}
+
+/**
+ * Cancel answers immediately and needs no job. It is idempotent server
+ * side, so a retry after a lost response is success, not a conflict.
+ */
+export function postProposalCancel(
+  payload: { chatToken: string; proposalId: string },
+  signal?: AbortSignal,
+): Promise<ProposalCancelResponse> {
+  return postJson<ProposalCancelResponse>('/api/nasun-ai/chat/proposal/cancel', payload, signal);
+}
+
 // --- idempotency key ---
 
 // Crockford alphabet (no I/L/O/U) — same as ULID and the chat-server's
