@@ -1,17 +1,18 @@
 // PR2.A — Emergency kill switch.
 //
-// AWS-managed `alias/aws/ssm` KMS keys cannot be disabled by the customer
-// (that is the cost trade-off for free encryption at rest). To compensate,
+// Custody is a directory of key files on this host (agent-vault-store.ts), so
+// there is no provider-side revocation to reach for in an incident. Instead,
 // chat-server exposes a kill switch that:
 //   1. Stops every nasun-ai-agent-* PM2 process (orchestrator's prefix
 //      guard ensures co-located bots are unaffected).
 //   2. Soft-deletes every active agent_keys row.
-//   3. Forces an immediate purge — DeleteParameter on every SSM Parameter
-//      and tombstone row, bypassing the 7-day grace window.
+//   3. Forces an immediate purge — unlinks every stored secret and drops the
+//      tombstone rows, bypassing the 7-day grace window.
 //   4. Clears baram_agent_endpoints so /wake routing breaks instantly.
 //
-// This action is intentionally destructive: SSM has no undelete after
-// DeleteParameter. Caller must confirm explicitly.
+// This action is intentionally destructive: an unlinked key file has no
+// undelete, and no backup job covers the vault. Caller must confirm
+// explicitly.
 
 import { getDb } from './store.js';
 import { getRunningAgents, stopAgentPm2 } from './agent-orchestrator.js';
@@ -44,7 +45,7 @@ export async function triggerKillSwitch(reason: string): Promise<{
     .run(now);
   const affectedAgents = updateRes.changes;
 
-  // 3. Forced purge: SSM DeleteParameter on every soft-deleted row right now.
+  // 3. Forced purge: unlink the stored secret for every soft-deleted row now.
   await runVaultPurge(true);
 
   // 4. Clear endpoints so chat routing instantly breaks.

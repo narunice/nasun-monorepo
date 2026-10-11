@@ -10,7 +10,7 @@
  *
  * Orchestrator-injected vars (see globalTraderEnv + perAgentTraderEnv in
  * agent-orchestrator.ts):
- *   Per-agent:  AGENT_SECRET_PARAM, AGENT_ADDRESS, WAKE_PORT,
+ *   Per-agent:  AGENT_SECRET_PATH, AGENT_ADDRESS, WAKE_PORT,
  *               CAPABILITY_ID, WALLET_ADDRESS, BUDGET_ID, ESCROW_ID,
  *               STRATEGY, MAX_NOTIONAL_QUOTE_RAW, DAILY_MAX_QUOTE_RAW,
  *               MAX_SLIPPAGE_BPS, INTERVAL_MINUTES
@@ -21,8 +21,8 @@
  *               (optional) TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
  *
  * AGENT_PRIVATE_KEY is intentionally absent — the keypair lives only
- * inside the spawned process closure, fetched from SSM Parameter Store
- * at startup via loadKeypairFromParam.
+ * inside the spawned process closure, read at startup from the box keypair
+ * vault at AGENT_SECRET_PATH via loadKeypairFromPath.
  */
 
 'use strict';
@@ -34,7 +34,7 @@ const path = require('node:path');
 // chat-server process cannot leak into spawned agents.
 const FORWARD_KEYS = [
   // Per-agent identity / vault
-  'PM2_AGENT_NAME', 'AGENT_SECRET_PARAM', 'AGENT_ADDRESS', 'WAKE_PORT',
+  'PM2_AGENT_NAME', 'AGENT_SECRET_PATH', 'AGENT_ADDRESS', 'WAKE_PORT',
   // Per-agent trader config
   'CAPABILITY_ID', 'WALLET_ADDRESS', 'BUDGET_ID', 'ESCROW_ID',
   'STRATEGY', 'MAX_NOTIONAL_QUOTE_RAW', 'DAILY_MAX_QUOTE_RAW',

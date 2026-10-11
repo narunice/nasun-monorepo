@@ -9,16 +9,31 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { writeFile, unlink } from 'node:fs/promises';
+import { writeFile, unlink, access } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getDb } from './store.js';
+import { hasSecret, secretPathFor } from './agent-vault-store.js';
 import { fetchCapabilityEscrowId } from './sui-capability-utils.js';
 import { readAgentProfileIsActive, invalidateAgentProfileCache } from './sui-client.js';
 
 const exec = promisify(execFile);
 
 const PM2_BIN = process.env.PM2_BIN ?? '/usr/bin/pm2';
-const PM2_HOME = process.env.PM2_HOME ?? '/home/ec2-user/.pm2';
-const RUNTIME_CWD = process.env.NASUN_AI_RUNTIME_CWD ?? '/home/ec2-user/nasun-ai-runtime';
+// Both of these used to default to /home/ec2-user/* — the prod-EC2 layout that
+// the 2026-07 AWS exit replaced with the Hetzner box (home dir /home/nasun).
+// PM2_HOME survived the move only by luck: the pm2 daemon injects it into
+// chat-server's own env, so the dead default was never read. RUNTIME_CWD had no
+// such backstop and nothing in the repo ever set NASUN_AI_RUNTIME_CWD, so every
+// spawn wrote its ecosystem file into a directory that does not exist and failed
+// — silently enough that no agent ran a single cycle between the migration and
+// 2026-10-05. Default off the running process instead of naming a host:
+// homedir()/.pm2 is pm2's own default, and the runtime is a sibling app in this
+// monorepo, two levels above apps/nasun-website/chat-server/{src,dist}.
+const PM2_HOME = process.env.PM2_HOME ?? resolve(homedir(), '.pm2');
+const RUNTIME_CWD = process.env.NASUN_AI_RUNTIME_CWD
+  ?? resolve(dirname(fileURLToPath(import.meta.url)), '../../../nasun-ai-runtime');
 // Per-spawn ecosystem config files are written to RUNTIME_CWD at spawn time
 // with env values baked in as JSON literals (not process.env[k] references).
 // Reason: pm2's daemon — not the CLI — resolves the env block at spawn time.
@@ -55,6 +70,21 @@ function assertSafeName(pm2Name: string): void {
   }
 }
 
+// The 2026-07 regression surfaced as a bare ENOENT from writeFile several
+// frames into the spawn, which read like a transient disk error rather than a
+// host-layout mistake. Check the directory up front so the failure names both
+// the path and the override that fixes it.
+async function assertRuntimeDirPresent(): Promise<void> {
+  try {
+    await access(RUNTIME_CWD);
+  } catch {
+    throw new Error(
+      `runtime_dir_missing: ${RUNTIME_CWD} does not exist. Deploy `
+      + `apps/nasun-ai-runtime to this host or set NASUN_AI_RUNTIME_CWD.`,
+    );
+  }
+}
+
 const pm2Env = (extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
   ...process.env,
   PM2_HOME,
@@ -80,7 +110,6 @@ async function pm2List(): Promise<Pm2ProcessLite[]> {
 export interface SpawnOptions {
   agentAddress: string;
   pm2Name: string;
-  paramName: string;
   wakePort: number;
 }
 
@@ -151,6 +180,25 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
     HOST_URL:             pick('HOST_URL'),
     COIN_NBTC_TYPE:       pick('COIN_NBTC_TYPE'),
     COIN_NUSDC_TYPE:      pick('COIN_NUSDC_TYPE'),
+    // Trading venue. The runtime's TRADER_CONFIG carried these as literals
+    // until 2026-10-07, by which point the pool and the DEEP package did not
+    // exist on chain and the agent read a funded escrow as empty. They are
+    // forwarded explicitly rather than left to pm2's daemon-env inheritance:
+    // chat-server's own env happens to carry POOL_NBTC_NUSDC and
+    // DEEPBOOK_PACKAGE, and a child inheriting them by luck is exactly how
+    // the dead PM2_HOME default went unnoticed for three months.
+    POOL_NBTC_NUSDC:      pick('POOL_NBTC_NUSDC'),
+    DEEPBOOK_PACKAGE:     pick('DEEPBOOK_PACKAGE'),
+    // Forwarded but NOT required: DEEP_TYPE lives only in
+    // ecosystem.config.cjs, and the canonical deploy ends in
+    // `pm2 startOrRestart`, which this repo documents as not refreshing a
+    // newly added env key. Required here, one ordinary deploy would make
+    // every upload / restore / resume / reconcile throw
+    // missing_global_trader_env and no agent could be activated at all --
+    // trading the old silent breakage for a louder, wider one. The runtime's
+    // own getter still refuses to build a swap without it, which is the right
+    // place to stop: precisely at the agent that needs it.
+    DEEP_TYPE:            pick('DEEP_TYPE', { required: false }),
     CHAT_SERVER_BASE_URL: process.env.AGENT_GLOBAL_CHAT_SERVER_BASE_URL
                           ?? 'http://127.0.0.1:3101',
     RPC_URL:              process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
@@ -304,6 +352,28 @@ export class AgentDisabledError extends Error {
   }
 }
 
+/**
+ * No stored secret for this agent, so a spawn could only crash-loop.
+ *
+ * The rows that hit this are the pre-AWS-exit ones: their keys only ever
+ * existed as SSM parameters in the decommissioned account, so there is nothing
+ * on the box to read. Without this check the runtime boots, fails to read
+ * AGENT_SECRET_PATH, exits, and pm2 restarts it forever -- while the vault
+ * sanity check and reconcile both see a pm2 entry and report `running`.
+ *
+ * It extends AgentDisabledError on purpose: every spawn caller already treats
+ * that as "do not spawn, leave a log line, carry on", which is exactly the
+ * right handling here. The distinct name and message are what tell an operator
+ * which of the two it was.
+ */
+export class AgentSecretMissingError extends AgentDisabledError {
+  constructor(agentAddress: string) {
+    super(agentAddress);
+    this.message = `agent_secret_missing:${agentAddress}`;
+    this.name = 'AgentSecretMissingError';
+  }
+}
+
 function readEnabledFlag(agentAddress: string): boolean {
   const row = getDb().prepare(
     `SELECT config_json FROM nasun_ai_trader_configs WHERE agent_address = ?`,
@@ -336,6 +406,7 @@ function readAlphaPausedFlag(agentAddress: string): boolean {
 
 export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   assertSafeName(opts.pm2Name);
+  await assertRuntimeDirPresent();
 
   // Phase 6: orchestrator-side enabled gate. The whole point of this
   // refactor is that the user's `enabled:false` toggle must be binding.
@@ -349,6 +420,10 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
     throw new AgentDisabledError(opts.agentAddress.toLowerCase());
   }
 
+  if (!await hasSecret(opts.agentAddress)) {
+    throw new AgentSecretMissingError(opts.agentAddress.toLowerCase());
+  }
+
   // Resolve all per-agent + global trader env BEFORE invoking pm2 so a
   // partial-config row fails fast and pm2 never adopts an idle process.
   const perAgent = await perAgentTraderEnv(opts.agentAddress);
@@ -357,17 +432,19 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   const envBlock: Record<string, string> = {
     NODE_ENV: 'production',
     PRESET: 'trader',
-    // SSM keypair fetch requires AWS_REGION on the agent's process.env.
-    // chat-server itself has it; we forward explicitly because the baked-
-    // env approach (vs the prior process.env-passthrough template) means
-    // nothing leaks in by accident.
-    AWS_REGION: process.env.AWS_REGION ?? 'ap-northeast-2',
     PM2_AGENT_NAME: opts.pm2Name,
-    AGENT_SECRET_PARAM: opts.paramName,
+    // Derived here rather than taken from agent_keys.param_name: that column
+    // still holds SSM parameter names for rows created before the AWS exit,
+    // and the resume / restore / respawn paths all fed it straight through to
+    // the runtime. Computing it from the address keeps one convention, owned
+    // by the store, for every spawn path.
+    AGENT_SECRET_PATH: secretPathFor(opts.agentAddress),
     AGENT_ADDRESS: opts.agentAddress,
     WAKE_PORT: String(opts.wakePort),
-    // AGENT_PRIVATE_KEY intentionally absent — keypair lives only inside
-    // the spawned process closure, fetched from SSM on startup.
+    // AGENT_PRIVATE_KEY intentionally absent — the keypair lives only inside
+    // the spawned process closure, read from the box vault at startup. The
+    // path is baked in; the key itself never touches the spawn config, which
+    // is written to disk.
     ...globalEnv,
     ...perAgent,
     // Explicit blocklist (override anything that may leak via
@@ -558,7 +635,6 @@ export async function withAgentLock<T>(agentAddress: string, fn: () => Promise<T
 
 interface VaultRow {
   pm2_name: string;
-  param_name: string;
   wake_port: number;
   profile_id: string | null;
   deleted_at: number | null;
@@ -567,7 +643,7 @@ interface VaultRow {
 
 function readVaultRow(agentAddress: string): VaultRow | null {
   const row = getDb().prepare(
-    `SELECT pm2_name, param_name, wake_port, profile_id, deleted_at, paused_at
+    `SELECT pm2_name, wake_port, profile_id, deleted_at, paused_at
        FROM agent_keys
       WHERE agent_address = ?
       ORDER BY (deleted_at IS NULL) DESC, COALESCE(deleted_at, created_at) DESC
@@ -643,7 +719,6 @@ export async function reconcileAgentState(
         await spawnAgentPm2({
           agentAddress: lower,
           pm2Name: vault.pm2_name,
-          paramName: vault.param_name,
           wakePort: vault.wake_port,
         });
         action = 'spawn';

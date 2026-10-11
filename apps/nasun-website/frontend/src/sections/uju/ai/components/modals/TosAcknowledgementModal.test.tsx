@@ -9,6 +9,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import {
   TosAcknowledgementModal,
   TOS_LOCALSTORAGE_KEY,
+  ACK_ITEMS,
   hasAcceptedTos,
 } from './TosAcknowledgementModal';
 
@@ -27,13 +28,17 @@ describe('TosAcknowledgementModal', () => {
     window.localStorage.clear();
   });
 
-  it('renders all three required acknowledgements', () => {
+  it('renders every required acknowledgement with its own checkbox', () => {
     setup();
+    // Asserted against the component's own ACK_ITEMS rather than restated
+    // prose: the earlier version quoted copy that has since been rewritten,
+    // so it failed for weeks without anything being broken.
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes).toHaveLength(3);
-    expect(screen.getByText(/prototype and there is a real risk/i)).toBeInTheDocument();
-    expect(screen.getByText(/external security audit/i)).toBeInTheDocument();
-    expect(screen.getByText(/TEE \/ Nitro Enclave attestation is on the long-term roadmap/i)).toBeInTheDocument();
+    expect(checkboxes).toHaveLength(ACK_ITEMS.length);
+    expect(ACK_ITEMS.length).toBe(3);
+    for (const item of ACK_ITEMS) {
+      expect(screen.getByText(item.text)).toBeInTheDocument();
+    }
   });
 
   it('Confirm button is disabled until all three boxes are ticked', () => {

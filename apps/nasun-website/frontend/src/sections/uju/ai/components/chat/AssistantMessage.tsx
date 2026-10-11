@@ -13,7 +13,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import { NETWORK_CONFIG } from '../../services/network';
 import { formatMessageTime } from '../../utils/format';
-import type { MessageMetadata, WakeProposal } from '../../types/chat';
+import type { Message, MessageMetadata, WakeProposal } from '../../types/chat';
 import type { RequestStatus } from '../../hooks/request/useCreateRequest';
 import { ProposalCard } from './ProposalCard';
 
@@ -31,6 +31,12 @@ interface AssistantMessageProps {
   wakePhase?: 'submitting' | 'pending' | 'soft-wait' | 'hard-wait' | 'timeout';
   /** Wake-mode: structured trade proposal artifact attached to this turn. */
   proposal?: WakeProposal;
+  /** How this turn's proposal was answered. Absent is treated as 'pending'. */
+  proposalStatus?: Message['proposalStatus'];
+  /** Answer the proposal. Omitted in read-only contexts, which hides the
+   * buttons and leaves the card as a record. */
+  onConfirmProposal?: () => void;
+  onCancelProposal?: () => void;
   /** Wake-mode: when failed && retryable, show a Retry button. */
   retryable?: boolean;
   onRetry?: () => void;
@@ -86,6 +92,9 @@ export function AssistantMessage({
   onOpenAer,
   wakePhase,
   proposal,
+  proposalStatus,
+  onConfirmProposal,
+  onCancelProposal,
   retryable = false,
   onRetry,
 }: AssistantMessageProps) {
@@ -177,7 +186,12 @@ export function AssistantMessage({
 
           {proposal && (
             <div className="pl-8">
-              <ProposalCard proposal={proposal} />
+              <ProposalCard
+                proposal={proposal}
+                status={proposalStatus}
+                onConfirm={onConfirmProposal}
+                onCancel={onCancelProposal}
+              />
             </div>
           )}
 

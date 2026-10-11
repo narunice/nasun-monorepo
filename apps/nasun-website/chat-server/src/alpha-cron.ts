@@ -24,6 +24,57 @@ import { pushUserMessage } from './baram-telegram.js';
 import { stopAgentPm2, pm2Save } from './agent-orchestrator.js';
 import { traceAsync, traceSync } from './perf-trace.js';
 import { ensureTimerPauseSchema, loadTimerPauseKeys } from './alpha-timer-pause.js';
+import { isAlphaTgBound } from './alpha-tg-link.js';
+
+/**
+ * Idempotent migration for `alpha_waitlist.notified_at`, repeated here as a
+ * self-heal before the phases that write the column.
+ *
+ * The canonical copies are store.ts (store init, so every process gets it)
+ * and scripts/alpha-migration.sql. This one exists because phaseInvite's
+ * promotion UPDATE names the column: on a database that somehow lacks it the
+ * phase would throw and take phaseInviteExpire down with it, leaving every
+ * outstanding invite holding a cap slot.
+ *
+ * Why the column exists: an invite is only a real chance if the user was told
+ * about it. Without this, a user we could not reach burned both of their
+ * windows in silence and ended terminally 'expired'. By 2026-10-11 that had
+ * happened to 133 of 136 waitlisted wallets, draining the queue to zero while
+ * every slot sat free.
+ */
+export function ensureAlphaNotifiedColumn(): void {
+  try {
+    getDb().exec('ALTER TABLE alpha_waitlist ADD COLUMN notified_at INTEGER');
+  } catch {
+    /* column already present, or the table does not exist yet */
+  }
+}
+
+/**
+ * Could an invite DM actually reach this wallet?
+ *
+ * Mirrors pushUserMessage's two lookups (live agent session, then the alpha
+ * waitlist Telegram binding) without sending anything, so phaseInvite can
+ * decide who to spend a cap slot on. Fails closed: a wallet we cannot prove
+ * reachable is treated as unreachable, which only costs it queue priority.
+ */
+function canNotify(walletAddress: string): boolean {
+  const wallet = walletAddress.toLowerCase();
+  try {
+    const row = getDb()
+      .prepare(
+        `SELECT 1 FROM baram_sessions
+          WHERE wallet = ? AND revoked_at IS NULL AND expires_at > ?
+            AND tg_user_id IS NOT NULL
+          LIMIT 1`,
+      )
+      .get(wallet, Date.now());
+    if (row) return true;
+  } catch {
+    /* pre-migration DB without baram_sessions */
+  }
+  return isAlphaTgBound(wallet);
+}
 
 const TICK_INTERVAL_MS = 60_000;
 const WARN_LEAD_MS = 6 * 60 * 60 * 1000;  // T-6h warning before agent session (TTL) expiry
@@ -42,6 +93,10 @@ export function startAlphaCron(): void {
   } catch (err) {
     console.warn('[alpha-cron] ensureTimerPauseSchema failed:', (err as Error).message);
   }
+  // Same reason, one tick earlier: phaseInvite stamps notified_at and
+  // phaseInviteExpire reads it, so the column has to exist before the boot
+  // tick below runs.
+  ensureAlphaNotifiedColumn();
   // Best-effort initial tick on boot so a chat-server restart doesn't
   // miss an expiry by up to one interval. Errors here must not crash the
   // boot path — they're already logged by tick() internally.
@@ -196,7 +251,7 @@ async function phaseExpire(): Promise<void> {
   // Re-queue: a 24h test window is one turn. When it ends the tester goes to
   // the BACK of the waitlist (fresh joined_at) and waits for their turn to
   // come around again, at which point they resume the SAME paused agent
-  // (funds + SSM key preserved) via /vault/agent/:addr/resume. Without this
+  // (funds + vault key preserved) via /vault/agent/:addr/resume. Without this
   // UPSERT the paused wallet had no waitlist row at all — a dead end.
   const tx = getDb().transaction((batch: ExpiredAgentRow[]) => {
     const dropEndpoint = getDb().prepare(
@@ -257,25 +312,66 @@ interface QueueHeadRow {
 }
 
 async function phaseInvite(): Promise<void> {
+  // Self-heal before any statement that names notified_at. Both the promotion
+  // UPDATE and the stamp reference it, so on a database that never got the
+  // column this phase would throw and take phaseInviteExpire down with it --
+  // leaving every outstanding invite holding a cap slot indefinitely.
+  ensureAlphaNotifiedColumn();
   const now = Date.now();
   const cap = getSystemCap();
   const free = Math.max(0, cap - countActiveAndPending());
   if (free === 0) return;
 
-  const heads = getDb()
+  // Whole queue in FIFO order, not just the first `free` rows: the choice
+  // below needs to see past unreachable waiters.
+  const queue = getDb()
     .prepare(
       `SELECT wallet_address FROM alpha_waitlist
         WHERE status = 'waiting'
-        ORDER BY joined_at ASC
-        LIMIT ?`,
+        ORDER BY joined_at ASC`,
     )
-    .all(free) as QueueHeadRow[];
-  if (heads.length === 0) return;
+    .all() as QueueHeadRow[];
+  if (queue.length === 0) return;
+
+  // An 'invited' row holds a cap slot for the whole claim window, so spending
+  // invites on wallets we cannot notify starves the ones we can -- and with
+  // 133 of 136 wallets unreachable on 2026-10-11 that is the normal case, not
+  // the edge case. Reachable waiters go first, in queue order.
+  //
+  // Fairness note: this reorders the queue, it does not drop anyone. An
+  // unreachable waiter keeps its place among unreachable waiters and is still
+  // invited once no reachable waiter is left, so an all-unreachable queue
+  // still gets served rather than leaving slots idle forever.
+  const reachable: QueueHeadRow[] = [];
+  const unreachable: QueueHeadRow[] = [];
+  for (const r of queue) {
+    (canNotify(r.wallet_address) ? reachable : unreachable).push(r);
+  }
+  const heads = [...reachable, ...unreachable].slice(0, free);
+  // Only count the ones that actually lost their turn. When `free` covers the
+  // whole queue nobody is passed over, and warning anyway would put a
+  // standing false positive on the channel meant to signal that Telegram
+  // opt-in is not landing.
+  const invited = new Set(heads.map((r) => r.wallet_address));
+  const passedOver = unreachable.filter((r) => !invited.has(r.wallet_address)).length;
+  if (passedOver > 0) {
+    console.warn(
+      `[alpha-cron] ${passedOver} waiting wallet(s) with no notification channel ` +
+      `were passed over in favour of reachable ones`,
+    );
+  }
 
   const inviteExpiresAt = now + getClaimWindowMs();
+  // notified_at is reset on every promotion from the queue. Clearing it only
+  // on the re-queue paths left a stamp from an earlier cycle able to make a
+  // later undelivered invite look delivered (reachable via terminal expire ->
+  // /alpha/join, or via phaseExpire's agent-TTL requeue), which would charge a
+  // miss for a message nobody received. grantKillRecoveryInvite in
+  // alpha-guards.ts is the other way into 'invited' and clears it too.
   const update = getDb().prepare(
     `UPDATE alpha_waitlist
-        SET status = 'invited', invited_at = ?, invite_expires_at = ?
+        SET status = 'invited', invited_at = ?, invite_expires_at = ?,
+            notified_at = NULL
       WHERE wallet_address = ? AND status = 'waiting'`,
   );
   const tx = getDb().transaction((batch: QueueHeadRow[]) => {
@@ -291,7 +387,32 @@ async function phaseInvite(): Promise<void> {
         AND slot_exempt = 0 AND paused_at IS NOT NULL
       LIMIT 1`,
   );
-  await Promise.allSettled(
+  // Prepared BEFORE any DM goes out. On a database whose notified_at column is
+  // missing this throws, and throwing after the sends would abort the tick
+  // mid-phase: phaseInviteExpire would never run, so every invite would hold
+  // its cap slot forever. Failing here instead means no DM is wasted, and a
+  // null statement makes every invite count as undelivered, which is the
+  // forgiving side.
+  // Narrow structural type: better-sqlite3's generic Statement types `run`
+  // with a single bind argument, which this two-parameter call does not fit.
+  let stampNotified: { run: (notifiedAt: number, wallet: string) => unknown } | null = null;
+  try {
+    stampNotified = getDb().prepare(
+      `UPDATE alpha_waitlist SET notified_at = ?
+        WHERE wallet_address = ? AND status = 'invited'`,
+    );
+  } catch (err) {
+    console.warn(
+      `[alpha-cron] notified_at column unavailable, treating invites as ` +
+      `undelivered: ${(err as Error).message}`,
+    );
+  }
+
+  // pushUserMessage reports whether it actually reached the user, and that
+  // answer decides whether a missed window counts against them later. Before
+  // 2026-10-11 the result was discarded, so an invite nobody could see was
+  // indistinguishable from one they ignored.
+  const results = await Promise.allSettled(
     heads.map((r) => {
       const returning = !!hasPausedAgent.get(r.wallet_address);
       const html = returning
@@ -304,12 +425,38 @@ async function phaseInvite(): Promise<void> {
       return pushUserMessage(r.wallet_address, html);
     }),
   );
+
+  const undelivered: string[] = [];
+  const stampTx = getDb().transaction(() => {
+    results.forEach((res, i) => {
+      const wallet = heads[i].wallet_address;
+      if (res.status === 'fulfilled' && res.value === true && stampNotified) {
+        stampNotified.run(Date.now(), wallet);
+      } else {
+        undelivered.push(wallet);
+      }
+    });
+  });
+  try {
+    stampTx();
+  } catch (err) {
+    // A failed stamp reads as "not notified", which is the forgiving side.
+    console.warn(`[alpha-cron] notified_at stamp failed: ${(err as Error).message}`);
+  }
+  if (undelivered.length > 0) {
+    // Visible on purpose: invites spent on windows nobody can see mean the
+    // only notification channel (Telegram opt-in) is not landing.
+    console.warn(
+      `[alpha-cron] invite DM did not reach ${undelivered.length} wallet(s): ` +
+      `${undelivered.map((w) => w.slice(0, 10)).join(', ')}`,
+    );
+  }
 }
 
 // "Active and pending" view: counts paused/exempt out (matches countActiveAgents)
 // AND adds rows in 'invited' status so a freshly issued invite doesn't get
 // re-issued on the next tick before the user can claim it. We do NOT subtract
-// `pendingSlots` (alpha-guards in-memory): the SSM-in-flight race window is
+// `pendingSlots` (alpha-guards in-memory): the vault-write race window is
 // short (seconds) and the cron only runs once per minute — racing the cron
 // with a vault-upload that just decremented pendingSlots would only cause one
 // extra invite at worst, and the per-wallet cap + Genesis Pass requirement
@@ -335,6 +482,7 @@ function countActiveAndPending(): number {
 interface ExpiredInviteRow {
   wallet_address: string;
   miss_count: number;
+  notified_at: number | null;
 }
 
 async function phaseInviteExpire(): Promise<void> {
@@ -342,7 +490,7 @@ async function phaseInviteExpire(): Promise<void> {
   const { pausedInvites } = loadTimerPauseKeys();
   const rows = (getDb()
     .prepare(
-      `SELECT wallet_address, miss_count FROM alpha_waitlist
+      `SELECT wallet_address, miss_count, notified_at FROM alpha_waitlist
         WHERE status = 'invited'
           AND invite_expires_at IS NOT NULL
           AND invite_expires_at < ?`,
@@ -360,6 +508,26 @@ async function phaseInviteExpire(): Promise<void> {
             miss_count = miss_count + 1,
             invited_at = NULL,
             invite_expires_at = NULL,
+            notified_at = NULL,
+            joined_at = ?
+      WHERE wallet_address = ?`,
+  );
+  // Un-notified invite: back to the queue with the miss NOT counted. Charging
+  // a strike for a message we never delivered is what emptied the queue --
+  // 133 of 136 wallets reached terminal 'expired' this way while every slot
+  // sat free. notified_at is cleared so the next invite is judged on its own
+  // delivery.
+  // joined_at moves to the tail even though no strike is charged. Without the
+  // rotation the head of an unreachable cohort would be re-invited every
+  // window forever and everyone behind it would starve (cap 1 with 10 unbound
+  // waiters: #1 cycles, #2..#10 never get a turn). Rotation and punishment are
+  // separate levers: this path uses only the first.
+  const reQueueUnnotifiedStmt = getDb().prepare(
+    `UPDATE alpha_waitlist
+        SET status = 'waiting',
+            invited_at = NULL,
+            invite_expires_at = NULL,
+            notified_at = NULL,
             joined_at = ?
       WHERE wallet_address = ?`,
   );
@@ -374,9 +542,24 @@ async function phaseInviteExpire(): Promise<void> {
 
   const requeued: string[] = [];
   const expired: string[] = [];
+  const unnotified: string[] = [];
   const tx = getDb().transaction((batch: ExpiredInviteRow[]) => {
     for (const r of batch) {
-      if (r.miss_count >= 1) {
+      // A window we could not announce never costs a strike, whatever the
+      // reason the DM did not land. Rotation, not punishment, is what keeps
+      // the queue moving: the wallet goes to the tail (see
+      // reQueueUnnotifiedStmt) so the next waiter gets the slot, and a wallet
+      // whose channel is merely broken costs the alpha one claim window per
+      // full rotation instead of holding a slot forever.
+      //
+      // Deliberately NOT re-checking canNotify here: a user who links
+      // Telegram during the claim window would otherwise be charged for an
+      // invite that provably never reached them, terminally expiring exactly
+      // the people who just fixed their channel.
+      if (r.notified_at === null) {
+        reQueueUnnotifiedStmt.run(now, r.wallet_address);
+        unnotified.push(r.wallet_address);
+      } else if (r.miss_count >= 1) {
         expireStmt.run(r.wallet_address);
         expired.push(r.wallet_address);
       } else {
@@ -387,6 +570,15 @@ async function phaseInviteExpire(): Promise<void> {
   });
   tx(rows);
 
+  if (unnotified.length > 0) {
+    console.warn(
+      `[alpha-cron] ${unnotified.length} invite(s) lapsed un-notified; re-queued ` +
+      `without counting a miss: ${unnotified.map((w) => w.slice(0, 10)).join(', ')}`,
+    );
+  }
+
+  // No DM for the un-notified group: by definition we have no channel to
+  // them. They keep their place in the queue instead.
   await Promise.allSettled([
     ...requeued.map((w) =>
       pushUserMessage(

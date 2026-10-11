@@ -43,7 +43,12 @@ interface TosAcknowledgementModalProps {
   onCancel: () => void;
 }
 
-const ACK_ITEMS = [
+// Exported so tests assert the contract (three required acknowledgements,
+// each gated by its own checkbox) against this single source of truth.
+// A test that re-stated the prose drifted silently when the copy changed and
+// sat red for weeks. (This file already exports non-components, so the
+// react-refresh warning predates the export.)
+export const ACK_ITEMS = [
   {
     id: "devnet-no-value",
     text: "I understand Nasun is running on devnet and all on-chain assets have no monetary value.",

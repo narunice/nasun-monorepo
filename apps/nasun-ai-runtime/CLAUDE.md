@@ -14,6 +14,14 @@ Nasun AI agent의 **실행 런타임**. 외부 LLM(Claude/OpenAI-호환)을 호�
 
 > **Why 별도 앱으로 분리 (baram/agent-runner의 후신)**: 이전 `apps/baram/agent-runner/`는 frontend·smart-contract·bot이 한 디렉토리에 섞여 있어 배포 사이클·의존성·secret 관리가 얽혀 있었음. baram frontend가 nasun-website의 Uju 섹션으로 흡수되면서 agent runtime만 떼어내 독립 운영. **onchain `baram::*` Move 모듈명은 invariant이므로 패키지 이름과 env var prefix(`BARAM_*`)는 유지**. 사용자 facing 텍스트는 "Nasun AI"로 통일 (feedback_no_baram_branding.md).
 
+> **Host(`/infer` + `/execute-capability`)는 box 서비스다**: 구현체는
+> [apps/nasun-website/box-services/nasun-ai-host/](../nasun-website/box-services/nasun-ai-host/),
+> 유닛은 `nasun-ai-host.service`, 리스너는 `127.0.0.1:4500`. 2026-10-05에 `baram/executor`
+> Lambda에서 포팅했다 - AWS 탈출이 그 API Gateway를 이전 없이 지웠고, 그래서 2026-07 ~ 10
+> 사이 trader cycle이 전부 `infer(hostUrl)`에서 죽어 있었다. 에이전트의 `HOST_URL`은
+> chat-server `.env`의 `AGENT_GLOBAL_HOST_URL`에서 오며, 이 값이 다시 `execute-api`를 가리키게
+> 되면 cycle이 조용히 멈춘다(배포 스크립트가 이를 하드 실패로 검사한다).
+
 > **Why TEE 없이 일반 LLM (v1)**: 첫 퍼블릭 프로토타입은 일반 LLM. TEE/Nitro Enclave는 장기 로드맵. `tee_verified=false`가 v1 정상 상태. narrative에서 "TEE 제공"으로 표현 금지 (project_baram_no_tee_v1.md).
 
 ---
@@ -27,7 +35,7 @@ apps/nasun-ai-runtime/
 │   ├── config.ts                   # 환경변수 로드/검증
 │   ├── wake-server.ts              # Hono /wake 서버 (127.0.0.1:WAKE_PORT)
 │   ├── wake-router.ts              # /wake 요청을 trigger_type 별 dispatch
-│   ├── host-client.ts              # Host /infer + /execute-capability 호출 (LLM + AER settlement)
+│   ├── host-client.ts              # Host /infer + /execute-capability 호출 (LLM + AER settlement)  ← Host 구현체는 apps/nasun-website/box-services/nasun-ai-host/
 │   ├── executor-client.ts          # Lambda /execute, /record (Model A: lambda, Model B: record)
 │   ├── llm-client.ts               # OpenAI-호환 Chat Completions (Groq/Together/Ollama 등)
 │   ├── nasun-ai-client.ts          # Baram on-chain — Budget check + Request creation
@@ -70,7 +78,7 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 - **Idempotency DB**: `~/.nasun-ai-runtime/processed_jobs.db` (SQLite). 마이그레이션 시 보존 필요
 - **PM2 운영 모드 2가지**:
   - **Single daemon** (`ecosystem.nasun-ai-runtime.cjs`, id 58, `PRESET=trader`, `WAKE_PORT=4400`): 기본/standalone
-  - **Per-agent spawn** (`agent-template.config.cjs`): chat-server `agent-orchestrator`가 사용자별 agent마다 동적으로 spawn. `AGENT_SECRET_PARAM`(SSM Parameter Store)로 keypair 주입, 각 agent마다 별도 `WAKE_PORT`/`CAPABILITY_ID`/`STRATEGY`/`MAX_NOTIONAL_QUOTE_RAW`
+  - **Per-agent spawn** (`agent-template.config.cjs`): chat-server `agent-orchestrator`가 사용자별 agent마다 동적으로 spawn. `AGENT_SECRET_PATH`(box keypair vault 파일 경로)로 keypair 주입, 각 agent마다 별도 `WAKE_PORT`/`CAPABILITY_ID`/`STRATEGY`/`MAX_NOTIONAL_QUOTE_RAW`
 - **/wake bind**: `127.0.0.1` 만 (외부 노출 금지). chat-server가 같은 EC2 내에서 호출
 
 ## 환경변수
@@ -78,8 +86,14 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 **On-chain identifiers (invariant)**:
 - `BARAM_PACKAGE_ID`, `BARAM_REGISTRY_ID`, `BARAM_AER_PACKAGE_ID`
 - `BUDGET_ID`, `CAPABILITY_ID`, `ESCROW_ID`
-- `EXECUTOR_ADDRESS`, `AGENT_PRIVATE_KEY` 또는 `AGENT_SECRET_PARAM`
+- `EXECUTOR_ADDRESS`, `AGENT_PRIVATE_KEY` 또는 `AGENT_SECRET_PATH`
 - `COIN_NUSDC_TYPE`, `COIN_NBTC_TYPE`
+- **Trading venue** (trader preset, 2026-10-07 이후 필수): `POOL_NBTC_NUSDC`,
+  `DEEPBOOK_PACKAGE`, `DEEP_TYPE`. 이전에는 `presets/trader.ts`의 `TRADER_CONFIG`에
+  하드코딩돼 있었고, 2026-10에는 **풀과 DEEP 패키지가 체인에 아예 없었다** — 그 결과
+  `fetchAgentBalances`가 20 NUSDC 든 escrow를 0으로 읽어 에이전트가 영구 HOLD였다.
+  chat-server `globalTraderEnv()`가 전달하며, 미설정 시 trader 필드 접근 시점에
+  이름을 명시하며 throw한다(getter 기반이라 비-trader preset은 영향 없음).
 
 **Infra**:
 - `BARAM_API_KEY`, `BARAM_CHAT_SERVER_HMAC_SECRET`
@@ -99,7 +113,7 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 
 1. **Lambda env update는 REPLACE not MERGE**: 일부 키만 보내면 나머지 env 전부 삭제. baram-executor 5/17 drift 사고에서 22개 env 중 21개 silent wipe + `AER_PACKAGE_ID=null` 포함. CDK diff는 template OK로 보이므로 무력. 전체 env JSON 직접 푸시 또는 CDK deploy (feedback_lambda_env_replace_not_merge.md, project_2026_05_17_baram_executor_phase_e_drift.md).
 2. **chat-server 새 env 키 도입 시 delete+start**: pm2 startOrRestart로는 부족. ecosystem 파일 parse-time env resolution 특성 (feedback_pm2_daemon_env_resolution.md, feedback_pm2_hard_restart_for_new_env.md).
-3. **Agent별 keypair는 SSM**: `AGENT_SECRET_PARAM` 경유. .env 파일에 직접 저장 금지. orchestrator가 spawn 시 execFile로 주입하되 daemon이 parse-time에 다시 resolve하므로 JSON 리터럴로 baked-in 또는 per-spawn config 파일 작성.
+3. **Agent별 keypair는 box vault**: `AGENT_SECRET_PATH` 경유 (`~/.nasun-ai-vault/<agent>.key`, 0600). 2026-10-05에 SSM Parameter Store에서 이전 — AWS 탈출로 prod 계정이 사라졌기 때문. 신뢰 경계와 불변식은 `apps/nasun-website/chat-server/src/agent-vault-store.ts` 헤더 참조. .env 파일에 키 직접 저장 금지. orchestrator가 spawn 시 execFile로 주입하되 daemon이 parse-time에 다시 resolve하므로 JSON 리터럴로 baked-in 또는 per-spawn config 파일 작성.
 4. **stdout은 spawn 검증 끝나기 전까지 /dev/null 금지**: 보안 로그 누락 + 스타트업 디버깅 불가. 검증 후에만 /dev/null로 redirect (feedback_pm2_daemon_env_resolution.md).
 5. **AI agent 자금 UX**: Budget(추론료)과 Agent Wallet(매매자본)을 사용자에게 명확히 분리 표시 필요. 현재 UI는 두 funds가 혼동되는 상태 — PR2.A 안정화 후 PR2.B에서 별도 처리 예정 (project_nasun_ai_agent_funds_ux_revamp.md).
 6. **fast/slow 모드는 Opus 4.6 이상**: Fast mode for Claude Code uses Claude Opus with faster output. AI agent도 Opus 4.6/4.7 family를 default로 사용.

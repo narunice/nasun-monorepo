@@ -114,6 +114,15 @@ export function initStore(config: ChatServerConfig): void {
   // Migration: genesis pass cache timestamp (0 = never checked, triggers immediate refresh)
   try { db.exec('ALTER TABLE users ADD COLUMN gp_checked_at INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
+  // Migration: alpha_waitlist.notified_at (2026-10-11). Records whether an
+  // invite DM actually reached the user, which decides invite priority and
+  // whether a lapsed window counts as a miss. The table itself is created by
+  // scripts/alpha-migration.sql, not here, so this ALTER also no-ops when the
+  // table is absent. It lives in store init because two unrelated modules
+  // (alpha-cron's phases and alpha-guards' kill-recovery invite) write the
+  // column, and neither should have to own the migration.
+  try { db.exec('ALTER TABLE alpha_waitlist ADD COLUMN notified_at INTEGER'); } catch { /* already exists, or no waitlist table */ }
+
   // Migration: profile image URL
   try { db.exec('ALTER TABLE users ADD COLUMN profile_image_url TEXT'); } catch { /* already exists */ }
 
@@ -299,11 +308,14 @@ export function initStore(config: ChatServerConfig): void {
       ON baram_pending_proposals (agent) WHERE status = 'pending';
   `);
 
-  // PR2.A — Per-agent vault metadata. Secrets themselves live in AWS SSM
-  // Parameter Store (SecureString /nasun/ai-agent/<agent_address>); this
-  // table only tracks the parameter name + PM2 process bookkeeping.
+  // PR2.A — Per-agent vault metadata. The secrets themselves live in the box
+  // keypair vault (agent-vault-store.ts), one mode-0600 file per agent; this
+  // table only tracks where it lives plus PM2 process bookkeeping. param_name
+  // holds an SSM parameter name for rows created before the 2026-07 AWS exit
+  // and the vault file path for rows created since, which is why nothing reads
+  // it to find a secret -- the store is keyed by agent address.
   // deleted_at is a soft-delete tombstone with a 7-day grace window;
-  // agent-vault-purge.ts removes the SSM Parameter and the row after.
+  // agent-vault-purge.ts unlinks the secret and drops the row after.
   db.exec(`
     CREATE TABLE IF NOT EXISTS agent_keys (
       agent_address  TEXT PRIMARY KEY,

@@ -44,14 +44,18 @@ import { TRADER_CONFIG } from './trader.js';
 import { callLLM, type CallLLMOptions, type LLMResult } from '../llm-client.js';
 
 // ===== Devnet constants (nasun_vault Phase 5) =====
-// Hardcoded to mirror TRADER_CONFIG's style (the runtime has no
-// @nasun/devnet-config dependency). Source of truth:
-//   packages/devnet-config/devnet-ids.json -> nasunVault.packageId,
-//   nasunTier.registry. Bump these if the vault is re-published.
+// Source of truth: packages/devnet-config/devnet-ids.json -> nasunVault
+// .packageId, nasunTier.registry. These are literals because the runtime has
+// no @nasun/devnet-config dependency, and that is precisely why they rot:
+// both were stale as of 2026-10-07 (the previous values named a pre-v8
+// generation). Corrected from devnet-ids.json then; unlike the trader venue
+// ids, which moved to env in the same pass, these could not be verified by
+// exercising the vault preset, so re-check them against devnet-ids.json
+// whenever the vault is re-published rather than trusting this comment.
 export const VAULT_CONFIG = {
-  packageId: '0x6a622d90d2ce81c19affc2a73aa6df2d85c691db97a63d1fe589e788d61f16b0',
+  packageId: '0x2a11e5ec75e85adc362b321780d1f4614a9ffc96100b271841d9bbdb58ab190d',
   tierRegistryId:
-    '0x9d67cc044e51e86173b001548f9e5df493c780d98bfb1d7e31f074b1fa0a86d0',
+    '0x8b842083d78ddf27898d574e356027f91fc584d148e9511a5caa810a974206a3',
   // DeepBook NBTC/NUSDC order granularity (pado network.ts:166, on-chain
   // verified): tick = $0.10 in price-raw units, lot = 0.00001 NBTC.
   tickSize: 100_000n,

@@ -47,7 +47,7 @@ const MAX_PENDING_CHALLENGES = 5_000;
 const MAX_BODY_BYTES = 16 * 1024;
 
 // PR2.A: 'vault-upload'/'vault-delete'/'vault-restore' added for the
-// SSM Parameter Store agent-key vault. Entries carry agent + pubkeyHash
+// box agent-key vault (agent-vault-store.ts). Entries carry agent + pubkeyHash
 // so a phisher cannot reuse a victim-signed challenge to bind a different
 // keypair (challenge text includes the agent address explicitly).
 //

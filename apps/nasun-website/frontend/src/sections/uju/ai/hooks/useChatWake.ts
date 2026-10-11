@@ -27,7 +27,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSigner } from '@nasun/wallet';
 import { useChatStore } from '../stores/chatStore';
-import { mintIdempotencyKey, postChatWake, AgentChatApiError } from '../services/chatWakeClient';
+import {
+  mintIdempotencyKey,
+  postChatWake,
+  postProposalCancel,
+  postProposalConfirm,
+  AgentChatApiError,
+} from '../services/chatWakeClient';
 import { deleteInflight, loadInflight, saveInflight } from '../services/chatStorage';
 import { mapReason } from '../services/chatWakeReasons';
 import { useChatTokenLease } from './useChatTokenLease';
@@ -59,6 +65,14 @@ export interface UseChatWakeResult {
   submit: (message: string) => Promise<void>;
   /** Retry the last failed turn with a fresh idempotencyKey. */
   retry: () => Promise<void>;
+  /**
+   * Execute a proposal the agent raised. Starts a wake job and polls it like
+   * a normal turn, so the fills land as their own assistant message and the
+   * proposal card above stays visible as the record of what was agreed.
+   */
+  confirmProposal: (proposalId: string, proposalMessageId: string) => Promise<void>;
+  /** Decline a proposal and release the agent's on-chain pending lock. */
+  cancelProposal: (proposalId: string, proposalMessageId: string) => Promise<void>;
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -84,6 +98,23 @@ export function useChatWake({ capabilityId, agentAddress }: UseChatWakeInput): U
   const agentId = currentSession?.agentId ?? null;
 
   const { ensureToken, onTokenExpired, resetReLease } = useChatTokenLease();
+
+  // 'submitting' is persisted with the message, so an answer interrupted by a
+  // refresh or a closed tab would leave its card disabled on "Submitting..."
+  // for good. On mount, hand those cards back to the user: the server
+  // re-checks state on every answer, and a confirm replays its original job
+  // rather than executing twice.
+  const messages = useChatStore((st) => st.messages);
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.proposalStatus === 'submitting') {
+        updateMessage(m.id, { proposalStatus: 'pending' });
+      }
+    }
+    // Mount-only: during a live answer this must not fight the in-flight
+    // 'submitting' it just set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSessionId]);
 
   const [phase, setPhase] = useState<WakePhase>('idle');
   const [jobId, setJobId] = useState<string | null>(null);
@@ -438,6 +469,170 @@ export function useChatWake({ capabilityId, agentAddress }: UseChatWakeInput): U
     ],
   );
 
+  /**
+   * Lease a chatToken, run `fn` with it, and re-lease once if the token
+   * turned out to be expired between lease and call.
+   *
+   * submit() carries its own inline copy of this dance. It is left alone
+   * deliberately: it is the well-tested path, and folding it in here would
+   * put a refactor of message sending inside a change about proposals.
+   */
+  const callWithToken = useCallback(
+    async <T,>(fn: (chatToken: string) => Promise<T>): Promise<T> => {
+      if (!walletAddress || !agentAddress || !capabilityId) {
+        throw new AgentChatApiError('wallet_not_authorized', 0);
+      }
+      const lease = await ensureToken({ wallet: walletAddress, agentAddress, capabilityId });
+      setChatToken(lease.token.chatToken);
+      try {
+        return await fn(lease.token.chatToken);
+      } catch (err) {
+        if (err instanceof AgentChatApiError && err.code === 'expired') {
+          const re = await onTokenExpired({ wallet: walletAddress, agentAddress, capabilityId });
+          setChatToken(re.token.chatToken);
+          return await fn(re.token.chatToken);
+        }
+        throw err;
+      }
+    },
+    [walletAddress, agentAddress, capabilityId, ensureToken, onTokenExpired],
+  );
+
+  const confirmProposal = useCallback(
+    async (proposalId: string, proposalMessageId: string) => {
+      if (!walletAddress || !currentSessionId || !agentId) {
+        // Say so rather than no-opping: a silent return makes Confirm look
+        // like a dead button.
+        setErrorMessage(mapReason('wallet_not_authorized').user);
+        setRetryable(false);
+        setPhase('error');
+        return;
+      }
+      // One job per session at a time. placeholderId / jobId / the inflight
+      // row are all single-slot, so confirming mid-turn would strand the
+      // turn already polling and lose its result.
+      if (phase === 'leasing' || phase === 'submitting' || phase === 'polling') {
+        setErrorMessage('Your agent is still working on the previous message.');
+        setRetryable(false);
+        return;
+      }
+      setErrorMessage(null);
+      updateMessage(proposalMessageId, { proposalStatus: 'submitting' });
+
+      // The execution result is its own turn: overwriting the proposal card
+      // would erase what the user agreed to.
+      const placeholder = addMessage({
+        role: 'assistant',
+        content: '',
+        wakePhase: 'submitting',
+      });
+      setPlaceholderId(placeholder);
+      setPhase('submitting');
+
+      // Derived from the proposal, not minted per click. A proposal can be
+      // confirmed exactly once, so the key is a property of the proposal:
+      // a retry after a lost response replays the original job server side
+      // instead of being told "already answered".
+      const idemKey = `confirm-${proposalId}`;
+      // Written before the POST, like submit(), so a response lost in flight
+      // still leaves something to resume from.
+      const baseRow: InflightWakeJob = {
+        sessionId: currentSessionId,
+        agentId,
+        jobId: null,
+        idempotencyKey: idemKey,
+        messageHash: await sha256Hex(`confirm:${proposalId}`),
+        placeholderMessageId: placeholder,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + INFLIGHT_TTL_MS,
+      };
+      try {
+        await saveInflight(walletAddress, baseRow);
+      } catch (err) {
+        console.warn('[useChatWake] confirm inflight save failed', err);
+      }
+
+      let res;
+      try {
+        res = await callWithToken((chatToken) =>
+          postProposalConfirm({ chatToken, proposalId, idempotencyKey: idemKey }),
+        );
+      } catch (err) {
+        const code = err instanceof AgentChatApiError ? err.code : 'wake_failed';
+        const mapped = mapReason(code);
+        updateMessage(placeholder, {
+          content: mapped.user,
+          failed: true,
+          wakeReason: code,
+          retryable: false,
+          wakePhase: undefined,
+        });
+        // A rejected confirm leaves the proposal answerable only if the
+        // server said so; proposal_not_pending / _expired are terminal.
+        updateMessage(proposalMessageId, {
+          proposalStatus:
+            code === 'proposal_not_pending' || code === 'proposal_expired'
+              ? 'resolved'
+              : 'pending',
+        });
+        setErrorMessage(mapped.user);
+        setRetryable(false);
+        setPhase('error');
+        return;
+      }
+
+      updateMessage(proposalMessageId, { proposalStatus: 'confirmed' });
+      updateMessage(placeholder, { wakeJobId: res.jobId, wakePhase: 'pending' });
+      try {
+        await saveInflight(walletAddress, { ...baseRow, jobId: res.jobId });
+      } catch (err) {
+        console.warn('[useChatWake] confirm inflight jobId save failed', err);
+      }
+      setJobId(res.jobId);
+      setPhase('polling');
+    },
+    [
+      walletAddress,
+      currentSessionId,
+      agentId,
+      phase,
+      addMessage,
+      updateMessage,
+      callWithToken,
+    ],
+  );
+
+  const cancelProposal = useCallback(
+    async (proposalId: string, proposalMessageId: string) => {
+      // Cancel starts no job, but it does flip the card's state, so refuse
+      // while an answer for it may already be in flight.
+      if (phase === 'leasing' || phase === 'submitting') {
+        return;
+      }
+      setErrorMessage(null);
+      updateMessage(proposalMessageId, { proposalStatus: 'submitting' });
+      try {
+        await callWithToken((chatToken) => postProposalCancel({ chatToken, proposalId }));
+      } catch (err) {
+        const code = err instanceof AgentChatApiError ? err.code : 'wake_failed';
+        const mapped = mapReason(code);
+        // An already-answered proposal is not something the user can act on
+        // again, so settle the card rather than inviting another attempt.
+        updateMessage(proposalMessageId, {
+          proposalStatus:
+            code === 'proposal_not_pending' || code === 'proposal_expired'
+              ? 'resolved'
+              : 'pending',
+        });
+        setErrorMessage(mapped.user);
+        setRetryable(false);
+        return;
+      }
+      updateMessage(proposalMessageId, { proposalStatus: 'cancelled' });
+    },
+    [phase, updateMessage, callWithToken],
+  );
+
   const retry = useCallback(async () => {
     const last = lastMessageRef.current;
     if (!last) return;
@@ -448,7 +643,7 @@ export function useChatWake({ capabilityId, agentAddress }: UseChatWakeInput): U
 
   const busy = phase === 'leasing' || phase === 'submitting' || phase === 'polling';
 
-  return { busy, phase, errorMessage, retryable, submit, retry };
+  return { busy, phase, errorMessage, retryable, submit, retry, confirmProposal, cancelProposal };
 }
 
 // Re-export for tests that want the raw Message shape without importing types/chat

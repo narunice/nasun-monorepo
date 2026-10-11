@@ -5,12 +5,7 @@ const ALL_TABS = [
   { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
   { id: "activity",  label: "Activity",  icon: ActivityIcon },
   { id: "agents",    label: "Agents",    icon: AIIcon },
-  // AI Chat tab hidden pending proposal-confirm UX redesign — the wake path
-  // works but proposals get locked when the user can't confirm/cancel from
-  // the web surface (Telegram deep link reuses sid-bind URL which fails on
-  // already-bound sids). Re-enable after PR3 adds /chat/confirm + /chat/cancel
-  // and ProposalCard renders inline buttons.
-  // { id: "ai-chat",   label: "AI Chat",   icon: ChatIcon },
+  { id: "ai-chat",   label: "AI Chat",   icon: ChatIcon },
   { id: "profile",   label: "Profile",   icon: ProfileIcon },
 ] as const;
 
@@ -19,10 +14,7 @@ const ALL_TABS = [
 const AI_TAB_IDS = new Set(["agents", "ai-chat"]);
 const TABS = ALL_TABS.filter((t) => !AI_TAB_IDS.has(t.id) || NASUN_AI_ENABLED);
 
-// Includes "ai-chat", which ALL_TABS deliberately omits (see above): the tab is
-// hidden from the nav but still reachable by URL, so it can be the active one
-// while this component renders no button for it.
-type TabId = typeof ALL_TABS[number]["id"] | "ai-chat";
+type TabId = typeof ALL_TABS[number]["id"];
 
 interface UjuNavigationProps {
   activeTab: TabId;
@@ -159,6 +151,14 @@ function AIIcon({ active }: IconProps) {
       <path d="M9.75 3.104A24 24 0 0114.25 3.104v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
       <circle cx="12" cy="18" r="1.5" />
       <path d="M5 14.5l-1.57.393A9.065 9.065 0 0012 15a9.065 9.065 0 006.23-.7L19.8 15.3" />
+    </svg>
+  );
+}
+
+function ChatIcon({ active }: IconProps) {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
     </svg>
   );
 }

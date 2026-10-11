@@ -52,6 +52,18 @@ const REASON_MAP: Record<string, WakeReasonMapping> = {
   body_too_large: { user: 'Request was too large.', retryable: false },
   chat_wake_disabled: { user: 'Chat is temporarily disabled.', retryable: true },
 
+  // ---- /proposal/{confirm,cancel} ----
+  invalid_proposal_id: { user: 'That proposal id was malformed.', retryable: false },
+  proposal_not_found: { user: 'That proposal is no longer available.', retryable: false },
+  proposal_expired: {
+    user: 'This proposal expired before it was confirmed. Ask again for a fresh one.',
+    retryable: false,
+  },
+  proposal_not_pending: {
+    user: 'This proposal was already answered.',
+    retryable: false,
+  },
+
   // ---- /wake (budget pre-check, 402) ----
   budget_unknown: { user: "Couldn't verify budget. Try again.", retryable: true },
   budget_no_active_budget: { user: 'No active budget. Activate one to chat.', retryable: false },

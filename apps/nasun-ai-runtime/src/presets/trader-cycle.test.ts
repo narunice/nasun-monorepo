@@ -182,8 +182,22 @@ function asMock(fn: unknown): ReturnType<typeof vi.fn> {
 
 const FAKE_CLIENT = {} as SuiClient;
 
+// TRADER_CONFIG resolves the venue ids from the environment, so a test that
+// drives a trader cycle has to supply them the way chat-server's
+// globalTraderEnv() does in production. They were literals in the module
+// until 2026-10-07, which is exactly why this test used to need no env and
+// why the dead ids it was effectively asserting against went unnoticed.
+const VENUE_ENV: Record<string, string> = {
+  POOL_NBTC_NUSDC: '0x1addff570f17f0e12fa14c5f986806ce21bd5cc0542c4548ebf011a56eb26ec9',
+  COIN_NBTC_TYPE: '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11::nbtc::NBTC',
+  COIN_NUSDC_TYPE: '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11::nusdc::NUSDC',
+  DEEP_TYPE: '0x642e81bd21a2dea6dd90d41a5f6bc18d6e63c0442f901d12198a894ed3b6a15a::deep::DEEP',
+  DEEPBOOK_PACKAGE: '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  for (const [k, v] of Object.entries(VENUE_ENV)) process.env[k] = v;
 });
 
 // ---------------------------------------------------------------------------

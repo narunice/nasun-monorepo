@@ -35,8 +35,23 @@ function signJwt(sid: string, expSec: number): string {
   return `${header}.${payload}.${b64url(sig)}`;
 }
 
+// The two shared secrets are keyed differently, and the difference is real on
+// both sides rather than a bug to tidy:
+//   BARAM_SESSION_JWT_SECRET      -> used as UTF-8 (chat-server
+//                                    baram-session.ts: Buffer.from(raw,'utf8'))
+//   BARAM_CHAT_SERVER_HMAC_SECRET -> hex-DECODED to 32 raw bytes
+//                                    (chat-server wake-proxy.ts, and
+//                                    jwt-verify.verifyHmac here)
+// This helper used the hex string straight as the key, so it signed with a
+// 64-byte ASCII key where production signs with 32 raw bytes. Every HMAC in
+// this file therefore failed verification, which 401'd five tests including
+// the happy path -- a stale test against a correctly fixed implementation, not
+// a production defect: wake-proxy (signer) and verifyHmac (verifier) have
+// always agreed, which is why live agents register and /wake works.
 function hmac(body: string): string {
-  return createHmac('sha256', HMAC_SECRET).update(body, 'utf8').digest('hex');
+  return createHmac('sha256', Buffer.from(HMAC_SECRET, 'hex'))
+    .update(body, 'utf8')
+    .digest('hex');
 }
 
 function tempDbPath(): string {
@@ -110,6 +125,28 @@ describe('verifyHmac (timing-safe)', () => {
   it('rejects when secret missing', () => {
     delete process.env.BARAM_CHAT_SERVER_HMAC_SECRET;
     expect(verifyHmac('{}', hmac('{}'))).toBe(false);
+  });
+
+  // The local helper above can drift from production in exactly the way it
+  // already did once. This pins the cross-service contract instead: sign the
+  // way chat-server's wake-proxy.ts signs (hex-decoded key, body as UTF-8,
+  // digest as hex) and require the verifier to accept it. If either side's
+  // encoding changes, this fails here rather than as a 401 in production.
+  it('accepts a signature produced the way chat-server wake-proxy signs', () => {
+    const body = JSON.stringify({ job_id: 'j1', trigger_type: 'user_message' });
+    const signed = createHmac('sha256', Buffer.from(HMAC_SECRET, 'hex'))
+      .update(body, 'utf8')
+      .digest('hex');
+    expect(verifyHmac(body, signed)).toBe(true);
+  });
+
+  it('rejects a signature keyed with the secret as a raw string', () => {
+    // The stale shape: the hex secret used directly as a 64-byte ASCII key.
+    // Production never produces this, so accepting it would mean the verifier
+    // had loosened to match a broken signer.
+    const body = '{"x":1}';
+    const wrong = createHmac('sha256', HMAC_SECRET).update(body, 'utf8').digest('hex');
+    expect(verifyHmac(body, wrong)).toBe(false);
   });
 });
 

@@ -22,10 +22,18 @@
 
 import { getDb } from './store.js';
 
-let schemaEnsured = false;
-
+/**
+ * Create the pause table if it is missing.
+ *
+ * Deliberately NOT memoized: a module-level "already ensured" flag survives a
+ * database swap, so the second database in a process (every test after the
+ * first, or a reopened store) silently never got the table. CREATE TABLE IF
+ * NOT EXISTS on an existing table is a no-op, and the callers (startAlphaCron
+ * plus the pause/resume primitives below) are all cold paths, so re-running it
+ * costs nothing. ensureAlphaTgBindingSchema memoizes by db instance, which is
+ * the other correct option.
+ */
 export function ensureTimerPauseSchema(): void {
-  if (schemaEnsured) return;
   getDb().exec(`
     CREATE TABLE IF NOT EXISTS alpha_timer_pause (
       scope TEXT NOT NULL,
@@ -35,7 +43,6 @@ export function ensureTimerPauseSchema(): void {
       PRIMARY KEY (scope, key)
     )
   `);
-  schemaEnsured = true;
 }
 
 interface PauseRow { original_ts: number; paused_at: number }

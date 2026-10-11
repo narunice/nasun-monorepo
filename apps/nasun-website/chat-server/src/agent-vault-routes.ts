@@ -2,7 +2,7 @@
 //
 // Endpoints (mounted under /api/nasun-ai/vault/* by server.ts):
 //   POST   /api/nasun-ai/vault/challenge      — mint sig challenge
-//   POST   /api/nasun-ai/vault/upload         — upload keypair → SSM + spawn PM2
+//   POST   /api/nasun-ai/vault/upload         — upload keypair → vault + spawn PM2
 //   DELETE /api/nasun-ai/vault/agent/:addr    — soft delete + stop PM2
 //   POST   /api/nasun-ai/vault/agent/:addr/restore — restore within 7-day grace
 //   GET    /api/nasun-ai/vault/agent/:addr/status  — public-read minimal status
@@ -13,18 +13,19 @@
 // SuiClient — SQLite never trusted as source of truth (defense-in-depth
 // vs. a hypothetical config-route compromise).
 //
-// Bulk /list endpoint is intentionally absent: each PM2 process fetches
-// only its own SSM Parameter, so chat-server has no shared bearer that,
-// if leaked, dumps every tenant's keypair.
+// Bulk /list endpoint is intentionally absent: each PM2 process reads only
+// its own vault file, so chat-server has no shared bearer that, if leaked,
+// dumps every tenant's keypair.
 
 import { randomBytes, createHash } from 'node:crypto';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
-  SSMClient,
-  PutParameterCommand,
-  GetParameterCommand,
-  DeleteParameterCommand,
-} from '@aws-sdk/client-ssm';
+  SecretExistsError,
+  deleteSecret,
+  hasSecret,
+  putSecret,
+  secretPathFor,
+} from './agent-vault-store.js';
 import { isValidSuiAddress } from './auth.js';
 import {
   pendingChallenges,
@@ -59,38 +60,17 @@ import {
 } from './alpha-guards.js';
 import { processQueueTick } from './alpha-cron.js';
 
-const PARAM_PREFIX = process.env.AGENT_VAULT_PARAM_PREFIX || '/nasun/ai-agent';
 const RATE_LIMIT_PER_WALLET_PER_MINUTE = 5;
 const RATE_LIMIT_PER_IP_PER_MINUTE = 10;
 const STATUS_RATE_LIMIT_PER_IP_PER_MINUTE = 30;
 
-// AWS-exit retire gate. The keypair custody backing store is SSM Parameter Store
-// in the prod account, which is being decommissioned. When AGENT_VAULT_RETIRED is
-// set, the three activation paths (upload / restore / resume) return 503 before any
-// SSM call: each either writes a parameter or spawns a per-agent runtime that reads
-// the key back from SSM, so none can produce a working agent once SSM is gone. The
-// read-only paths (status), soft-delete, and challenge stay live so users can still
-// see and deactivate agents; the routine purge cron skips the SSM delete while the
-// kill-switch still attempts it (see agent-vault-purge.ts). Unset = unchanged
-// behavior (rollback). A box-native store rebuild is tracked separately.
-export function isVaultRetired(): boolean {
-  return process.env.AGENT_VAULT_RETIRED === '1';
-}
-
-let ssmClient: SSMClient | null = null;
-function getSsm(): SSMClient {
-  if (!ssmClient) {
-    // SDK v3 region resolution from EC2 metadata occasionally fails
-    // ("Region is missing"). Pin to ap-northeast-2 (the prod EC2 region)
-    // with env override.
-    ssmClient = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
-  }
-  return ssmClient;
-}
-
-function paramNameFor(agentAddress: string): string {
-  return `${PARAM_PREFIX}/${agentAddress.toLowerCase()}`;
-}
+// Custody now lives on the box (agent-vault-store.ts). The AGENT_VAULT_RETIRED
+// gate that used to 503 the three activation paths is gone with it: its whole
+// premise was that no activation could produce a working agent once the prod
+// SSM account went away, which stopped being true when the store moved here.
+// Leaving it in place would have been worse than dead code -- the flag is still
+// set to 1 in the box .env, so the next hard restart would have re-broken
+// activation for every user.
 
 // --- per-(IP, wallet) sliding-window rate limit, in-memory ---------------
 interface RateBucket { count: number; resetAt: number; }
@@ -285,10 +265,6 @@ export async function handleVaultUpload(
   res: import('node:http').ServerResponse,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
-  if (isVaultRetired()) {
-    writeJson(res, 503, corsHeaders, { error: 'vault_disabled' });
-    return;
-  }
   let body: unknown;
   try { body = await readJsonBody(req); } catch (err) {
     const code = (err as Error).message === 'body_too_large' ? 413 : 400;
@@ -379,10 +355,10 @@ export async function handleVaultUpload(
   await withAgentLock(agentAddress, async () => {
     // Already-active short-circuit
     const existing = getDb()
-      .prepare(`SELECT pm2_name, wake_port, deleted_at, param_name
+      .prepare(`SELECT pm2_name, wake_port, deleted_at
                 FROM agent_keys WHERE agent_address = ?`)
       .get(agentAddress) as
-        | { pm2_name: string; wake_port: number; deleted_at: number | null; param_name: string }
+        | { pm2_name: string; wake_port: number; deleted_at: number | null }
         | undefined;
     if (existing && existing.deleted_at === null) {
       writeJson(res, 409, corsHeaders, { error: 'already_active' });
@@ -394,35 +370,40 @@ export async function handleVaultUpload(
     // No-op when slotExempt=true (santa) or when the gate is OFF.
     try {
       await withSlotReservation(guard.slotExempt, async () => {
-        const paramName = paramNameFor(agentAddress);
+        const paramName = secretPathFor(agentAddress);
 
-        // SSM PutParameter (Overwrite=false catches concurrent uploads).
+        // overwrite=false is the exclusive-create that used to be SSM's
+        // Overwrite=false: it is what catches two concurrent uploads for the
+        // same agent. `existing` is the restore-after-purge case, where the
+        // caller has already proven ownership and a rewrite is intended.
         try {
-          await getSsm().send(new PutParameterCommand({
-            Name: paramName,
-            Type: 'SecureString',
-            Value: agentSecretKey,
-            Overwrite: existing ? true : false,  // restore-after-purge case
-            Tier: 'Standard',
-            Tags: existing ? undefined : [
-              { Key: 'ownerWallet', Value: ownerWallet },
-              { Key: 'agentAddress', Value: agentAddress },
-            ],
-          }));
+          await putSecret(agentAddress, agentSecretKey, { overwrite: Boolean(existing) });
         } catch (err) {
-          // Do NOT include raw body or err.message that might echo body content.
-          // SDK service errors carry a `$metadata` payload — surface the
-          // status + AWS error name without leaking the secret value.
-          const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number }; Code?: string };
-          console.error(
-            `[vault-upload] SSM PutParameter failed for ${paramName}: ` +
-            `name=${e.name ?? 'unknown'} ` +
-            `code=${e.Code ?? 'n/a'} ` +
-            `status=${e.$metadata?.httpStatusCode ?? 'n/a'} ` +
-            `msg=${(e.message ?? '').slice(0, 200)}`,
-          );
-          writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
-          return;
+          if (err instanceof SecretExistsError) {
+            // Exclusive create only runs when there is no agent_keys row at
+            // all, so a stored secret here is an orphan left by an attempt
+            // that died between the write and the INSERT. Nothing can use it
+            // -- every spawn path resolves the agent through its row -- and
+            // the caller just proved ownership of this agent, so overwrite.
+            // Answering 409 instead would leave the agent permanently
+            // un-activatable with no way for the user to clear it.
+            console.warn(
+              `[vault-upload] orphan secret with no row for ${agentAddress}; overwriting`,
+            );
+            await putSecret(agentAddress, agentSecretKey, { overwrite: true });
+          } else {
+            // Never echo the error message itself: it is produced while
+            // handling the secret value and fs errors quote the path, not the
+            // content, but the body must not be able to reach a log line by
+            // any route.
+            const e = err as { name?: string; code?: string };
+            console.error(
+              `[vault-upload] vault write failed for ${agentAddress}: `
+              + `name=${e.name ?? 'unknown'} code=${e.code ?? 'n/a'}`,
+            );
+            writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
+            return;
+          }
         }
 
         const wakePort = existing ? existing.wake_port : allocatePort();
@@ -436,22 +417,46 @@ export async function handleVaultUpload(
         const stampExpiry = !guard.slotExempt && isAlphaGateEnabled();
         const expiresAt = stampExpiry ? now + getAgentTtlMs() : null;
 
-        if (existing) {
-          getDb().prepare(
-            `UPDATE agent_keys
-             SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
-                 wake_port = ?, last_used_at = ?,
-                 expires_at = ?, paused_at = NULL, warned_at = NULL,
-                 profile_id = COALESCE(?, profile_id)
-             WHERE agent_address = ?`
-          ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, profileId, agentAddress);
-        } else {
-          getDb().prepare(
-            `INSERT INTO agent_keys
-               (agent_address, wallet_address, capability_id, param_name, pm2_name,
-                wake_port, created_at, expires_at, profile_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt, profileId);
+        // The secret is already on disk at this point. If the row write
+        // fails we have to take it back off, or the next attempt meets a
+        // secret with no row -- recoverable now (see the orphan branch
+        // above), but there is no reason to manufacture that state. Only
+        // undo what this request created: on the `existing` path the secret
+        // predates us and belongs to a row that is still there.
+        try {
+          if (existing) {
+            getDb().prepare(
+              `UPDATE agent_keys
+               SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
+                   wake_port = ?, last_used_at = ?,
+                   expires_at = ?, paused_at = NULL, warned_at = NULL,
+                   profile_id = COALESCE(?, profile_id)
+               WHERE agent_address = ?`
+            ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, profileId, agentAddress);
+          } else {
+            getDb().prepare(
+              `INSERT INTO agent_keys
+                 (agent_address, wallet_address, capability_id, param_name, pm2_name,
+                  wake_port, created_at, expires_at, profile_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt, profileId);
+          }
+        } catch (err) {
+          if (!existing) {
+            await deleteSecret(agentAddress).catch((cleanupErr) => {
+              console.error(
+                `[vault-upload] row write failed AND secret cleanup failed for `
+                + `${agentAddress}: ${(cleanupErr as Error).message}. `
+                + `A stored secret now has no row; the next upload overwrites it.`,
+              );
+            });
+          }
+          console.error(
+            `[vault-upload] row write failed for ${agentAddress}: `
+            + `${(err as Error).message}`,
+          );
+          writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
+          return;
         }
 
         // Stamp slot_exempt=1 on the new row when guard granted exemption
@@ -484,7 +489,7 @@ export async function handleVaultUpload(
         // upload finished; the next save-with-enabled will spawn via
         // reconcileAgentState.
         try {
-          await spawnAgentPm2({ agentAddress, pm2Name, paramName, wakePort });
+          await spawnAgentPm2({ agentAddress, pm2Name, wakePort });
         } catch (err) {
           if (err instanceof AgentDisabledError) {
             console.log(`[vault-upload] spawn deferred: ${pm2Name} ${err.message}`);
@@ -505,9 +510,11 @@ export async function handleVaultUpload(
         });
 
         console.log(`[alpha-funnel] event=vault_upload_success wallet=${ownerWallet} agent=${agentAddress} pm2=${pm2Name}`);
+        // paramName is deliberately not returned: since custody moved to the
+        // box it is an absolute path on this host, nothing consumed it, and
+        // echoing the vault layout to a browser buys the caller nothing.
         writeJson(res, 200, corsHeaders, {
           ok: true,
-          paramName,
           pm2Name,
           wakePort,
         });
@@ -625,9 +632,6 @@ export async function handleVaultRestore(
   corsHeaders: Record<string, string>,
   agentAddress: string,
 ): Promise<void> {
-  if (isVaultRetired()) {
-    writeJson(res, 503, corsHeaders, { error: 'vault_disabled' }); return;
-  }
   if (!isValidSuiAddress(agentAddress)) {
     writeJson(res, 400, corsHeaders, { error: 'invalid_agent' }); return;
   }
@@ -648,10 +652,10 @@ export async function handleVaultRestore(
 
   // Defense-in-depth: same wallet_address binding as delete.
   const row = getDb().prepare(
-    `SELECT param_name, pm2_name, deleted_at FROM agent_keys
+    `SELECT pm2_name, deleted_at FROM agent_keys
      WHERE agent_address = ? AND wallet_address = ?`
   ).get(agentAddress.toLowerCase(), result.entry.wallet) as
-    { param_name: string; pm2_name: string; deleted_at: number | null } | undefined;
+    { pm2_name: string; deleted_at: number | null } | undefined;
   if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_vaulted' }); return; }
   if (row.deleted_at === null) { writeJson(res, 409, corsHeaders, { error: 'still_active' }); return; }
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -659,14 +663,13 @@ export async function handleVaultRestore(
     writeJson(res, 410, corsHeaders, { error: 'grace_window_expired' }); return;
   }
 
-  // Verify SSM parameter still exists (cron may have raced ahead).
+  // Verify the secret still exists (the purge cron may have raced ahead).
   try {
-    await getSsm().send(new GetParameterCommand({ Name: row.param_name, WithDecryption: false }));
-  } catch (err) {
-    if ((err as { name?: string }).name === 'ParameterNotFound') {
+    if (!await hasSecret(agentAddress)) {
       writeJson(res, 410, corsHeaders, { error: 'already_purged' }); return;
     }
-    console.error(`[vault-restore] SSM lookup failed: ${(err as Error).name}`);
+  } catch (err) {
+    console.error(`[vault-restore] vault lookup failed: ${(err as Error).name}`);
     writeJson(res, 500, corsHeaders, { error: 'vault_lookup_failed' }); return;
   }
 
@@ -708,7 +711,6 @@ export async function handleVaultRestore(
           await spawnAgentPm2({
             agentAddress: agentAddress.toLowerCase(),
             pm2Name: row.pm2_name,
-            paramName: row.param_name,
             wakePort: newPort,
           });
         } catch (err) {
@@ -755,9 +757,6 @@ export async function handleVaultResume(
   corsHeaders: Record<string, string>,
   agentAddress: string,
 ): Promise<void> {
-  if (isVaultRetired()) {
-    writeJson(res, 503, corsHeaders, { error: 'vault_disabled' }); return;
-  }
   if (!isValidSuiAddress(agentAddress)) {
     writeJson(res, 400, corsHeaders, { error: 'invalid_agent' }); return;
   }
@@ -779,22 +778,21 @@ export async function handleVaultResume(
   // Defense-in-depth: same wallet_address binding as delete/restore. The row
   // must be TTL-paused (deleted_at IS NULL, paused_at IS NOT NULL).
   const row = getDb().prepare(
-    `SELECT param_name, pm2_name, paused_at FROM agent_keys
+    `SELECT pm2_name, paused_at FROM agent_keys
      WHERE agent_address = ? AND wallet_address = ? AND deleted_at IS NULL`
   ).get(agentAddress.toLowerCase(), result.entry.wallet) as
-    { param_name: string; pm2_name: string; paused_at: number | null } | undefined;
+    { pm2_name: string; paused_at: number | null } | undefined;
   if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_active' }); return; }
   if (row.paused_at === null) { writeJson(res, 409, corsHeaders, { error: 'not_paused' }); return; }
 
-  // Verify the SSM parameter still exists (a paused agent keeps its key, but
-  // guard against a concurrent purge / manual deletion).
+  // A paused agent keeps its key; guard against a concurrent purge or a manual
+  // deletion having removed it out from under us.
   try {
-    await getSsm().send(new GetParameterCommand({ Name: row.param_name, WithDecryption: false }));
-  } catch (err) {
-    if ((err as { name?: string }).name === 'ParameterNotFound') {
+    if (!await hasSecret(agentAddress)) {
       writeJson(res, 410, corsHeaders, { error: 'already_purged' }); return;
     }
-    console.error(`[vault-resume] SSM lookup failed: ${(err as Error).name}`);
+  } catch (err) {
+    console.error(`[vault-resume] vault lookup failed: ${(err as Error).name}`);
     writeJson(res, 500, corsHeaders, { error: 'vault_lookup_failed' }); return;
   }
 
@@ -836,7 +834,6 @@ export async function handleVaultResume(
           await spawnAgentPm2({
             agentAddress: agentAddress.toLowerCase(),
             pm2Name: row.pm2_name,
-            paramName: row.param_name,
             wakePort: newPort,
           });
         } catch (err) {

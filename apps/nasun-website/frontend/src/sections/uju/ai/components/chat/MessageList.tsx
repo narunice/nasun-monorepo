@@ -12,6 +12,11 @@ interface MessageListProps {
   onOpenAer?: (requestId: number) => void;
   /** Wake-mode: handler for Retry button on a failed assistant turn. */
   onRetry?: () => void;
+  /** Wake-mode: answer a trade proposal attached to an assistant turn. Both
+   * take the message id so the hook can settle that card in place. Omitting
+   * them renders proposals read-only. */
+  onConfirmProposal?: (proposalId: string, messageId: string) => void;
+  onCancelProposal?: (proposalId: string, messageId: string) => void;
 }
 
 export function MessageList({
@@ -21,6 +26,8 @@ export function MessageList({
   requestStatus,
   onOpenAer,
   onRetry,
+  onConfirmProposal,
+  onCancelProposal,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +57,17 @@ export function MessageList({
             onOpenAer={onOpenAer}
             wakePhase={message.wakePhase}
             proposal={message.proposal}
+            proposalStatus={message.proposalStatus}
+            onConfirmProposal={
+              message.proposal && onConfirmProposal
+                ? () => onConfirmProposal(message.proposal!.proposal_id, message.id)
+                : undefined
+            }
+            onCancelProposal={
+              message.proposal && onCancelProposal
+                ? () => onCancelProposal(message.proposal!.proposal_id, message.id)
+                : undefined
+            }
             retryable={message.retryable}
             onRetry={onRetry}
           />

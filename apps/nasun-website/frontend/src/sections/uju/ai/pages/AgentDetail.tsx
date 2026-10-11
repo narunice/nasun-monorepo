@@ -49,11 +49,7 @@ export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
 
 export const SUB_TABS: { key: AgentSubTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
-  // Chat sub-tab hidden pending proposal-confirm UX redesign — see
-  // UjuNavigation.tsx for the corresponding top-level AI Chat tab. The
-  // wake path itself remains operational on chat-server (PR1) but the
-  // user can't confirm proposals from the web yet.
-  // { key: 'chat', label: 'Chat' },
+  { key: 'chat', label: 'Chat' },
   { key: 'settings', label: 'Settings' },
   { key: 'aer', label: 'AER' },
 ];
