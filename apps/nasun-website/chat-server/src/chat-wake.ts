@@ -48,6 +48,7 @@ import {
   type ChallengeEntry,
 } from './baram-telegram-routes.js';
 import { forwardToWake, type WakeBody, type WakeResult } from './wake-proxy.js';
+import { createPendingProposal, expireStaleProposals } from './baram-proposals.js';
 
 const CHAT_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_CHALLENGES = 5_000;
@@ -356,6 +357,59 @@ function finalizeJob(jobId: string, outcome: WakeResult, userMessage: string | u
   }
 }
 
+/**
+ * Persist a proposal the runtime just returned, so the web surface has a row
+ * to confirm/cancel against.
+ *
+ * Until 2026-10-09 only the Telegram path did this (baram-telegram.ts
+ * handleProposalResponse), so a proposal raised from the browser existed in
+ * the job outcome but not in `baram_pending_proposals`. There was no
+ * proposal_id to act on, and the on-chain pending lock the runtime had already
+ * taken survived its full TTL — every analyst/heartbeat cycle in that window
+ * was skipped. That is what the hidden AI Chat tab was hiding.
+ *
+ * Sweep first, exactly like the Telegram path (baram-telegram.ts:400). The
+ * unique index is partial on `(agent) WHERE status = 'pending'`, so one
+ * leftover pending row — a proposal the user walked away from — would make
+ * every later proposal for that agent collide and get dropped. Only an
+ * expiry sweep clears it: nothing on the web path finalizes an abandoned row.
+ *
+ * Failure is then swallowed because the remaining collision is a genuine
+ * duplicate: the same proposal re-delivered, or a second live proposal while
+ * one is still unexpired and actionable. In both cases the row already in the
+ * table is the one the user should act on.
+ */
+function persistProposal(outcome: WakeResult, agent: string, sid: string): void {
+  // Require ok: a failed wake can still echo a proposal, and a row the user
+  // never sees would occupy the agent's single pending slot until it expires.
+  if (!outcome.ok || !outcome.proposal) return;
+  const proposal = outcome.proposal;
+  const expiresAtMs = new Date(proposal.expires_at).getTime();
+  if (!Number.isFinite(expiresAtMs)) {
+    console.warn(
+      `[chat-wake] proposal ${proposal.proposal_id} has unparseable expires_at`,
+      proposal.expires_at,
+    );
+    return;
+  }
+  try { expireStaleProposals(); } catch { /* non-critical */ }
+  try {
+    createPendingProposal({
+      proposalId: proposal.proposal_id,
+      agent,
+      sessionId: sid,
+      intentId: proposal.intent_id,
+      proposal,
+      expiresAtMs,
+    });
+  } catch (err) {
+    console.warn(
+      `[chat-wake] createPendingProposal failed for ${proposal.proposal_id}:`,
+      (err as Error).message,
+    );
+  }
+}
+
 // Map a runtime reason to a user-facing message. Mirrors what
 // baram-telegram.ts shows on the Telegram surface so both surfaces give the
 // user the same actionable next step.
@@ -531,6 +585,9 @@ export async function handleChatWake(
         if (!outcome.ok || isPendingLockSkip) {
           releaseCognitionSlot(session.wallet);
         }
+        // Before finalizing the job: the poll response carries the proposal,
+        // but confirm/cancel need a row keyed by proposal_id.
+        persistProposal(outcome, session.agent, session.sid);
         finalizeJob(jobId, outcome, formatWakeMessage(outcome));
       } catch (err) {
         // Should be unreachable: forwardToWake never throws (returns ok:false).
@@ -674,3 +731,7 @@ export async function handleChatWakeRequest(
 function chatTokenErrorCode(reason: VerifyChatTokenFailure['reason']): string {
   return reason === 'expired' ? 'expired' : 'invalid_token';
 }
+
+export const __testing__ = {
+  persistProposal,
+};
