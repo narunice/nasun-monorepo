@@ -123,7 +123,7 @@ describe('persistProposal', () => {
 
   it('swallows the duplicate an idempotent retry produces', () => {
     persistProposal(okOutcome(makeProposal()), AGENT, SID);
-    // Same proposal delivered twice must not throw — the partial unique index
+    // Same proposal delivered twice must not throw: the partial unique index
     // (one 'pending' row per agent) and the proposal_id PK both reject it.
     expect(() => persistProposal(okOutcome(makeProposal()), AGENT, SID)).not.toThrow();
 

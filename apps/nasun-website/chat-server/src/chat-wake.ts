@@ -373,12 +373,12 @@ function finalizeJob(jobId: string, outcome: WakeResult, userMessage: string | u
  * handleProposalResponse), so a proposal raised from the browser existed in
  * the job outcome but not in `baram_pending_proposals`. There was no
  * proposal_id to act on, and the on-chain pending lock the runtime had already
- * taken survived its full TTL — every analyst/heartbeat cycle in that window
+ * taken survived its full TTL, so every analyst/heartbeat cycle in that window
  * was skipped. That is what the hidden AI Chat tab was hiding.
  *
  * Sweep first, exactly like the Telegram path (baram-telegram.ts:400). The
  * unique index is partial on `(agent) WHERE status = 'pending'`, so one
- * leftover pending row — a proposal the user walked away from — would make
+ * leftover pending row, a proposal the user walked away from, would make
  * every later proposal for that agent collide and get dropped. Only an
  * expiry sweep clears it: nothing on the web path finalizes an abandoned row.
  *
@@ -627,7 +627,7 @@ export async function handleChatWake(
  * Confirm reuses the /wake job machinery rather than holding the request open:
  * execution takes 60-120s, which is exactly why that machinery exists. The
  * browser polls GET /chat/wake/:jobId, the same endpoint it already polls
- * after sending a message. Cancel needs no job — it answers immediately and
+ * after sending a message. Cancel needs no job: it answers immediately and
  * fires the sentinel wake best-effort.
  *
  * Both mirror the Telegram handlers (baram-telegram.ts handleProposalConfirm /
@@ -687,7 +687,7 @@ export async function handleChatProposalAction(
   // Idempotency replay comes BEFORE any proposal-state gate. The first
   // confirm moves the proposal out of 'pending', so a browser retry of the
   // same click would otherwise be told "already answered" instead of being
-  // handed the job it started — the exact case the key exists to absorb.
+  // handed the job it started, the exact case the key exists to absorb.
   if (action === 'confirm') {
     const replay = lookupExistingJob(session.sid, idempotencyKey as string);
     if (replay) {
@@ -766,7 +766,7 @@ function fireCancelSentinel(session: ChatSession, proposal: Proposal): void {
           parent_intent_id: proposal.intent_id,
           // Sentinel the runtime recognises as "clear the pending lock now".
           // Without it the lock survives up to its TTL and every cycle in
-          // that window is skipped — the agent looks frozen.
+          // that window is skipped and the agent looks frozen.
           message: JSON.stringify({ __nasun_cancel__: true, proposal_id: proposal.proposal_id }),
         });
       } catch (err) {
@@ -840,7 +840,7 @@ async function confirmProposal(
     wakeJwt = issueShortLivedJWT(session.sid);
   } catch (err) {
     const reason = err instanceof SessionInactiveError ? err.reason : 'jwt_failed';
-    // Nothing was ever sent, so release the lock the runtime is holding —
+    // Nothing was ever sent, so release the lock the runtime is holding:
     // otherwise the agent skips every cycle until the proposal's TTL runs
     // out. The proposal itself stays 'confirmed': finalizeProposal only moves
     // out of 'pending', so say plainly that nothing executed rather than
