@@ -86,8 +86,11 @@ const ALL_APPS: AppEntry[] = [
     status: "coming-soon",
     isNative: true,
   },
-  // External dApps. The dashboard renders a positions card per pinned dApp
-  // once the user has a verified EVM wallet linked (useValidEvmAddress).
+  // External dApps. A pinned entry shows up in Activity > Apps Directory and
+  // on the dashboard's activated-apps list with an outbound link; it does NOT
+  // currently surface positions. The per-dApp positions cards exist under
+  // dashboard/positions/ but EcosystemPositionsSection is commented out of
+  // DashboardTab (2026-05-20, reload-loop diagnosis), so nothing renders them.
   {
     id: "uniswap",
     name: "Uniswap",
