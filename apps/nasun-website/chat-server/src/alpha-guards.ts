@@ -459,13 +459,18 @@ export function grantKillRecoveryInvite(walletAddress: string): void {
   const expiresAt = now + killGraceMs();
   getDb()
     .prepare(
-      `INSERT INTO alpha_waitlist (wallet_address, status, joined_at, invited_at, invite_expires_at, miss_count)
-       VALUES (?, 'invited', ?, ?, ?, 0)
+      // notified_at is cleared because this is a second way into 'invited'
+      // (phaseInvite is the other). The grace invite sends no DM at all, so a
+      // stamp left over from the user's earlier, delivered invite would make
+      // this window look announced and charge a strike for silence.
+      `INSERT INTO alpha_waitlist (wallet_address, status, joined_at, invited_at, invite_expires_at, miss_count, notified_at)
+       VALUES (?, 'invited', ?, ?, ?, 0, NULL)
        ON CONFLICT(wallet_address) DO UPDATE SET
          status = 'invited',
          invited_at = excluded.invited_at,
          invite_expires_at = excluded.invite_expires_at,
-         miss_count = 0`,
+         miss_count = 0,
+         notified_at = NULL`,
     )
     .run(wallet, now, now, expiresAt);
 }

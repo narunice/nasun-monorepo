@@ -114,6 +114,15 @@ export function initStore(config: ChatServerConfig): void {
   // Migration: genesis pass cache timestamp (0 = never checked, triggers immediate refresh)
   try { db.exec('ALTER TABLE users ADD COLUMN gp_checked_at INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
+  // Migration: alpha_waitlist.notified_at (2026-10-11). Records whether an
+  // invite DM actually reached the user, which decides invite priority and
+  // whether a lapsed window counts as a miss. The table itself is created by
+  // scripts/alpha-migration.sql, not here, so this ALTER also no-ops when the
+  // table is absent. It lives in store init because two unrelated modules
+  // (alpha-cron's phases and alpha-guards' kill-recovery invite) write the
+  // column, and neither should have to own the migration.
+  try { db.exec('ALTER TABLE alpha_waitlist ADD COLUMN notified_at INTEGER'); } catch { /* already exists, or no waitlist table */ }
+
   // Migration: profile image URL
   try { db.exec('ALTER TABLE users ADD COLUMN profile_image_url TEXT'); } catch { /* already exists */ }
 

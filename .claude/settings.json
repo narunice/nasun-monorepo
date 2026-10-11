@@ -8,5 +8,43 @@
       "Bash(git check-ignore *)",
       "Bash(echo \"install rc=$?\")"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; [ -n \"$f\" ] && case \"$(basename \"$f\")\" in *.bak.*) ;; .env|.env.*) [ -f \"$f\" ] || exit 0; cp \"$f\" \"$f.bak.$(date +%s)\" || echo \"[env-backup] FAILED to back up $f -- do not edit it until you know why\" >&2 ;; esac; }; exit 0",
+            "statusMessage": "Backing up .env before edit"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -q 'pm2 restart' && echo \"$cmd\" | grep -q -- '--update-env'; then jq -n '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"pm2 restart --update-env does not re-evaluate ecosystem.config.cjs. Use: pm2 startOrRestart ecosystem.config.cjs with fresh env. See memory/feedback_pm2_env_management.md and feedback_env_xargs_export_breaks_on_comments.md (cat .env | xargs breaks on comments).\"}}'; fi"
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(>>?[[:space:]]*[^|;&]*\\.env([.][A-Za-z0-9_-]+)?([[:space:]]|$)|sed[[:space:]][^|;&]*-i[^|;&]*\\.env|tee[[:space:]][^|;&]*\\.env|(cp|mv)[[:space:]][^|;&]*[[:space:]][^|;&]*\\.env([.][A-Za-z0-9_-]+)?([[:space:]]|$))'; then jq -n '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"Writing a .env file through Bash skips the PreToolUse backup and the duplicate-key check, which only match Edit|Write. Use the Edit or Write tool so the .bak snapshot and env-duplicate-check.sh run. If this really must be a shell write, say so and it can be approved explicitly.\"}}'; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; [ -n \"$f\" ] && \"${CLAUDE_PROJECT_DIR:-/home/naru/my_apps/nasun-monorepo}/scripts/env-duplicate-check.sh\" \"$f\"; }; exit 0"
+          }
+        ]
+      }
+    ]
   }
 }

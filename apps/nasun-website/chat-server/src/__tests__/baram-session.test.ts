@@ -185,8 +185,14 @@ describe('issueShortLivedJWT / verifyJWT', () => {
     const s = createSession({ wallet: WALLET_A, agent: AGENT, capabilityId: CAPABILITY });
     const tok = issueShortLivedJWT(s.sid);
     const [h, p, sig] = tok.split('.');
-    // Flip the last char of the signature
-    const flipped = sig.slice(0, -1) + (sig.slice(-1) === 'A' ? 'B' : 'A');
+    // Tamper a decoded BYTE, not the last base64url character. In a 32-byte
+    // signature the final character carries only the trailing bits, so
+    // 'A' <-> 'B' decodes to the identical signature about 6% of the time and
+    // the test failed at that rate for no real reason.
+    const sigBytes = Buffer.from(sig, 'base64url');
+    sigBytes[0] ^= 0xff;
+    const flipped = sigBytes.toString('base64url');
+    expect(flipped).not.toBe(sig);
     const result = verifyJWT(`${h}.${p}.${flipped}`);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('bad_signature');

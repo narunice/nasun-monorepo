@@ -131,7 +131,14 @@ export function getAlphaTgUserId(walletAddress: string): string | null {
       )
       .get(walletAddress.toLowerCase()) as { tg_user_id: string } | undefined;
     return row?.tg_user_id ?? null;
-  } catch {
+  } catch (err) {
+    // Still degrade to null, but say so. A swallowed schema error here reads
+    // as "this wallet has no Telegram", and since 2026-10-11 that answer also
+    // decides invite priority and whether a missed window counts as a miss --
+    // so a silent failure would quietly demote every user to unreachable.
+    console.warn(
+      `[alpha-tg] binding lookup failed for ${walletAddress.slice(0, 10)}: ${(err as Error).message}`,
+    );
     return null;
   }
 }
