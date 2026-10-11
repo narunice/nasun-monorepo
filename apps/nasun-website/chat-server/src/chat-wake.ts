@@ -48,7 +48,13 @@ import {
   type ChallengeEntry,
 } from './baram-telegram-routes.js';
 import { forwardToWake, type WakeBody, type WakeResult } from './wake-proxy.js';
-import { createPendingProposal, expireStaleProposals } from './baram-proposals.js';
+import {
+  createPendingProposal,
+  expireStaleProposals,
+  finalizeProposal,
+  getProposalById,
+} from './baram-proposals.js';
+import type { Proposal } from '@nasun/baram-sdk';
 
 const CHAT_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_CHALLENGES = 5_000;
@@ -60,6 +66,8 @@ const MAX_MESSAGE_CHARS = 4_000;
 // indexes or future log lines. ULID (Crockford) and URL-safe base64 both
 // fit cleanly inside [A-Za-z0-9_-].
 const IDEMPOTENCY_KEY_RE = /^[A-Za-z0-9_-]{8,64}$/;
+// Crockford base32 ULID, same alphabet the job-id route matches on.
+const PROPOSAL_ID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
 // Whitelist of safe reason codes persisted to chat_wake_jobs.reason and
 // returned to the client via /chat/wake/:jobId. Anything from the runtime
@@ -604,6 +612,303 @@ export async function handleChatWake(
   });
 }
 
+// ===== POST /chat/proposal/{confirm,cancel} =====
+
+/**
+ * Act on a proposal the agent raised, from the browser.
+ *
+ * Until now the only way to answer a proposal was Telegram, and the deep link
+ * ProposalCard offers does not work: /start treats its payload as a session
+ * sid (or an alpha_ token), so `proposal_<id>` falls through to
+ * bindTelegramUser and reports the link as already used. A user with no
+ * Telegram binding had no way to answer at all, and the agent stayed locked
+ * until the proposal's TTL ran out.
+ *
+ * Confirm reuses the /wake job machinery rather than holding the request open:
+ * execution takes 60-120s, which is exactly why that machinery exists. The
+ * browser polls GET /chat/wake/:jobId, the same endpoint it already polls
+ * after sending a message. Cancel needs no job — it answers immediately and
+ * fires the sentinel wake best-effort.
+ *
+ * Both mirror the Telegram handlers (baram-telegram.ts handleProposalConfirm /
+ * handleProposalCancel) down to the wake body, so the runtime sees one shape
+ * regardless of which surface the user answered from. Neither consumes a
+ * cognition slot: the slot was charged when the message that produced the
+ * proposal was sent, and Telegram does not charge for answering either.
+ *
+ * The alpha gate is not re-checked here, matching /wake: it is enforced when
+ * the session is issued (handleChatSession), and the chatToken is the proof.
+ */
+export async function handleChatProposalAction(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+  corsHeaders: Record<string, string>,
+  action: 'confirm' | 'cancel',
+): Promise<void> {
+  if (isChatWakeKilled()) {
+    writeJson(res, 503, corsHeaders, { error: 'chat_wake_disabled' });
+    return;
+  }
+
+  let body: unknown;
+  try { body = await readJsonBody(req); } catch (err) {
+    const code = (err as Error).message === 'body_too_large' ? 413 : 400;
+    writeJson(res, code, corsHeaders, { error: (err as Error).message });
+    return;
+  }
+  const b = body as Record<string, unknown>;
+  const chatToken = typeof b.chatToken === 'string' ? b.chatToken : null;
+  const proposalId = typeof b.proposalId === 'string' ? b.proposalId : null;
+  const idempotencyKey = typeof b.idempotencyKey === 'string' ? b.idempotencyKey : null;
+
+  if (!chatToken) { writeJson(res, 401, corsHeaders, { error: 'missing_token' }); return; }
+  if (!proposalId || !PROPOSAL_ID_RE.test(proposalId)) {
+    writeJson(res, 400, corsHeaders, { error: 'invalid_proposal_id' });
+    return;
+  }
+  // Confirm spends money, so it must be replay-safe; cancel is idempotent by
+  // construction (finalizeProposal only transitions out of 'pending' once).
+  if (action === 'confirm' && (!idempotencyKey || !IDEMPOTENCY_KEY_RE.test(idempotencyKey))) {
+    writeJson(res, 400, corsHeaders, { error: 'invalid_idempotency_key' });
+    return;
+  }
+
+  const verified = verifyChatToken(chatToken);
+  if (!verified.ok) {
+    writeJson(res, 401, corsHeaders, { error: chatTokenErrorCode(verified.reason) });
+    return;
+  }
+  const session = getSession(verified.sid);
+  if (!session || session.revokedAt !== null || session.expiresAt <= Date.now()) {
+    writeJson(res, 401, corsHeaders, { error: 'session_inactive' });
+    return;
+  }
+
+  // Idempotency replay comes BEFORE any proposal-state gate. The first
+  // confirm moves the proposal out of 'pending', so a browser retry of the
+  // same click would otherwise be told "already answered" instead of being
+  // handed the job it started — the exact case the key exists to absorb.
+  if (action === 'confirm') {
+    const replay = lookupExistingJob(session.sid, idempotencyKey as string);
+    if (replay) {
+      writeJson(res, 202, corsHeaders, { jobId: replay.job_id, status: replay.status });
+      return;
+    }
+  }
+
+  // Sweep before reading so an abandoned row reports as expired rather than
+  // pending, and so a confirm cannot land on a proposal whose lock is gone.
+  try { expireStaleProposals(); } catch { /* non-critical */ }
+
+  const row = getProposalById(proposalId);
+  // Not found and not-yours collapse to the same 404: a 403 would confirm
+  // that a guessed proposal_id exists.
+  if (!row || row.agent !== session.agent) {
+    writeJson(res, 404, corsHeaders, { error: 'proposal_not_found' });
+    return;
+  }
+  // Fail CLOSED on an unparseable expires_at: NaN <= now is false, so a bare
+  // comparison would make such a row confirmable forever. The Telegram
+  // insert path has no finite-check, and a NaN lands in SQLite as NULL, which
+  // expireStaleProposals (expires_at <= ?) never sweeps either.
+  const expiresAtMs = new Date(row.proposal.expires_at).getTime();
+  if (!Number.isFinite(expiresAtMs)) {
+    console.warn(
+      `[chat-wake] proposal ${proposalId} has unparseable expires_at; refusing`,
+      row.proposal.expires_at,
+    );
+    writeJson(res, 410, corsHeaders, { error: 'proposal_expired' });
+    return;
+  }
+  if (expiresAtMs <= Date.now()) {
+    writeJson(res, 410, corsHeaders, { error: 'proposal_expired' });
+    return;
+  }
+  if (row.status !== 'pending') {
+    // A repeated cancel is success, not failure: the user's intent already
+    // holds, and a lost 200 must not surface as an error on retry.
+    if (action === 'cancel' && row.status === 'cancelled') {
+      writeJson(res, 200, corsHeaders, { ok: true, status: 'cancelled' });
+      return;
+    }
+    writeJson(res, 409, corsHeaders, { error: 'proposal_not_pending', status: row.status });
+    return;
+  }
+
+  if (action === 'cancel') {
+    await cancelProposal(res, corsHeaders, session, row.proposal);
+    return;
+  }
+  await confirmProposal(res, corsHeaders, session, row.proposal, idempotencyKey as string);
+}
+
+type ChatSession = NonNullable<ReturnType<typeof getSession>>;
+
+/**
+ * Tell the runtime to drop the on-chain pending lock for a proposal.
+ *
+ * Shared by cancel and by the confirm paths that are certain nothing ran.
+ * Best-effort and off the request lifecycle: the lock has its own TTL, so a
+ * failure here costs a delay, never correctness.
+ */
+function fireCancelSentinel(session: ChatSession, proposal: Proposal): void {
+  const ep = getEndpoint(session.agent);
+  if (!ep || !isEndpointFresh(ep)) return;
+  setImmediate(() => {
+    void (async () => {
+      try {
+        const jwt = issueShortLivedJWT(session.sid);
+        await forwardToWake(`${ep.httpUrl}/wake`, {
+          job_id: ulid(),
+          jwt,
+          trigger_type: 'manual',
+          intent_id: ulid(),
+          parent_intent_id: proposal.intent_id,
+          // Sentinel the runtime recognises as "clear the pending lock now".
+          // Without it the lock survives up to its TTL and every cycle in
+          // that window is skipped — the agent looks frozen.
+          message: JSON.stringify({ __nasun_cancel__: true, proposal_id: proposal.proposal_id }),
+        });
+      } catch (err) {
+        console.warn('[chat-wake] cancel sentinel failed:', (err as Error).message);
+      }
+    })();
+  });
+}
+
+/**
+ * Did a failed confirm provably never execute?
+ *
+ * Only then may we release the lock. The dangerous case is a timeout: the
+ * runtime may still be mid-execution, and clearing the lock under it would
+ * let a heartbeat cycle trade concurrently with the manual one. A refused
+ * connection or a 4xx rejection, by contrast, means the request was never
+ * accepted, so the lock is pure dead weight.
+ *
+ * Anything uncertain (timeout, 5xx, a reason the runtime itself returned)
+ * keeps the lock and lets its TTL expire it. Slow beats double-spent.
+ */
+function wakeNeverExecuted(error: string | undefined): boolean {
+  if (!error) return false;
+  if (/^wake_http_4\d\d/.test(error)) return true;
+  return /ECONNREFUSED|EHOSTUNREACH|ENOTFOUND|EAI_AGAIN/.test(error);
+}
+
+async function confirmProposal(
+  res: import('node:http').ServerResponse,
+  corsHeaders: Record<string, string>,
+  session: ChatSession,
+  proposal: Proposal,
+  idempotencyKey: string,
+): Promise<void> {
+  // The replay check ran in the caller, before the proposal-state gates.
+  const ep = getEndpoint(session.agent);
+  if (!ep || !isEndpointFresh(ep)) {
+    writeJson(res, 503, corsHeaders, { error: 'agent_offline' });
+    return;
+  }
+
+  const jobId = ulid();
+  const now = Date.now();
+  const inserted = insertJobRow({
+    jobId, sid: session.sid, wallet: session.wallet, agent: session.agent,
+    idempotencyKey, now,
+  });
+  if (!inserted) {
+    const existingNow = lookupExistingJob(session.sid, idempotencyKey);
+    if (existingNow) {
+      writeJson(res, 202, corsHeaders, { jobId: existingNow.job_id, status: existingNow.status });
+      return;
+    }
+    writeJson(res, 500, corsHeaders, { error: 'idempotency_race' });
+    return;
+  }
+
+  // Claim the proposal before waking. Two confirms racing past the status
+  // check above both reach here; only one wins the UPDATE, and the loser must
+  // not also fire a wake. The runtime's pending-lock guard is the second line
+  // of defence (same ordering as the Telegram path).
+  if (!finalizeProposal(proposal.proposal_id, 'confirmed')) {
+    finalizeJob(jobId, { ok: false, error: 'proposal_not_pending' },
+      'That proposal was already answered.');
+    writeJson(res, 409, corsHeaders, { error: 'proposal_not_pending' });
+    return;
+  }
+
+  let wakeJwt: string;
+  try {
+    wakeJwt = issueShortLivedJWT(session.sid);
+  } catch (err) {
+    const reason = err instanceof SessionInactiveError ? err.reason : 'jwt_failed';
+    // Nothing was ever sent, so release the lock the runtime is holding —
+    // otherwise the agent skips every cycle until the proposal's TTL runs
+    // out. The proposal itself stays 'confirmed': finalizeProposal only moves
+    // out of 'pending', so say plainly that nothing executed rather than
+    // inviting a retry that would be rejected.
+    fireCancelSentinel(session, proposal);
+    finalizeJob(jobId, { ok: false, error: reason },
+      'Your session expired before the trade was submitted. Nothing was executed. Please refresh and ask again.');
+    writeJson(res, 202, corsHeaders, { jobId, status: 'error' });
+    return;
+  }
+
+  const wakeBody: WakeBody = {
+    job_id: ulid(),
+    jwt: wakeJwt,
+    trigger_type: 'manual',
+    intent_id: ulid(),
+    parent_intent_id: proposal.intent_id,
+    // Carry the whole artifact so the runtime builds the execution without
+    // re-reading the DB or chain. Identical to the Telegram confirm body.
+    message: JSON.stringify(proposal),
+  };
+
+  writeJson(res, 202, corsHeaders, { jobId, status: 'pending' });
+
+  setImmediate(() => {
+    void (async () => {
+      try {
+        const outcome = await forwardToWake(`${ep.httpUrl}/wake`, wakeBody);
+        // The proposal is terminal either way, so a stuck lock would freeze
+        // the agent with no way out from either route. Release it only where
+        // the wake provably never ran.
+        if (!outcome.ok && wakeNeverExecuted(outcome.error)) {
+          fireCancelSentinel(session, proposal);
+        }
+        finalizeJob(jobId, outcome, formatWakeMessage(outcome));
+      } catch (err) {
+        // forwardToWake returns ok:false rather than throwing, so this is a
+        // programmer-error path: nothing was sent.
+        console.error('[chat-wake] confirm dispatch error:', (err as Error).message);
+        fireCancelSentinel(session, proposal);
+        finalizeJob(
+          jobId,
+          { ok: false, error: 'dispatch_error' },
+          'Your agent could not submit that trade. Please check your Dashboard before retrying.',
+        );
+      }
+    })();
+  });
+}
+
+async function cancelProposal(
+  res: import('node:http').ServerResponse,
+  corsHeaders: Record<string, string>,
+  session: ChatSession,
+  proposal: Proposal,
+): Promise<void> {
+  if (!finalizeProposal(proposal.proposal_id, 'cancelled')) {
+    writeJson(res, 409, corsHeaders, { error: 'proposal_not_pending' });
+    return;
+  }
+
+  // Answer the browser first: the sentinel is what releases the on-chain
+  // lock, but a stale endpoint must not turn a cancel into an error the user
+  // has to act on. Worst case the lock lapses on its own TTL.
+  writeJson(res, 200, corsHeaders, { ok: true, status: 'cancelled' });
+  fireCancelSentinel(session, proposal);
+}
+
 // ===== GET /chat/wake/:jobId =====
 
 export async function handleChatWakePoll(
@@ -705,6 +1010,14 @@ export async function handleChatWakeRequest(
     }
     if (req.method === 'POST' && url.pathname === '/api/nasun-ai/chat/wake') {
       await handleChatWake(req, res, corsHeaders);
+      return true;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/nasun-ai/chat/proposal/confirm') {
+      await handleChatProposalAction(req, res, corsHeaders, 'confirm');
+      return true;
+    }
+    if (req.method === 'POST' && url.pathname === '/api/nasun-ai/chat/proposal/cancel') {
+      await handleChatProposalAction(req, res, corsHeaders, 'cancel');
       return true;
     }
     const m = url.pathname.match(JOB_ID_RE);
