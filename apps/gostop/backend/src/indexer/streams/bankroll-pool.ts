@@ -18,7 +18,7 @@
  * All bankroll_event INSERTs are idempotent via UNIQUE (tx_digest, event_seq).
  */
 
-import { STREAMS, type StreamKey } from '../../config/contracts.js';
+import { BANKROLL_POOL, STREAMS, type StreamKey } from '../../config/contracts.js';
 import { writer } from '../../db/client.js';
 import { runStream, normalizeAddr } from './_runner.js';
 import {
@@ -93,6 +93,12 @@ interface BankrollEventRow {
   // v0.0.4: open_exposure_after is populated ONLY on event_type=
   // 'open_exposure_snapshot' rows; NULL on every other event type.
   open_exposure_after: string | null;
+  // Migration 009: the BankrollPool object this row belongs to, so LP share
+  // aggregates can exclude the pool retired by the v8 fresh genesis. Populated
+  // ONLY on the three share-affecting types (liquidity_provided,
+  // liquidity_redeemed, shares_seeded) to match the migration's backfill;
+  // NULL elsewhere means "not share-affecting", not "unknown era".
+  pool_object_id: string | null;
 }
 
 function assertEventType(t: string): asserts t is EventTypeName {
@@ -143,7 +149,7 @@ async function insertBankrollEvents(rows: BankrollEventRow[]): Promise<number> {
       'tx_digest', 'event_seq', 'timestamp_ms', 'event_type',
       'game_id', 'actor', 'amount', 'shares',
       'reason_code', 'claimable_at_ms', 'treasury_reason', 'cap_bps',
-      'open_exposure_after'
+      'open_exposure_after', 'pool_object_id'
     )}
     ON CONFLICT (tx_digest, event_seq) DO NOTHING
     RETURNING id
@@ -171,6 +177,7 @@ function emptyRow(
     treasury_reason: null,
     cap_bps: null,
     open_exposure_after: null,
+    pool_object_id: null,
   };
 }
 
@@ -278,6 +285,7 @@ export async function tickBetRefunded(): Promise<number> {
           treasury_reason: null,
           cap_bps: null,
           open_exposure_after: null,
+          pool_object_id: null,
         };
       });
       return await insertBankrollEvents(rows);
@@ -313,6 +321,7 @@ export async function tickTreasuryDeposited(): Promise<number> {
           treasury_reason: cls.treasury_reason,
           cap_bps: null,
           open_exposure_after: null,
+          pool_object_id: null,
         };
       });
       return await insertBankrollEvents(rows);
@@ -349,6 +358,7 @@ export async function tickLiquidityProvided(): Promise<number> {
         treasury_reason: null,
         cap_bps: null,
         open_exposure_after: null,
+        pool_object_id: BANKROLL_POOL.bankrollPoolObjectId,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -384,6 +394,9 @@ export async function tickWithdrawRequested(): Promise<number> {
         treasury_reason: null,
         cap_bps: null,
         open_exposure_after: null,
+        // Not share-affecting: requesting a withdraw starts the cooldown and
+        // moves no shares, so it stays outside the stamped domain.
+        pool_object_id: null,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -417,6 +430,7 @@ export async function tickLiquidityRedeemed(): Promise<number> {
         treasury_reason: null,
         cap_bps: null,
         open_exposure_after: null,
+        pool_object_id: BANKROLL_POOL.bankrollPoolObjectId,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -449,6 +463,7 @@ export async function tickPoolSharesSeeded(): Promise<number> {
         treasury_reason: null,
         cap_bps: null,
         open_exposure_after: null,
+        pool_object_id: BANKROLL_POOL.bankrollPoolObjectId,
       }));
       return await insertBankrollEvents(rows);
     },

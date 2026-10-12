@@ -159,6 +159,20 @@ async function assertSharesCheckpointTable(): Promise<void> {
             FROM gostop.bankroll_shares_checkpoint LIMIT 0`;
 }
 
+/**
+ * Boot-time guard for migration 009's `bankroll_event.pool_object_id`.
+ *
+ * The LP streams stamp this column on every share-affecting row, so without
+ * the migration every such INSERT fails at parse time. schema-audit catches
+ * the column being referenced without being declared in a migration file, but
+ * not the migration being unapplied on this database, which is the failure a
+ * deploy that skips the migration-first checklist actually produces.
+ */
+async function assertPoolScopeColumn(): Promise<void> {
+  const sql = reader();
+  await sql`SELECT pool_object_id FROM gostop.bankroll_event LIMIT 0`;
+}
+
 async function main(): Promise<void> {
   console.log('[indexer] boot', {
     rpc: env.rpc.url,
@@ -170,6 +184,15 @@ async function main(): Promise<void> {
     await assertSharesCheckpointTable();
   } catch (err) {
     console.error('[indexer] reconciler column probe failed — migration 004 may be missing', err);
+    throw err;
+  }
+  try {
+    await assertPoolScopeColumn();
+  } catch (err) {
+    console.error(
+      '[indexer] bankroll_event.pool_object_id probe failed — migration 009 is not applied on this database',
+      err,
+    );
     throw err;
   }
   installShutdownHandlers();

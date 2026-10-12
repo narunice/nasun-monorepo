@@ -14,6 +14,14 @@
  *       rank_in_top_5,    // 1..5 or null
  *     }
  *
+ * Both aggregates are scoped to the live BankrollPool object via
+ * `pool_object_id` (migration 009). Without that scope this endpoint reported a
+ * position to any wallet that had provided liquidity to the pool retired by the
+ * v8 fresh genesis: 162 wallets on 2026-10-12 were told they held shares for
+ * which no LPToken exists on the live chain, so they could never redeem. A
+ * phantom balance is worse than a wrong percentage, which is why the scope
+ * belongs here and not only on the public concentration block.
+ *
  * `deposit_time` / `withdraw_requested_at` from the LPToken object are
  * intentionally omitted in v1 — resolving the per-wallet LPToken objectId
  * requires `getOwnedObjects` filtered by type, an extra chain round-trip the
@@ -23,6 +31,7 @@
 
 import { Hono } from 'hono';
 import { reader } from '../../../db/client.js';
+import { BANKROLL_POOL } from '../../../config/contracts.js';
 import type { AuthVars } from '../../auth/middleware.js';
 import { requireAuth } from '../../auth/middleware.js';
 
@@ -54,6 +63,7 @@ meLpRoutes.get('/lp/position', async (c) => {
       FROM gostop.bankroll_event
       WHERE actor IS NOT NULL
         AND event_type IN ('liquidity_provided','liquidity_redeemed')
+        AND pool_object_id = ${BANKROLL_POOL.bankrollPoolObjectId}
       GROUP BY actor
     ),
     me AS (
@@ -90,6 +100,7 @@ meLpRoutes.get('/lp/position', async (c) => {
         FROM gostop.bankroll_event
         WHERE actor IS NOT NULL
           AND event_type IN ('liquidity_provided','liquidity_redeemed')
+          AND pool_object_id = ${BANKROLL_POOL.bankrollPoolObjectId}
         GROUP BY actor
       )
       SELECT (COUNT(*) + 1)::int AS rank

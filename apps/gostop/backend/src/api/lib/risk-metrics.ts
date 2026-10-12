@@ -392,15 +392,24 @@ interface TopLpRow {
 /**
  * Top-5 LP positions by net shares.
  *
- * Aggregates `liquidity_provided` minus `liquidity_redeemed` shares per actor
- * over the full `bankroll_event` history. Filters positive net only (zero or
+ * Aggregates `liquidity_provided` minus `liquidity_redeemed` shares per actor,
+ * scoped to the live BankrollPool object. Filters positive net only (zero or
  * negative shouldn't happen given chain invariants, but defensive). Returns
  * up to 5 entries with masked addresses + hash for client-side self-match.
  *
+ * The `pool_object_id` scope is load-bearing, not defensive. `bankroll_event`
+ * spans two chains: before migration 009 this aggregate summed the whole table
+ * and mixed in the pool retired by the v8 fresh genesis, which is 11.3e12 of
+ * the retired chain's shares against 6.8e12 live. On 2026-10-12 that reported
+ * 377 LPs where 215 were real and a rank-1 share of 57.28% against a real
+ * 54.28%, and ranked a wallet with no live position fourth. Any new aggregate
+ * over this table needs the same scope; see migration 009.
+ *
  * Total denominator for share_pct uses the sum of positive net shares across
  * all actors (NOT chain total_shares) so percentages always sum to ≤ 100%.
- * Chain total_shares may differ slightly during indexer catch-up windows;
- * within-query consistency is more important than chain-alignment here.
+ * Within the scope the two still differ a little, because the ledger's absolute
+ * sum carries pre-checkpoint gaps that migration 008 stopped trying to
+ * reconcile; within-query consistency is what the percentages need.
  */
 /** Concentration bucket thresholds, basis points (10_000 = 100%). */
 const CONCENTRATION_EXTREME_BPS = 8_000;
@@ -426,6 +435,7 @@ async function topLp5(): Promise<TopLp5Result> {
       FROM gostop.bankroll_event
       WHERE actor IS NOT NULL
         AND event_type IN ('liquidity_provided','liquidity_redeemed')
+        AND pool_object_id = ${BANKROLL_POOL.bankrollPoolObjectId}
       GROUP BY actor
     ),
     positive AS (
@@ -451,6 +461,7 @@ async function topLp5(): Promise<TopLp5Result> {
       FROM gostop.bankroll_event
       WHERE actor IS NOT NULL
         AND event_type IN ('liquidity_provided','liquidity_redeemed')
+        AND pool_object_id = ${BANKROLL_POOL.bankrollPoolObjectId}
       GROUP BY actor
     )
     SELECT COALESCE(SUM(net_shares), 0)::text AS total,

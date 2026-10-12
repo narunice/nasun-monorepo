@@ -16,7 +16,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { env } from '../env.js';
-import { closeAll } from '../db/client.js';
+import { closeAll, reader } from '../db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { leaderboardRoutes } from './routes/leaderboard.js';
 import { transparencyRoutes } from './routes/transparency.js';
@@ -69,6 +69,23 @@ app.onError((err, c) => {
 
 const server = serve({ fetch: app.fetch, port: env.api.port }, (info) => {
   console.log('[gostop-api] listening', { port: info.port });
+  // Migration 009 probe. Four LP queries filter on
+  // bankroll_event.pool_object_id, so without the migration /lp/positions and
+  // /me/lp/position 500 and the transparency concentration block degrades to
+  // data_quality='unreliable'. This warns rather than exiting: unlike the
+  // indexer, which cannot write a row without the column, the API serves
+  // leaderboard, game and transparency routes that are all fine without it,
+  // and a crash loop here would take those down too. One named log line beats
+  // diagnosing it from 500s.
+  reader()`SELECT pool_object_id FROM gostop.bankroll_event LIMIT 0`.then(
+    () => {},
+    (err: unknown) => {
+      console.error(
+        '[gostop-api] bankroll_event.pool_object_id probe failed — migration 009 is not applied on this database, LP routes will fail',
+        err,
+      );
+    },
+  );
 });
 
 // WS feed wiring (PR2). Attached to the same http.Server so a single TCP port
