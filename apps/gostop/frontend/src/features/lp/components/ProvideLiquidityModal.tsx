@@ -136,7 +136,7 @@ export function ProvideLiquidityModal({
             </p>
             <p className="text-sm text-neutral-200">
               <span className="text-gold-200">No deadline:</span> the LPToken stays redeemable
-              indefinitely after the cooldown — you do not have to act within a window.
+              indefinitely after the cooldown, so you do not have to act within a window.
             </p>
           </div>
         </div>

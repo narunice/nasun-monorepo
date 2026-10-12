@@ -394,9 +394,9 @@ function BankrollTeaser() {
             priority.
           </p>
         </div>
-        <button className="btn-ghost whitespace-nowrap" disabled>
-          LP, Coming Soon
-        </button>
+        <Link to="/lp" className="btn-gold whitespace-nowrap">
+          Provide liquidity
+        </Link>
       </div>
     </section>
   );

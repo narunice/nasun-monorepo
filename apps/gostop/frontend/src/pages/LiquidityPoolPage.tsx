@@ -1,5 +1,6 @@
+import { Link } from 'react-router-dom';
 import { useLpPoolState, useLpApy } from '../lib/api/queries';
-import type { DataQuality } from '../lib/api/types';
+import type { DataQuality, LpReturnWindow } from '../lib/api/types';
 import { fmtSharePrice, fmtUsdc } from '../features/dashboard/format';
 import { DepositSection } from '../features/lp/components/DepositSection';
 import { MyPositionsSection } from '../features/lp/components/MyPositionsSection';
@@ -15,6 +16,62 @@ function DataQualityBadge({ quality }: { quality: DataQuality }) {
     <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border ${cls}`}>
       {text}
     </span>
+  );
+}
+
+/**
+ * Windows rendered in Pool Overview, in the order shown. Must be a subset of
+ * what /lp/apy returns in `windows`; a day count the backend does not report
+ * renders as "requires fresh data" rather than throwing.
+ */
+const RETURN_WINDOW_DAYS = [7, 30] as const;
+
+/**
+ * One window's realized return.
+ *
+ * Deliberately shows `realized_pct` and never `annualized_pct`. The pool's
+ * weekly PnL is mostly variance, and annualizing a 7-day result multiplies it
+ * by 52, so the same arithmetic that printed "88% APY" prints a comparable
+ * negative after one bad week. Two windows are shown side by side so a single
+ * week cannot read as an expected rate.
+ */
+function ReturnStat({
+  days,
+  window: w,
+  loading,
+}: {
+  days: number;
+  window: LpReturnWindow | undefined;
+  loading: boolean;
+}) {
+  const pct = w?.realized_pct ?? null;
+  const sign = pct !== null && pct > 0 ? '+' : '';
+  // Three distinct states, not two. A window the backend never reported means
+  // its aggregate failed or the day counts drifted apart, which is a different
+  // fault from the data-quality gate nulling a window it did compute, and
+  // labelling both "requires fresh data" would hide the first behind the
+  // second.
+  const subnote = loading
+    ? undefined
+    : pct !== null
+      ? 'realized, not annualized'
+      : w === undefined
+        ? 'window unavailable'
+        : 'requires fresh data';
+  return (
+    <Stat
+      label={`${days}d return`}
+      value={loading ? '…' : pct !== null ? `${sign}${pct.toFixed(2)}%` : '—'}
+      valueClass={
+        pct === null || pct === 0
+          ? 'text-neutral-100'
+          : pct > 0
+            ? 'text-emerald-300'
+            : 'text-rose-300'
+      }
+      subnote={subnote}
+      title={`House PnL over the last ${days} days divided by the pool's current size. Not annualized. A large recent deposit raises the divisor without changing house performance, so it understates the figure.`}
+    />
   );
 }
 
@@ -68,7 +125,7 @@ function PoolOverviewSection() {
         <DataQualityBadge quality={dq} />
         {pool.paused && (
           <span
-            title="Bets are paused. LP withdraw is NOT affected — you can still request and redeem."
+            title="Bets are paused. LP withdraw is NOT affected: you can still request and redeem."
             className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border bg-amber-500/15 text-amber-200 border-amber-400/30"
           >
             Bets paused
@@ -76,7 +133,7 @@ function PoolOverviewSection() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Stat
           label="TVL"
           value={hide ? '—' : `${fmtUsdc(pool.pool_balance)} NUSDC`}
@@ -86,17 +143,14 @@ function PoolOverviewSection() {
           value={hide ? '—' : fmtSharePrice(pool.share_price_scaled)}
           valueClass={hide ? 'text-neutral-300' : 'text-gold-200'}
         />
-        <Stat
-          label="7d APY"
-          value={
-            apyLoading
-              ? '…'
-              : apy && apy.apy_pct !== null
-                ? `${apy.apy_pct.toFixed(2)}%`
-                : '—'
-          }
-          subnote={apy?.apy_pct !== null ? 'estimate' : 'requires fresh data'}
-        />
+        {RETURN_WINDOW_DAYS.map((days) => (
+          <ReturnStat
+            key={days}
+            days={days}
+            window={apy?.windows?.find((w) => w.days === days)}
+            loading={apyLoading}
+          />
+        ))}
         <Stat
           label="Status"
           value={pool.is_seeded ? (pool.paused ? 'Bets paused' : 'Active') : 'Not seeded'}
@@ -113,14 +167,16 @@ function PoolOverviewSection() {
   );
 }
 
-export function Stat({ label, value, valueClass = 'text-neutral-100', subnote }: {
+export function Stat({ label, value, valueClass = 'text-neutral-100', subnote, title }: {
   label: string;
   value: string;
   valueClass?: string;
   subnote?: string;
+  /** Hover explanation. Renders a help cursor so the affordance is visible. */
+  title?: string;
 }) {
   return (
-    <div>
+    <div title={title} className={title ? 'cursor-help' : undefined}>
       <span className="block text-xs uppercase tracking-widest text-neutral-300">{label}</span>
       <span className={`block font-mono text-base ${valueClass}`}>{value}</span>
       {subnote && <span className="block text-[10px] text-neutral-400">{subnote}</span>}
@@ -153,16 +209,27 @@ function DisclosureSection() {
         </li>
         <li>
           <span className="text-neutral-100">Redeem.</span> After cooldown, redeem
-          to receive NUSDC. No deadline — your LPToken stays redeemable indefinitely
+          to receive NUSDC. No deadline, your LPToken stays redeemable indefinitely
           once cooldown elapses. Calling Request again restarts the timer.
         </li>
       </ol>
       <p className="text-xs text-neutral-400 pt-2 border-t border-ink-800">
-        Disclosure: house bankroll is exposed to game-level variance. Pool has no
-        automated utilization cap in v1 — operator monitors exposure and can
-        pause new bets manually (this does not affect your exit). NAV here is
-        book value; in-flight bets are not subtracted. Higher-fidelity NAV is
-        planned for v1.x.
+        Disclosure: house bankroll is exposed to game-level variance. Every bet
+        reserves its maximum payout on chain, and while a utilization cap is set
+        the contract refuses any bet that would reserve past it. The cap is
+        operator-set and can be set to zero, which disables that check, so treat
+        the live value on the{' '}
+        <Link to="/transparency" className="underline hover:text-gold-200">
+          Transparency
+        </Link>{' '}
+        page as the authority rather than this paragraph. The operator can also
+        pause new bets, which does not affect your exit. Share price here is
+        book value: reserved payouts for in-flight rounds are not subtracted, so
+        a cap, when set, is also what bounds how far book value can sit above
+        what the pool would owe if every open round paid out. Returns above
+        divide the window's house PnL by the pool's current size, so a large
+        recent deposit understates them. Higher-fidelity NAV and a
+        time-weighted return are planned for v1.x.
       </p>
     </section>
   );

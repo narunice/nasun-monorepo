@@ -334,14 +334,37 @@ export interface LpPoolState {
   generated_at: number;
 }
 
+/** One reporting window from /lp/apy. See LpApy.windows. */
+export interface LpReturnWindow {
+  days: number;
+  net_pnl: string;
+  /**
+   * The window's result with no annualization. This is the figure to render:
+   * `annualized_pct` multiplies it by 365/days, which turns one noisy week of
+   * house PnL into a headline percentage. Null when data_quality !== 'fresh'.
+   */
+  realized_pct: number | null;
+  /** Annualized equivalent, kept for operators. Not for display. */
+  annualized_pct: number | null;
+}
+
 export interface LpApy {
   window_days: number;
-  /** Null when data_quality !== 'fresh'. UI must label as estimate. */
+  /**
+   * Annualized return over `window_days`. Superseded by `windows` for display
+   * and kept so a frontend deployed before `windows` existed keeps working.
+   * Null when data_quality !== 'fresh'.
+   */
   apy_pct: number | null;
   net_pnl: string;
   tvl_approx: string;
   data_quality: DataQuality;
   cursor_lag_ms: number;
+  /**
+   * Per-window returns, primary window first. Empty when the aggregate failed.
+   * Every window shares one TVL denominator so the percentages are comparable.
+   */
+  windows: LpReturnWindow[];
   note: string;
   generated_at: number;
 }

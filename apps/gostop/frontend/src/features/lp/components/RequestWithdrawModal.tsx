@@ -71,7 +71,7 @@ export function RequestWithdrawModal({ open, onClose, onConfirm, position, resta
         <div className="overflow-y-auto px-6 space-y-5 pb-2">
           <p className="text-sm text-neutral-200">
             Withdrawing liquidity is a <span className="text-gold-200">two-step process</span>. This
-            confirmation only starts the cooldown — your NUSDC stays in the pool until you redeem
+            confirmation only starts the cooldown, and your NUSDC stays in the pool until you redeem
             after the 24-hour wait.
           </p>
 
@@ -99,7 +99,7 @@ export function RequestWithdrawModal({ open, onClose, onConfirm, position, resta
             <p className="text-sm text-neutral-200">
               NUSDC received = your shares × <em>share price at redeem time</em>, not now. If the
               pool wins or loses during the cooldown, your payout moves with it. Partial withdraws
-              are not supported — redeem returns the full LPToken value.
+              are not supported, so redeem returns the full LPToken value.
             </p>
           </div>
 
