@@ -57,6 +57,25 @@ export function computeApyPct(netPnl: bigint, tvl: bigint, windowDays: number): 
 }
 
 /**
+ * Realized return over the window, in percent, with no annualization.
+ *
+ * This is what the LP page shows. `computeApyPct` multiplies the same figure
+ * by 365/windowDays, which on a 7-day window is a factor of 52: a house result
+ * of +1.69% over one week reads as +88% a year. For a bankroll whose weekly
+ * PnL is mostly variance that amplifies noise into a headline, and the same
+ * formula returns a large negative after one bad week. The annualized value is
+ * still returned by the API for operators; the user-facing figure is this one.
+ *
+ * Returns null when tvl <= 0 (divide-by-zero or sign-flip), same as
+ * computeApyPct. Signed: negative when the house lost over the window.
+ */
+export function computeRealizedPct(netPnl: bigint, tvl: bigint): number | null {
+  if (tvl <= 0n) return null;
+  const pctTimes100 = (netPnl * 10_000n) / tvl;
+  return Number(pctTimes100) / 100;
+}
+
+/**
  * Cumulative LP distributions ≈ (pps - 1.0) × total_shares / SCALE.
  * Signed — negative when the pool is underwater. UI clamps to zero;
  * the API stays honest.

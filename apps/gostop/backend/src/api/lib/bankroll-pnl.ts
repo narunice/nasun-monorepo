@@ -189,7 +189,25 @@ function classifyDataQuality(
  * Caller responsibility: cache result externally. This function intentionally
  * does no internal caching (multi-consumer cache key conflict avoidance).
  */
-export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPnlResult> {
+export interface BankrollPnlOptions {
+  /**
+   * Skip the `sui_getObject` read and return the chain-derived fields empty:
+   * `pool_balance_raw` and `chain_total_shares` null, `share_price_current_scaled`
+   * at the 1.0 default. For a caller computing several windows at once, where
+   * only one window's balance is used as the shared denominator, the other
+   * reads are discarded anyway. The saving that matters is not the ~5ms happy
+   * path but the rpcCall retry chain each read spins up while the RPC is down.
+   *
+   * A skipped read is not a failed one, so `data_quality` keeps reflecting the
+   * checkpoint alone rather than dropping to 'unreliable'.
+   */
+  skipChainRead?: boolean;
+}
+
+export async function bankrollPnl(
+  window: BankrollPnlWindow,
+  opts: BankrollPnlOptions = {},
+): Promise<BankrollPnlResult> {
   const { fromMs, toMs } = window;
   const sql = reader();
 
@@ -270,7 +288,7 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
   const refunds = BigInt(row.refunds);
   const netPnl = computeNetPnl(bets, payouts, refunds);
 
-  const chain = await fetchChainShares();
+  const chain = opts.skipChainRead ? null : await fetchChainShares();
   // Move convention: pps = 1.0 when shares==0 (calcSharePriceScaled handles
   // the shares==0 case internally). The outer ternary guards null chain reads.
   const sharePriceScaled = chain
@@ -279,7 +297,12 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
 
   const cursorLagMs = Number(row.cursor_lag_ms);
   const checkpointAgeMs = row.checkpoint_age_ms === null ? null : Number(row.checkpoint_age_ms);
-  const dataQuality = classifyDataQuality(checkpointAgeMs, chain !== null);
+  // `skipChainRead` means the caller declined the read, not that it failed, so
+  // it must not be reported as an unreachable chain.
+  const dataQuality = classifyDataQuality(
+    checkpointAgeMs,
+    opts.skipChainRead ? true : chain !== null,
+  );
 
   return {
     bets: bets.toString(),

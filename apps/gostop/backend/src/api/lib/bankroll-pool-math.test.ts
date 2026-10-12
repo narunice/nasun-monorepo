@@ -19,6 +19,7 @@ import {
   calcSharePriceScaled,
   computeNetPnl,
   computeApyPct,
+  computeRealizedPct,
   computeCumulativeLpDist,
   computeUtilizationBps,
   computeRedeemQuoteRaw,
@@ -92,6 +93,41 @@ describe('computeApyPct', () => {
 
   it('preserves negative APY when house is underwater', () => {
     expect(computeApyPct(-100n, 1_000n, 7)).toBeLessThan(0);
+  });
+});
+
+describe('computeRealizedPct', () => {
+  it('returns null on non-positive tvl', () => {
+    expect(computeRealizedPct(100n, 0n)).toBeNull();
+    expect(computeRealizedPct(100n, -1n)).toBeNull();
+  });
+
+  it('returns 0 on flat pnl', () => {
+    expect(computeRealizedPct(0n, 1_000n)).toBe(0);
+  });
+
+  it('does not annualize', () => {
+    // 100/1000 = 10% over the window, whatever the window length is.
+    expect(computeRealizedPct(100n, 1_000n)).toBeCloseTo(10, 2);
+  });
+
+  it('is the annualized figure divided by 365/days', () => {
+    // The whole point of the function: same numerator, no 52x amplification.
+    const realized = computeRealizedPct(100n, 1_000n)!;
+    const annualized = computeApyPct(100n, 1_000n, 7)!;
+    expect(annualized / realized).toBeCloseTo(365 / 7, 1);
+  });
+
+  it('preserves the sign when the house lost', () => {
+    expect(computeRealizedPct(-100n, 1_000n)).toBeCloseTo(-10, 2);
+  });
+
+  it('matches the live 7d reading measured on 2026-10-12', () => {
+    // net_pnl 235,471,081,830 against TVL 15,032,285,417,183 is +1.56% over
+    // the week, which computeApyPct turned into the 81.67% the page was
+    // showing as "7d APY".
+    expect(computeRealizedPct(235_471_081_830n, 15_032_285_417_183n)).toBeCloseTo(1.56, 2);
+    expect(computeApyPct(235_471_081_830n, 15_032_285_417_183n, 7)).toBeCloseTo(81.67, 1);
   });
 });
 

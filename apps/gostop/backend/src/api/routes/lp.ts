@@ -23,6 +23,7 @@ import {
   SHARE_PRICE_SCALE,
   calcSharePriceScaled,
   computeApyPct,
+  computeRealizedPct,
   computeRedeemQuoteRaw,
 } from '../lib/bankroll-pool-math.js';
 import { reader } from '../../db/client.js';
@@ -39,7 +40,13 @@ function remainingMaxAge(expiresAt: number): number {
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 }
 const APY_WINDOW_DAYS = 7;
-const APY_WINDOW_MS = APY_WINDOW_DAYS * 86_400_000;
+/**
+ * Windows reported alongside the primary one, so the LP page can show that a
+ * single week is mostly variance. Each costs one more CTE and one more chain
+ * read, both issued in parallel, and all of them land in the same cache entry.
+ * Keep this short: it is a per-request fan-out, not a free field.
+ */
+const EXTRA_RETURN_WINDOW_DAYS = [30] as const;
 const WINDOW_QUANTUM_MS = 30_000;
 
 // LPToken type tag is bound to the originalPackageId since the struct is
@@ -136,7 +143,6 @@ lpRoutes.get('/apy', async (c) => {
   // Quantize window so the cache key rotates exactly when TTL expires (no
   // mid-TTL stampede). Matches transparency endpoint's quantization scheme.
   const toMs = Math.floor(Date.now() / WINDOW_QUANTUM_MS) * WINDOW_QUANTUM_MS;
-  const fromMs = toMs - APY_WINDOW_MS;
   const cacheKey = `lp:apy:${toMs}`;
   const cached = cacheGet<unknown>(cacheKey);
   if (cached) {
@@ -154,10 +160,33 @@ lpRoutes.get('/apy', async (c) => {
     return c.json(cached.value);
   }
 
-  let pnl;
-  try {
-    pnl = await bankrollPnl({ fromMs, toMs });
-  } catch (err) {
+  // Every reported window, primary first. Resolved as one list so each result
+  // stays paired with the day count that produced it; two parallel arrays
+  // indexed against each other would silently mislabel a window if either
+  // changed. They run in parallel, so the added latency is one round-trip
+  // rather than one per window.
+  const windowDays = [APY_WINDOW_DAYS, ...EXTRA_RETURN_WINDOW_DAYS];
+
+  // allSettled rather than all: a secondary window must not be able to take
+  // the primary one down with it. The 30d scan covers roughly four times the
+  // rows of the 7d one and is the likelier of the two to time out, and under
+  // Promise.all that discarded a perfectly good 7d reading in favour of the
+  // degraded payload below. That payload is also the one branch here that
+  // never caches, so a slow 30d scan would have re-run both CTEs and both RPC
+  // retry chains on every request for as long as it stayed slow.
+  // Only the primary reads the chain. Every window divides by that one
+  // balance, so a secondary read would be discarded, and while the RPC is
+  // down each one would still spin up its own retry chain on the 5s negative
+  // cache path below.
+  const settled = await Promise.allSettled(
+    windowDays.map((days, i) =>
+      bankrollPnl({ fromMs: toMs - days * 86_400_000, toMs }, { skipChainRead: i > 0 }),
+    ),
+  );
+
+  const primary = settled[0];
+  if (primary.status === 'rejected') {
+    const err = primary.reason;
     console.warn(
       `[lp] bankrollPnl failed: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -168,10 +197,17 @@ lpRoutes.get('/apy', async (c) => {
       data_quality: 'unreliable' as DataQuality,
       cursor_lag_ms: 0,
       tvl_approx: '0',
+      // Empty rather than absent: the UI branches on each window's
+      // realized_pct being null, and an absent array would make a failed
+      // aggregate indistinguishable from a deploy that predates `windows`.
+      windows: [],
       note: 'apy_pct is null when data_quality !== "fresh"; UI must label as estimate.',
       generated_at: Date.now(),
     });
   }
+
+  // Primary window. Its chain read supplies the TVL every window divides by.
+  const pnl = primary.value;
 
   // Current TVL approximation: use current pool.balance as a proxy for the
   // mean TVL over the window. Plan v3 §10.E acknowledges this is a v1
@@ -181,8 +217,11 @@ lpRoutes.get('/apy', async (c) => {
   // and we should switch to time-weighted average from the bankroll_event
   // running balance (deferred to v1.x).
   //
-  // The balance comes from the chain read `bankrollPnl` already performed, so
-  // this route issues one sui_getObject per request rather than two.
+  // The balance comes from the chain read the primary `bankrollPnl` already
+  // performed, so the route adds no sui_getObject of its own and the extra
+  // windows skip the read entirely. One denominator for every window also
+  // keeps the percentages comparable, which two reads taken milliseconds
+  // apart would not.
   //
   // A null means that read failed. `apy_pct` goes null for it, but
   // `tvl_approx` still serializes as '0' because the field is a string and the
@@ -203,6 +242,34 @@ lpRoutes.get('/apy', async (c) => {
     ? computeApyPct(netPnl, tvl, APY_WINDOW_DAYS)
     : null;
 
+  // What the LP page renders. `realized_pct` is the window's result with no
+  // annualization; `annualized_pct` is the same number scaled by 365/days and
+  // is kept for operators, not for display. Both share the primary window's
+  // TVL and inherit the same data-quality gate as apy_pct above, so a lagging
+  // aggregate cannot leak a figure a depositor would anchor on.
+  // A window whose aggregate failed is dropped rather than reported with null
+  // figures: the frontend looks each window up by day count and already
+  // renders a miss as "requires fresh data", so an omission degrades exactly
+  // like a null would without claiming the window was computed.
+  const windows = settled.flatMap((s, i) => {
+    const days = windowDays[i];
+    if (s.status === 'rejected') {
+      const err = s.reason;
+      console.warn(
+        `[lp] bankrollPnl ${days}d window failed, omitting: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return [];
+    }
+    const windowNetPnl = BigInt(s.value.net_pnl);
+    const usable = pnl.data_quality === 'fresh' && tvl !== null;
+    return [{
+      days,
+      net_pnl: s.value.net_pnl,
+      realized_pct: usable ? computeRealizedPct(windowNetPnl, tvl!) : null,
+      annualized_pct: usable ? computeApyPct(windowNetPnl, tvl!, days) : null,
+    }];
+  });
+
   const payload = {
     window_days: APY_WINDOW_DAYS,
     apy_pct: apyPct,
@@ -210,7 +277,8 @@ lpRoutes.get('/apy', async (c) => {
     tvl_approx: tvl !== null ? tvl.toString() : '0',
     data_quality: pnl.data_quality,
     cursor_lag_ms: pnl.cursor_lag_ms,
-    note: 'apy_pct uses current TVL as window mean approximation; v1 only.',
+    windows,
+    note: 'realized_pct is the window result as-is; annualized_pct scales it by 365/days and is not for display. TVL is the current pool balance used as the window mean; v1 only.',
     generated_at: Date.now(),
   };
 
@@ -302,6 +370,11 @@ lpRoutes.get('/positions/:address', async (c) => {
   // (actor, timestamp_ms, shares) against bankroll_event.liquidity_provided.
   // The triple is effectively unique — two deposits at the same ms with the
   // exact same share count is astronomically unlikely.
+  //
+  // Scoped to the live pool (migration 009) so a deposit into the pool retired
+  // by the v8 fresh genesis can never supply the amount for a live LPToken.
+  // The positions themselves come from chain and were never affected; this
+  // keeps the one DB-sourced field on the same footing.
   const depositRows = await reader()<{ ts: string; shares: string; amount: string }[]>`
     SELECT timestamp_ms::text AS ts,
            shares::text       AS shares,
@@ -309,6 +382,7 @@ lpRoutes.get('/positions/:address', async (c) => {
     FROM gostop.bankroll_event
     WHERE event_type = 'liquidity_provided'
       AND actor = ${address}
+      AND pool_object_id = ${BANKROLL_POOL.bankrollPoolObjectId}
   `;
   const depositLookup = new Map<string, string>();
   for (const row of depositRows) {
