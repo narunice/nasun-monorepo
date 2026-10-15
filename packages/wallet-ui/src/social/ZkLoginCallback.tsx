@@ -18,7 +18,12 @@ export interface ZkLoginCallbackProps {
   onSuccess?: (state: ZkLoginState) => void | Promise<void>;
   /** Callback when login fails */
   onError?: (error: Error) => void;
-  /** URL to redirect after success (if onSuccess not provided) */
+  /**
+   * URL to redirect after success (if onSuccess not provided), and where a
+   * visit with nothing to process is sent. Defaults to the app's base path,
+   * not to '/': network-explorer serves under /devnet/, so a bare '/' would
+   * land on a path that is not served.
+   */
   redirectUrl?: string;
   /** Custom loading component */
   loadingComponent?: React.ReactNode;
@@ -49,7 +54,7 @@ const stepProgress: Record<Step, number> = {
 export function ZkLoginCallback({
   onSuccess,
   onError,
-  redirectUrl = '/',
+  redirectUrl = import.meta.env.BASE_URL || '/',
   loadingComponent,
   errorComponent,
 }: ZkLoginCallbackProps) {
@@ -146,14 +151,41 @@ export function ZkLoginCallback({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCallback, jwt, callbackError]);
 
-  // Not a callback URL (skip if already processing or completed)
-  // After successful login, state.proof is set and isCallback becomes false
-  if (!isCallback && !isProcessingRef.current && step === 'verifying') {
+  // Nothing to process: the URL carries no OAuth response and no login is in
+  // flight. The usual cause is an already-signed-in user reaching this route
+  // again (back navigation, a restored tab, a bookmark), since the proof lives
+  // in localStorage while the pending session is per-tab sessionStorage.
+  // Hosts mount this component as a full-screen overlay, so rendering a bare
+  // message here stranded the user with the app unreachable behind it. Send
+  // them back instead.
+  const hasNothingToProcess =
+    !isCallback && !isProcessingRef.current && step === 'verifying';
+
+  // Guard against a reload loop if a host mounts this at redirectUrl itself.
+  const canRedirectAway =
+    typeof window !== 'undefined' &&
+    window.location.pathname !==
+      new URL(redirectUrl, window.location.origin).pathname;
+
+  useEffect(() => {
+    if (!hasNothingToProcess || !canRedirectAway) return;
+    window.location.replace(redirectUrl);
+  }, [hasNothingToProcess, canRedirectAway, redirectUrl]);
+
+  if (hasNothingToProcess) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 h-full p-6">
+      <div className="flex flex-col items-center justify-center flex-1 h-full p-6 gap-4">
         <p className="text-gray-500 dark:text-gray-400">
-          Invalid callback URL
+          {canRedirectAway ? 'Returning to the app...' : 'Nothing to sign in with here.'}
         </p>
+        {!canRedirectAway && (
+          <a
+            href={redirectUrl}
+            className="px-4 py-2 rounded-lg bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+          >
+            Back to App
+          </a>
+        )}
       </div>
     );
   }
