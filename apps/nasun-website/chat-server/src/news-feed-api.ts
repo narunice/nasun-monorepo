@@ -86,6 +86,51 @@ const parser = new XMLParser({
   htmlEntities: false,
 });
 
+// The XML parser runs with processEntities/htmlEntities off so a hostile feed
+// cannot mount an entity-expansion attack through a custom DOCTYPE. That leaves
+// every character reference in the source text verbatim, which is how headlines
+// reached the UI reading "Combinator&#39;s". Decode a fixed set here instead:
+// one pass, no recursion, so "&amp;lt;" decodes to "&lt;" and stops.
+// Null-prototype: a feed title containing `&constructor;` would otherwise
+// resolve to Object.prototype's member, which is not nullish, so the `??`
+// fallback below could not catch it.
+const NAMED_ENTITIES: Record<string, string> = Object.assign(Object.create(null), {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  mdash: '\u2014', ndash: '\u2013', hellip: '\u2026',
+  lsquo: '\u2018', rsquo: '\u2019', ldquo: '\u201c', rdquo: '\u201d',
+});
+
+function codePointToText(code: number): string | null {
+  // Reject surrogates, out-of-range values and C0/C1 controls other than
+  // whitespace, so a decoded reference can never inject a control character.
+  if (!Number.isInteger(code) || code <= 0 || code > 0x10ffff) return null;
+  if (code >= 0xd800 && code <= 0xdfff) return null;
+  if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) return null;
+  if (code >= 0x7f && code <= 0x9f) return null;
+  return String.fromCodePoint(code);
+}
+
+export function decodeHtmlEntities(text: string): string {
+  return text.replace(
+    /&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z][a-zA-Z0-9]{1,31}));/g,
+    (match, dec: string | undefined, hex: string | undefined, name: string | undefined) => {
+      if (dec !== undefined) return codePointToText(Number.parseInt(dec, 10)) ?? match;
+      if (hex !== undefined) return codePointToText(Number.parseInt(hex, 16)) ?? match;
+      return NAMED_ENTITIES[name!.toLowerCase()] ?? match;
+    },
+  );
+}
+
+/**
+ * Strip real markup first, then decode. Decoding first would turn an escaped
+ * bracket in the headline itself into a tag and delete the text inside it, so
+ * "Why BTC &lt;$90K&gt; Matters" lost its middle. The result is served as JSON
+ * and rendered as React text, never as HTML, so decoded brackets stay inert.
+ */
+export function toPlainText(raw: string): string {
+  return decodeHtmlEntities(raw.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+}
+
 function generateRssId(source: string, title: string): string {
   let hash = 0;
   const str = `${source}:${title}`;
@@ -124,11 +169,11 @@ function parseRssItems(xml: string, feedConfig: RssFeedConfig): NewsItem[] {
     const items: unknown[] = Array.isArray(channel.item) ? channel.item : [channel.item];
     return items.slice(0, 10).map((item: unknown) => {
       const entry = item as Record<string, unknown>;
-      const title = String(entry.title || '').trim();
+      const title = toPlainText(String(entry.title || ''));
       const rawLink = String(entry.link || '').trim();
       // https:// only - block javascript:/data: URI injection.
       const link = rawLink.startsWith('https://') ? rawLink : '';
-      const description = String(entry.description || '').replace(/<[^>]*>/g, '').trim();
+      const description = toPlainText(String(entry.description || ''));
       const pubDate = String(entry.pubDate || '');
       const timestamp = pubDate ? new Date(pubDate).getTime() : Date.now();
       const imageUrl = extractImageUrl(entry);
@@ -221,7 +266,8 @@ function tweetToNewsItem(
   const user = userMap.get(tweet.author_id);
   const username = user?.username || 'unknown';
   const timestamp = new Date(tweet.created_at).getTime();
-  const cleanText = tweet.text.replace(/https?:\/\/\S+/g, '').trim();
+  // The X API escapes &, < and > in tweet text, so it needs the same decode.
+  const cleanText = decodeHtmlEntities(tweet.text.replace(/https?:\/\/\S+/g, '')).trim();
   let imageUrl: string | undefined;
   if (tweet.attachments?.media_keys) {
     for (const key of tweet.attachments.media_keys) {
