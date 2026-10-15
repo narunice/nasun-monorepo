@@ -239,13 +239,23 @@ export async function reconcileFromRpc(
 
   const dayStartMs = new Date(`${targetDate}T00:00:00Z`).getTime();
   const dayEndMs = dayStartMs + 86_400_000;
+  // Bound the existing-set with the same UTC instants the RPC scan uses.
+  // `${targetDate}::date` compared against a timestamptz resolves at the
+  // SERVER timezone (this box runs Europe/Berlin), so the two windows sat one
+  // to two hours apart depending on DST. Activity in the last UTC hours of the
+  // day was scanned but not recognised as already recorded, and the gap insert
+  // below then added a second row for a category that is capped at one per day,
+  // double-crediting it. ISO strings carry an explicit Z, so the bound no
+  // longer depends on the server's timezone.
+  const dayStartIso = new Date(dayStartMs).toISOString();
+  const dayEndIso = new Date(dayEndMs).toISOString();
 
   // Load existing (identity, category) pairs for this date to skip already-recorded
   const existingRows = await pointsDb`
     SELECT DISTINCT identity_id, category
     FROM activity_points
-    WHERE tx_timestamp >= ${targetDate}::date
-      AND tx_timestamp < (${targetDate}::date + interval '1 day')
+    WHERE tx_timestamp >= ${dayStartIso}::timestamptz
+      AND tx_timestamp < ${dayEndIso}::timestamptz
       AND base_points > 0 AND NOT flagged
   `;
   const existing = new Set<string>();
