@@ -39,25 +39,30 @@ function ReturnStat({
   days,
   window: w,
   loading,
+  emptyPool,
 }: {
   days: number;
   window: LpReturnWindow | undefined;
   loading: boolean;
+  /** Pool balance is zero on fresh data, so the percentage has no divisor. */
+  emptyPool: boolean;
 }) {
   const pct = w?.realized_pct ?? null;
   const sign = pct !== null && pct > 0 ? '+' : '';
-  // Three distinct states, not two. A window the backend never reported means
-  // its aggregate failed or the day counts drifted apart, which is a different
-  // fault from the data-quality gate nulling a window it did compute, and
-  // labelling both "requires fresh data" would hide the first behind the
-  // second.
+  // Four distinct states. A window the backend never reported means its
+  // aggregate failed or the day counts drifted apart; a window it reported as
+  // null means the data-quality gate withheld it; and computeRealizedPct also
+  // returns null for a zero TVL, which is an empty pool rather than anything
+  // being stale. Collapsing these would blame the indexer for a drained pool.
   const subnote = loading
     ? undefined
     : pct !== null
       ? 'realized, not annualized'
       : w === undefined
         ? 'window unavailable'
-        : 'requires fresh data';
+        : emptyPool
+          ? 'no pool balance'
+          : 'requires fresh data';
   return (
     <Stat
       label={`${days}d return`}
@@ -149,6 +154,7 @@ function PoolOverviewSection() {
             days={days}
             window={apy?.windows?.find((w) => w.days === days)}
             loading={apyLoading}
+            emptyPool={apy?.data_quality === 'fresh' && apy.tvl_approx === '0'}
           />
         ))}
         <Stat
