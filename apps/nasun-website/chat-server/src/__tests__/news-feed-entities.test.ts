@@ -49,4 +49,15 @@ describe('toPlainText', () => {
   it('removes real markup and collapses whitespace', () => {
     expect(toPlainText('<p>Hello   <b>world</b></p>')).toBe('Hello world');
   });
+
+  it('keeps a CDATA headline whose brackets are literal', () => {
+    // A feed that CDATA-wraps the title delivers the brackets unescaped, so a
+    // bare <...> strip would delete the middle of the headline.
+    expect(toPlainText('Why BTC <$90K> Matters')).toBe('Why BTC <$90K> Matters');
+    expect(toPlainText('Rates <3% and falling')).toBe('Rates <3% and falling');
+  });
+
+  it('still strips tags that a CDATA title carries', () => {
+    expect(toPlainText('<em>Why</em> BTC <$90K> Matters')).toBe('Why BTC <$90K> Matters');
+  });
 })

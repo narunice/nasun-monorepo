@@ -122,13 +122,22 @@ export function decodeHtmlEntities(text: string): string {
 }
 
 /**
- * Strip real markup first, then decode. Decoding first would turn an escaped
- * bracket in the headline itself into a tag and delete the text inside it, so
- * "Why BTC &lt;$90K&gt; Matters" lost its middle. The result is served as JSON
- * and rendered as React text, never as HTML, so decoded brackets stay inert.
+ * Strip markup, then decode. Both halves are narrower than they look.
+ *
+ * The pattern only matches a tag-shaped run, meaning a name that starts with a
+ * letter. A bare `<...>` pattern loses headline text either way round: strip
+ * first and a CDATA-wrapped "Why BTC <$90K> Matters" has its middle deleted,
+ * decode first and the same headline arriving escaped as "&lt;$90K&gt;" does.
+ * Requiring the letter keeps both, since `$90K` cannot open a tag.
+ *
+ * Decoding last means a decoded bracket is never re-read as markup. The result
+ * is served as JSON and rendered as React text, never as HTML, so an escaped
+ * `&lt;script&gt;` surfacing as literal text is inert.
  */
 export function toPlainText(raw: string): string {
-  return decodeHtmlEntities(raw.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+  return decodeHtmlEntities(raw.replace(/<\/?[a-zA-Z][^>]*>/g, ''))
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function generateRssId(source: string, title: string): string {
