@@ -106,6 +106,10 @@ let lastReconcileDate = '';
 // (which used to use 2-part keys) in lockstep with processBatch's warm-up.
 // Cleared on date rollover (scanLoop top + processBatch) and chain reset.
 let dailyCategorySeen = new Set<string>();
+// The UTC day whose cap set was actually loaded from the database. Separate
+// from dailyCategoryDate, which only tracks which day the set is keyed for: a
+// failed warm-up must not pass an empty set off as a loaded one.
+let dailyCapWarmedDate = '';
 
 // Unmapped event detection (Phase 2 of points-audit plan).
 // Single-instance scanner (PM2 fork mode) — no cross-worker sync needed.
@@ -270,6 +274,11 @@ async function scanLoop(myGen: number): Promise<void> {
       if (todayCap !== dailyCategoryDate) {
         dailyCategorySeen = new Set();
         dailyCategoryDate = todayCap;
+      }
+      // Retry a warm-up that failed, and re-load once after the UTC rollover
+      // so rows another path wrote for the new day are in the set.
+      if (todayCap !== dailyCapWarmedDate) {
+        await warmUpDailyCategoryCap();
       }
     }
 
@@ -484,7 +493,6 @@ async function scanLoop(myGen: number): Promise<void> {
 async function warmUpDailyCategoryCap(): Promise<void> {
   if (!pointsDb) return;
   const today = new Date().toISOString().slice(0, 10);
-  dailyCategoryDate = today;
   // The cap key is the UTC date (processBatch derives it the same way), so the
   // window that loads the set has to be the UTC day too. A `${today}::date`
   // bound resolves at the server timezone, which both pulled in the previous
@@ -503,15 +511,22 @@ async function warmUpDailyCategoryCap(): Promise<void> {
         AND NOT flagged
     `;
 
-    dailyCategorySeen = new Set();
+    const seen = new Set<string>();
     for (const row of rows) {
       if (row.identity_id) {
         // Cap key matches processBatch(): identity::category::txDate
-        dailyCategorySeen.add(`${row.identity_id}::${row.category}::${today}`);
+        seen.add(`${row.identity_id}::${row.category}::${today}`);
       }
     }
-    console.log(`[Points] Daily cap warm-up: ${dailyCategorySeen.size} entries`);
+    dailyCategorySeen = seen;
+    dailyCategoryDate = today;
+    dailyCapWarmedDate = today;
+    console.log(`[Points] Daily cap warm-up: ${seen.size} entries`);
   } catch (err) {
+    // Deliberately leave dailyCapWarmedDate behind so the scan loop retries.
+    // Marking the day warm here would pass an empty set off as a loaded one,
+    // and every (identity, category) already credited today would be credited
+    // a second time for the rest of the day.
     console.error('[Points] Daily cap warm-up error:', err);
   }
 }
