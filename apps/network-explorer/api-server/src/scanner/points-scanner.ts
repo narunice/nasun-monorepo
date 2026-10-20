@@ -279,6 +279,21 @@ async function scanLoop(myGen: number): Promise<void> {
       // so rows another path wrote for the new day are in the set.
       if (todayCap !== dailyCapWarmedDate) {
         await warmUpDailyCategoryCap();
+        // The await is a yield point, and the warm-up replaces the whole set.
+        // A zombie generation resuming here would overwrite the live
+        // generation's set with its own stale snapshot and drop the cap keys
+        // that generation had added, so check before anything reads it.
+        if (!isCurrentGen(myGen)) return;
+        // An empty set is not a cap. Running the rest of this cycle without
+        // one re-credits every (identity, category) already recorded today,
+        // which is worse than waiting: the next cycle retries in a minute and
+        // the nightly reconcile covers anything still missing.
+        if (dailyCapWarmedDate !== todayCap) {
+          console.warn(
+            '[Points] Skipping cycle: daily cap set is not loaded, so the per-day cap cannot be enforced.',
+          );
+          return;
+        }
       }
     }
 
