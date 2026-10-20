@@ -485,13 +485,20 @@ async function warmUpDailyCategoryCap(): Promise<void> {
   if (!pointsDb) return;
   const today = new Date().toISOString().slice(0, 10);
   dailyCategoryDate = today;
+  // The cap key is the UTC date (processBatch derives it the same way), so the
+  // window that loads the set has to be the UTC day too. A `${today}::date`
+  // bound resolves at the server timezone, which both pulled in the previous
+  // UTC day's last hours (keyed as today, blocking a legitimate first credit)
+  // and left out today's last hours (letting a second event credit again).
+  const todayStartIso = `${today}T00:00:00.000Z`;
+  const todayEndIso = new Date(Date.parse(todayStartIso) + 86_400_000).toISOString();
 
   try {
     const rows = await pointsDb`
       SELECT DISTINCT identity_id, category
       FROM activity_points
-      WHERE tx_timestamp >= ${today}::date
-        AND tx_timestamp < (${today}::date + interval '1 day')
+      WHERE tx_timestamp >= ${todayStartIso}::timestamptz
+        AND tx_timestamp < ${todayEndIso}::timestamptz
         AND base_points > 0
         AND NOT flagged
     `;

@@ -125,12 +125,20 @@ export async function reconcileTodayForIdentity(
 
   // Existing categories already recorded today for this identity. Live scanner
   // enforces a 1-row-per-(identity,category)-per-day cap; we honor it here.
+  //
+  // Bound this with the same UTC instants the event sweep below uses. A
+  // `${targetDate}::date` comparison against a timestamptz resolves at the
+  // server timezone, so on this box the two windows sat one to two hours
+  // apart: activity in the last UTC hours of the day was swept but not seen as
+  // already recorded, and the row below was inserted a second time.
+  const dayStartIso = new Date(dayStartMs).toISOString();
+  const dayEndIso = new Date(dayEndMs).toISOString();
   const existingRows = await pointsDb`
     SELECT DISTINCT category
     FROM activity_points
     WHERE identity_id = ${identityId}
-      AND tx_timestamp >= ${targetDate}::date
-      AND tx_timestamp < (${targetDate}::date + interval '1 day')
+      AND tx_timestamp >= ${dayStartIso}::timestamptz
+      AND tx_timestamp < ${dayEndIso}::timestamptz
       AND base_points > 0 AND NOT flagged
   `;
   const existing = new Set<string>(existingRows.map((r) => r.category as string));
