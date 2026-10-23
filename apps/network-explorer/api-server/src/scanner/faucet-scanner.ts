@@ -11,13 +11,17 @@
  * Design:
  * - Runs once per scanLoop, after event batch processing
  * - Uses the indexer DB (sql) to find faucet calls by registered wallets
- * - Applies dailyCategorySeen cap (shared with main scanner)
+ * - Daily category cap is enforced by insertDailyCappedPoints (one row per
+ *   identity/category/UTC day, decided inside the INSERT)
  * - Synthetic tx_digest format: faucet:{walletAddress}:{YYYY-MM-DD}
  * - Idempotency: UNIQUE(tx_digest, activity_type, event_seq) + ON CONFLICT DO NOTHING
  */
 
 import { sql, pointsDb } from '../db.js';
-import type { PointsInsert } from './referral-bonus.js';
+import {
+  insertDailyCappedPoints,
+  type CappedPointsInsert,
+} from './daily-capped-insert.js';
 
 // All known package IDs (hex, no 0x prefix) for faucet contracts.
 // tx_calls_fun stores the RUNTIME (upgraded) package ID, not the original.
@@ -40,12 +44,10 @@ let lastFaucetSeq = 0;
  * Scan for faucet claims and insert activity points.
  *
  * @param registeredWallets - Map<walletAddress, identityId>
- * @param dailyCategorySeen - Shared daily cap Set from main scanner
  * @returns Number of points rows inserted
  */
 export async function scanFaucetClaims(
   registeredWallets: Map<string, string>,
-  dailyCategorySeen: Set<string>,
 ): Promise<number> {
   if (!pointsDb || registeredWallets.size === 0) return 0;
 
@@ -98,20 +100,12 @@ export async function scanFaucetClaims(
     return 0;
   }
 
-  const inserts: PointsInsert[] = [];
-  const pendingCapKeys: string[] = [];
+  const inserts: CappedPointsInsert[] = [];
 
   for (const row of rows) {
     const walletAddress = `0x${row.sender_hex}`;
     const identityId = registeredWallets.get(walletAddress.toLowerCase());
     if (!identityId) continue;
-
-    // Daily category cap (shared with main scanner). Key MUST match
-    // processBatch's 3-part format so the warm-up Set is honored and
-    // self-added keys naturally expire on date rollover.
-    const txDate = new Date(Number(row.timestamp_ms)).toISOString().slice(0, 10);
-    const capKey = `${identityId}::faucet::${txDate}`;
-    if (dailyCategorySeen.has(capKey)) continue;
 
     // Faucet is a base category: existence-only, final_points always 1
     const basePoints = 1;
@@ -132,34 +126,23 @@ export async function scanFaucetClaims(
       tx_timestamp: new Date(Number(row.timestamp_ms)),
       event_seq: 0,
     });
-    pendingCapKeys.push(capKey);
   }
 
-  if (inserts.length > 0) {
-    await pointsDb`
-      INSERT INTO activity_points ${pointsDb(inserts,
-        'wallet_address', 'identity_id', 'tx_digest', 'tx_sequence_number',
-        'category', 'activity_type', 'base_points', 'volume_tier',
-        'genesis_multiplier', 'final_points', 'tx_timestamp', 'event_seq'
-      )}
-      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-    `;
-    // Only mark the cap after the INSERT settles. If the INSERT throws (PG
-    // connection drop, statement timeout), the cap stays clear so the next
-    // cycle can retry the same rows. lastFaucetSeq below is also unchanged
-    // on throw, keeping the cursor on the un-inserted batch.
-    for (const k of pendingCapKeys) dailyCategorySeen.add(k);
-  }
+  // The cap lives in the INSERT, so this returns what actually landed rather
+  // than what was offered. The cursor below only advances once that INSERT has
+  // settled: on throw it stays on the un-inserted batch and the next cycle
+  // retries the same rows.
+  const insertedRows = await insertDailyCappedPoints(inserts);
 
   const newLastSeq = rows[rows.length - 1].tx_sequence_number;
   lastFaucetSeq = newLastSeq;
   await updateFaucetState(newLastSeq);
 
-  if (inserts.length > 0) {
-    console.log(`[Faucet] Detected ${inserts.length} faucet claims`);
+  if (insertedRows > 0) {
+    console.log(`[Faucet] Recorded ${insertedRows} faucet claims`);
   }
 
-  return inserts.length;
+  return insertedRows;
 }
 
 /**

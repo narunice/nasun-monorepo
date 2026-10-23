@@ -11,14 +11,18 @@
  * Design:
  * - Runs once per scanLoop, after faucet scanning
  * - Fetches GET /api/chat-participation?date=YYYY-MM-DD from configured servers
- * - Applies dailyCategorySeen cap (shared with main scanner)
+ * - Daily category cap is enforced by insertDailyCappedPoints (one row per
+ *   identity/category/UTC day, decided inside the INSERT)
  * - Synthetic tx_digest format: chat:{walletAddress}:{YYYY-MM-DD}
  * - tx_sequence_number: 0 (no on-chain tx)
  * - Idempotent: UNIQUE(tx_digest, activity_type, event_seq) + ON CONFLICT DO NOTHING
  */
 
 import { pointsDb } from '../db.js';
-import type { PointsInsert } from './referral-bonus.js';
+import {
+  insertDailyCappedPoints,
+  type CappedPointsInsert,
+} from './daily-capped-insert.js';
 
 // Array parser retained for future multi-app expansion; current policy is single URL
 // (nasun-chat-server hub). See .claude/handoffs/2026-04-12-chat-server-role-clarification.md
@@ -82,12 +86,10 @@ async function fetchAllChatParticipants(dateStr: string): Promise<Set<string>> {
  * Scan for chat participation and insert activity points.
  *
  * @param registeredWallets - Map<walletAddress (lowercase 0x), identityId>
- * @param dailyCategorySeen - Shared daily cap Set from main scanner
  * @returns Number of points rows inserted
  */
 export async function scanChatParticipation(
   registeredWallets: Map<string, string>,
-  dailyCategorySeen: Set<string>,
 ): Promise<number> {
   if (
     !pointsDb ||
@@ -100,20 +102,12 @@ export async function scanChatParticipation(
   const participants = await fetchAllChatParticipants(today);
   if (participants.size === 0) return 0;
 
-  const inserts: PointsInsert[] = [];
-  const pendingCapKeys: string[] = [];
+  const inserts: CappedPointsInsert[] = [];
 
   for (const addr of participants) {
     const walletAddress = addr.startsWith('0x') ? addr : `0x${addr}`;
     const identityId = registeredWallets.get(walletAddress);
     if (!identityId) continue;
-
-    // 3-part cap key matches processBatch's format. Without the date,
-    // a self-added entry from yesterday would block today's first chat
-    // credit until processBatch's date-rollover reset ran (which is gated
-    // on a non-empty event batch and may lag past midnight).
-    const capKey = `${identityId}::chat::${today}`;
-    if (dailyCategorySeen.has(capKey)) continue;
 
     inserts.push({
       wallet_address: walletAddress,
@@ -129,34 +123,15 @@ export async function scanChatParticipation(
       tx_timestamp: new Date(`${today}T00:00:00.000Z`),
       event_seq: 0,
     });
-    pendingCapKeys.push(capKey);
   }
 
-  if (inserts.length > 0) {
-    await pointsDb`
-      INSERT INTO activity_points ${pointsDb(
-        inserts,
-        'wallet_address',
-        'identity_id',
-        'tx_digest',
-        'tx_sequence_number',
-        'category',
-        'activity_type',
-        'base_points',
-        'volume_tier',
-        'genesis_multiplier',
-        'final_points',
-        'tx_timestamp',
-        'event_seq',
-      )}
-      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-    `;
-    // Mark cap only after INSERT settles. On throw, the cap stays clear so
-    // the next cycle (chat has no cursor; participants are re-fetched every
-    // cycle) can retry until the row lands.
-    for (const k of pendingCapKeys) dailyCategorySeen.add(k);
-    console.log(`[Chat] Recorded ${inserts.length} chat participants`);
+  // Participants are re-fetched every cycle with no cursor, so every one of
+  // today's participants is offered again each time. The INSERT decides: the
+  // cap drops the ones already credited today, and this counts what landed.
+  const insertedRows = await insertDailyCappedPoints(inserts);
+  if (insertedRows > 0) {
+    console.log(`[Chat] Recorded ${insertedRows} chat participants`);
   }
 
-  return inserts.length;
+  return insertedRows;
 }

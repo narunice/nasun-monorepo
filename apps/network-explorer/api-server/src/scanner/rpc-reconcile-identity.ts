@@ -11,8 +11,12 @@
  * (tx_calls_fun, tx_affected_addresses) are unreliable because they are pruned
  * and do not index all user wallet transactions.
  *
- * Daily category cap is preserved by checking `activity_points` for
- * already-recorded (identity, category) pairs first.
+ * Daily category cap: the pre-check below skips RPC work for categories
+ * already recorded today, and insertDailyCappedPoints re-decides it inside the
+ * INSERT. The pre-check alone was not enough -- it snapshots activity_points
+ * once and then pages through RPC for seconds, long enough for the live
+ * scanner to credit the same category from a different transaction, which
+ * carries a different digest and so slips past ON CONFLICT.
  *
  * This is the focused complement to {@link reconcileFromRpc} (which does the
  * full daily safety-net for ALL identities). That function is too expensive
@@ -34,6 +38,10 @@ import {
   hasGenesisPass,
   getActivationsCacheSize,
 } from './ecosystem-cache.js';
+import {
+  insertDailyCappedPoints,
+  type CappedPointsInsert,
+} from './daily-capped-insert.js';
 
 interface RpcEvent {
   id: { txDigest: string; eventSeq: string };
@@ -93,21 +101,6 @@ function base58ToHex(b58: string): string {
   return `0x${n.toString(16).padStart(64, '0')}`;
 }
 
-interface InsertRow {
-  wallet_address: string;
-  identity_id: string;
-  tx_digest: string;
-  tx_sequence_number: number;
-  category: string;
-  activity_type: string;
-  base_points: number;
-  volume_tier: number;
-  genesis_multiplier: number;
-  final_points: string;
-  tx_timestamp: Date;
-  event_seq: number;
-}
-
 /**
  * Fill today's gaps for a single identity. Idempotent (ON CONFLICT DO NOTHING).
  * Returns the number of activity_points rows inserted.
@@ -123,8 +116,10 @@ export async function reconcileTodayForIdentity(
   const dayStartMs = new Date(`${targetDate}T00:00:00Z`).getTime();
   const dayEndMs = dayStartMs + 86_400_000;
 
-  // Existing categories already recorded today for this identity. Live scanner
-  // enforces a 1-row-per-(identity,category)-per-day cap; we honor it here.
+  // Categories already recorded today for this identity, used to skip RPC
+  // work for them. This is an optimization, not the cap: by the time the
+  // INSERT runs this snapshot can be minutes old, so insertDailyCappedPoints
+  // asks the table again in the same statement that writes.
   //
   // Bound this with the same UTC instants the event sweep below uses. A
   // `${targetDate}::date` comparison against a timestamptz resolves at the
@@ -143,7 +138,7 @@ export async function reconcileTodayForIdentity(
   `;
   const existing = new Set<string>(existingRows.map((r) => r.category as string));
 
-  const inserts: InsertRow[] = [];
+  const inserts: CappedPointsInsert[] = [];
 
   // --- RPC events (per-wallet Sender filter) ---
   for (const wallet of wallets) {
@@ -326,15 +321,5 @@ export async function reconcileTodayForIdentity(
     }
   }
 
-  if (inserts.length === 0) return 0;
-
-  const result = await pointsDb`
-    INSERT INTO activity_points ${pointsDb(inserts,
-      'wallet_address', 'identity_id', 'tx_digest', 'tx_sequence_number',
-      'category', 'activity_type', 'base_points', 'volume_tier',
-      'genesis_multiplier', 'final_points', 'tx_timestamp', 'event_seq',
-    )}
-    ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-  `;
-  return result.count;
+  return insertDailyCappedPoints(inserts);
 }

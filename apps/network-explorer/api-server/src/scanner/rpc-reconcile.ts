@@ -32,6 +32,7 @@ import {
   getActivationsCacheSize,
 } from './ecosystem-cache.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
+import { insertDailyCappedPoints } from './daily-capped-insert.js';
 
 // RPC event query config (same structure as backfill-points.ts)
 interface ReconcileQuery {
@@ -250,7 +251,10 @@ export async function reconcileFromRpc(
   const dayStartIso = new Date(dayStartMs).toISOString();
   const dayEndIso = new Date(dayEndMs).toISOString();
 
-  // Load existing (identity, category) pairs for this date to skip already-recorded
+  // Load existing (identity, category) pairs for this date to skip RPC work
+  // for them. This is an optimization, not the cap: the run below pages
+  // through RPC for minutes, so by the time it writes this snapshot is stale.
+  // insertDailyCappedPoints asks the table again inside the INSERT.
   const existingRows = await pointsDb`
     SELECT DISTINCT identity_id, category
     FROM activity_points
@@ -366,41 +370,24 @@ export async function reconcileFromRpc(
     }
   }
 
-  // Bulk INSERT all collected gap rows in a single query
-  let totalFilled = 0;
-  if (gapRows.length > 0) {
-    const wallets = gapRows.map(r => r.wallet);
-    const identityIds = gapRows.map(r => r.identityId);
-    const txDigests = gapRows.map(r => r.txDigest);
-    const categories = gapRows.map(r => r.category);
-    const activityTypes = gapRows.map(r => r.activityType);
-    const basePointsArr = gapRows.map(r => r.basePoints);
-    const genesisMults = gapRows.map(r => r.genesisMult);
-    const finalPointsArr = gapRows.map(r => parseFloat(r.finalPoints));
-    // ISO strings (not Date objects) so postgres.js 3.x serializes as text[]
-    // which PG casts element-wise to timestamptz[]. Passing Date[] fails with
-    // "cannot cast type timestamp with time zone to timestamp with time zone[]".
-    const timestamps = gapRows.map(r => new Date(r.ts).toISOString());
-    const eventSeqs = gapRows.map(r => r.eventSeq);
-    const zeros = gapRows.map(() => 0);
-    const ones = gapRows.map(() => 1.0);
-
-    const insertResult = await pointsDb`
-      INSERT INTO activity_points
-        (wallet_address, identity_id, tx_digest, tx_sequence_number,
-         category, activity_type, base_points, volume_tier,
-         genesis_multiplier, final_points, tx_timestamp, event_seq)
-      SELECT * FROM unnest(
-        ${wallets}::text[], ${identityIds}::text[], ${txDigests}::text[], ${zeros}::int[],
-        ${categories}::text[], ${activityTypes}::text[], ${basePointsArr}::numeric[], ${ones}::numeric[],
-        ${genesisMults}::numeric[], ${finalPointsArr}::numeric[], ${timestamps}::timestamptz[], ${eventSeqs}::int[]
-      ) AS t(wallet_address, identity_id, tx_digest, tx_sequence_number,
-             category, activity_type, base_points, volume_tier,
-             genesis_multiplier, final_points, tx_timestamp, event_seq)
-      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-    `;
-    totalFilled = insertResult.count;
-  }
+  // Bulk INSERT all collected gap rows, with the daily cap re-decided against
+  // the table inside the statement that writes.
+  const totalFilled = await insertDailyCappedPoints(
+    gapRows.map((r) => ({
+      wallet_address: r.wallet,
+      identity_id: r.identityId,
+      tx_digest: r.txDigest,
+      tx_sequence_number: 0,
+      category: r.category,
+      activity_type: r.activityType,
+      base_points: r.basePoints,
+      volume_tier: 1.0,
+      genesis_multiplier: r.genesisMult,
+      final_points: r.finalPoints,
+      tx_timestamp: new Date(r.ts),
+      event_seq: r.eventSeq,
+    })),
+  );
 
   // Always refresh matview + run snapshot correction, even when no gaps were
   // filled this cycle. The 2026-05-03 incident wrote base=0 to a snapshot

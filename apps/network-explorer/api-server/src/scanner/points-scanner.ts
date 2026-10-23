@@ -12,8 +12,11 @@ import {
 import {
   maybeRefreshReferralCache,
   updateIdentityToWalletMap,
-  type PointsInsert,
 } from './referral-bonus.js';
+import {
+  insertDailyCappedPoints,
+  type CappedPointsInsert,
+} from './daily-capped-insert.js';
 import { runDailyReferralBonus } from './daily-referral-bonus.js';
 import {
   maybeRefreshActivationsCache,
@@ -100,17 +103,6 @@ async function runScanLoopSafely(): Promise<void> {
 let lastSnapshotDate = '';
 let lastReconcileDate = '';
 
-// Daily category cap: only one base_points insert per (identity, category) per day.
-// Key format: "identityId::category::YYYY-MM-DD" (3-part). The date suffix lets
-// stale entries expire naturally on rollover and keeps faucet/chat-scanner
-// (which used to use 2-part keys) in lockstep with processBatch's warm-up.
-// Cleared on date rollover (scanLoop top + processBatch) and chain reset.
-let dailyCategorySeen = new Set<string>();
-// The UTC day whose cap set was actually loaded from the database. Separate
-// from dailyCategoryDate, which only tracks which day the set is keyed for: a
-// failed warm-up must not pass an empty set off as a loaded one.
-let dailyCapWarmedDate = '';
-
 // Unmapped event detection (Phase 2 of points-audit plan).
 // Single-instance scanner (PM2 fork mode) — no cross-worker sync needed.
 const UNMAPPED_MAX = 1000;                          // cardinality safety cap
@@ -119,7 +111,6 @@ const UNMAPPED_RESET_GRACE_MS = 60_000;             // 60s after reset, suppress
 const unmappedSeen = new Map<string, number>();     // key -> lastSeenMs (insertion order = LRU FIFO via delete+set)
 let unmappedResetAt = Date.now();
 let unmappedSuppressedSinceReset = 0;
-let dailyCategoryDate = '';
 
 // --- Public API ---
 
@@ -147,13 +138,6 @@ export function startPointsScanner(): void {
       await checkEcosystemMatviewVersion();
     } catch (err) {
       console.error('[Points] Matview version check failed:', (err as Error).message);
-    }
-    try {
-      // (Referral bonus warm-up removed: bonuses are batched once per UTC
-      //  day in daily-referral-bonus.ts; no in-process accumulator state.)
-      await warmUpDailyCategoryCap();
-    } catch (err) {
-      console.error('[Points] Warm-up failed:', (err as Error).message);
     }
     try {
       await runScanLoopSafely();
@@ -264,39 +248,6 @@ async function scanLoop(myGen: number): Promise<void> {
     await maybeRefreshActivationsCache();
     if (!isCurrentGen(myGen)) return;
 
-    // Date-rollover reset, scanLoop-scoped. processBatch already does this
-    // but only when the main event batch has rows. Faucet/chat scanners run
-    // regardless of event activity, so without this top-level check, a quiet
-    // main loop right after UTC midnight would leave stale yesterday cap
-    // keys blocking today's first chat/faucet credit.
-    {
-      const todayCap = new Date().toISOString().slice(0, 10);
-      if (todayCap !== dailyCategoryDate) {
-        dailyCategorySeen = new Set();
-        dailyCategoryDate = todayCap;
-      }
-      // Retry a warm-up that failed, and re-load once after the UTC rollover
-      // so rows another path wrote for the new day are in the set.
-      if (todayCap !== dailyCapWarmedDate) {
-        await warmUpDailyCategoryCap();
-        // The await is a yield point, and the warm-up replaces the whole set.
-        // A zombie generation resuming here would overwrite the live
-        // generation's set with its own stale snapshot and drop the cap keys
-        // that generation had added, so check before anything reads it.
-        if (!isCurrentGen(myGen)) return;
-        // An empty set is not a cap. Running the rest of this cycle without
-        // one re-credits every (identity, category) already recorded today,
-        // which is worse than waiting: the next cycle retries in a minute and
-        // the nightly reconcile covers anything still missing.
-        if (dailyCapWarmedDate !== todayCap) {
-          console.warn(
-            '[Points] Skipping cycle: daily cap set is not loaded, so the per-day cap cannot be enforced.',
-          );
-          return;
-        }
-      }
-    }
-
     let lastSeq = await getLastProcessedSequence();
 
     while (true) {
@@ -304,7 +255,7 @@ async function scanLoop(myGen: number): Promise<void> {
       const batch = await fetchEventBatch(lastSeq, BATCH_SIZE);
       if (batch.length === 0) break;
 
-      const { count: inserted } = await processBatch(batch);
+      const inserted = await processBatch(batch);
       totalProcessed += inserted;
 
       // (Per-batch referral bonus calc removed; runs once per UTC day in
@@ -322,9 +273,7 @@ async function scanLoop(myGen: number): Promise<void> {
 
     // Faucet detection: scan tx_calls_fun for faucet claims (no Move events)
     try {
-      const faucetCount = await scanFaucetClaims(
-        registeredWallets, dailyCategorySeen,
-      );
+      const faucetCount = await scanFaucetClaims(registeredWallets);
       totalProcessed += faucetCount;
     } catch (err) {
       console.error('[Faucet] Scan error (non-fatal):', (err as Error).message);
@@ -332,9 +281,7 @@ async function scanLoop(myGen: number): Promise<void> {
 
     // Chat participation detection: query chat server REST APIs (off-chain)
     try {
-      const chatCount = await scanChatParticipation(
-        registeredWallets, dailyCategorySeen,
-      );
+      const chatCount = await scanChatParticipation(registeredWallets);
       totalProcessed += chatCount;
     } catch (err) {
       console.error('[Chat] Scan error (non-fatal):', (err as Error).message);
@@ -503,49 +450,6 @@ async function scanLoop(myGen: number): Promise<void> {
   }
 }
 
-// --- Daily category cap warm-up ---
-
-async function warmUpDailyCategoryCap(): Promise<void> {
-  if (!pointsDb) return;
-  const today = new Date().toISOString().slice(0, 10);
-  // The cap key is the UTC date (processBatch derives it the same way), so the
-  // window that loads the set has to be the UTC day too. A `${today}::date`
-  // bound resolves at the server timezone, which both pulled in the previous
-  // UTC day's last hours (keyed as today, blocking a legitimate first credit)
-  // and left out today's last hours (letting a second event credit again).
-  const todayStartIso = `${today}T00:00:00.000Z`;
-  const todayEndIso = new Date(Date.parse(todayStartIso) + 86_400_000).toISOString();
-
-  try {
-    const rows = await pointsDb`
-      SELECT DISTINCT identity_id, category
-      FROM activity_points
-      WHERE tx_timestamp >= ${todayStartIso}::timestamptz
-        AND tx_timestamp < ${todayEndIso}::timestamptz
-        AND base_points > 0
-        AND NOT flagged
-    `;
-
-    const seen = new Set<string>();
-    for (const row of rows) {
-      if (row.identity_id) {
-        // Cap key matches processBatch(): identity::category::txDate
-        seen.add(`${row.identity_id}::${row.category}::${today}`);
-      }
-    }
-    dailyCategorySeen = seen;
-    dailyCategoryDate = today;
-    dailyCapWarmedDate = today;
-    console.log(`[Points] Daily cap warm-up: ${seen.size} entries`);
-  } catch (err) {
-    // Deliberately leave dailyCapWarmedDate behind so the scan loop retries.
-    // Marking the day warm here would pass an empty set off as a loaded one,
-    // and every (identity, category) already credited today would be credited
-    // a second time for the rest of the day.
-    console.error('[Points] Daily cap warm-up error:', err);
-  }
-}
-
 // --- Chain reset detection ---
 
 async function detectChainReset(): Promise<void> {
@@ -577,8 +481,6 @@ async function detectChainReset(): Promise<void> {
       );
       console.warn('[Points] Purging old activity_points and resetting scanner');
       await pointsDb`TRUNCATE activity_points`;
-      dailyCategorySeen = new Set();
-      dailyCategoryDate = '';
       resetFaucetScanner();
       resetWalletTransferScanner();
       await pointsDb`
@@ -727,19 +629,10 @@ async function fetchEventBatch(
 
 // --- Batch processing ---
 
-async function processBatch(
-  batch: RawEvent[],
-): Promise<{ count: number; inserts: PointsInsert[] }> {
-  if (!pointsDb) return { count: 0, inserts: [] };
+async function processBatch(batch: RawEvent[]): Promise<number> {
+  if (!pointsDb) return 0;
 
-  // Daily category cap: reset on date rollover
-  const today = new Date().toISOString().slice(0, 10);
-  if (today !== dailyCategoryDate) {
-    dailyCategorySeen = new Set();
-    dailyCategoryDate = today;
-  }
-
-  const inserts: PointsInsert[] = [];
+  const inserts: CappedPointsInsert[] = [];
 
   for (const event of batch) {
     const mapping = getEventMapping(
@@ -769,18 +662,6 @@ async function processBatch(
 
     // Phase 1: only score registered wallets
     if (!identityId) continue;
-
-    // Daily category cap: 1 base_points insert per (identity, category, day).
-    // The day component MUST be the transaction's UTC date, not the process's
-    // current date — without this, a re-scan that walks historical events
-    // (e.g. after a chain reset clearing activity_points) would skip every
-    // (identity, category) pair after its first occurrence regardless of date,
-    // collapsing all historical activity into a single per-pair row. The
-    // integrity guard on activity_points currently makes this scenario
-    // unreachable, but the keying is documented as the safety net here too.
-    const txDate = new Date(Number(event.timestamp_ms)).toISOString().slice(0, 10);
-    const capKey = `${identityId}::${mapping.category}::${txDate}`;
-    if (dailyCategorySeen.has(capKey)) continue;
 
     // Score categories: apply genesis multiplier. Base categories: always 1.
     const isScoreCat = SCORE_CATEGORIES.has(mapping.category);
@@ -816,19 +697,14 @@ async function processBatch(
       tx_timestamp: new Date(Number(event.timestamp_ms)),
       event_seq: event.event_sequence_number,
     });
-
-    dailyCategorySeen.add(capKey);
   }
 
-  if (inserts.length === 0) return { count: 0, inserts: [] };
-
-  // Bulk insert with ON CONFLICT DO NOTHING (idempotent)
-  const result = await pointsDb`
-    INSERT INTO activity_points ${pointsDb(inserts, 'wallet_address', 'identity_id', 'tx_digest', 'tx_sequence_number', 'category', 'activity_type', 'base_points', 'volume_tier', 'genesis_multiplier', 'final_points', 'tx_timestamp', 'event_seq')}
-    ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-  `;
-
-  return { count: result.count, inserts };
+  // The daily cap is enforced by the INSERT itself: one base_points row per
+  // (identity, category, UTC day of the transaction), decided against the
+  // table rather than against a snapshot of it. The day comes from the event,
+  // so a re-scan of historical events caps each day separately instead of
+  // collapsing a category's whole history into one row.
+  return insertDailyCappedPoints(inserts);
 }
 
 // --- Wallet cache ---
