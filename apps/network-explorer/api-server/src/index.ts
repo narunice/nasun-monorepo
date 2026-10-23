@@ -18,6 +18,8 @@ import agentsRoutes from './routes/agents.js';
 import vaultsRoutes from './routes/vaults.js';
 import predictionRoutes from './routes/prediction.js';
 import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
+import { isTransientPgError, pgErrorCode } from './lib/transient-pg-error.js';
+import { handleHttpError } from './lib/http-error-handler.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
 
@@ -40,6 +42,11 @@ app.use(
       'http://localhost:4173',
     ],
     maxAge: 3600,
+    // Without this, a browser caller cannot read Retry-After at all: it is not
+    // a CORS-safelisted response header. Both 503 paths send it (the transient
+    // connection error in lib/http-error-handler.ts and the memoised stats
+    // failures in routes/stats.ts), and neither was reachable from nasun.io.
+    exposeHeaders: ['Retry-After'],
   }),
 );
 
@@ -88,10 +95,7 @@ app.get('/', (c) => c.json({ service: 'explorer-api', version: '0.1.0' }));
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 
 // Error handler
-app.onError((err, c) => {
-  console.error('Unhandled error:', err);
-  return c.json({ error: 'internal_server_error' }, 500);
-});
+app.onError(handleHttpError);
 
 // Graceful shutdown
 async function shutdown() {
@@ -108,13 +112,12 @@ process.on('SIGINT', shutdown);
 
 // Safety net: log unhandled rejections from background tasks (scanner timers,
 // cron callbacks) that escaped all try-catch blocks.
-// Postgres connection drops (CONNECTION_ENDED / CONNECTION_DESTROYED) are transient;
-// the pool reconnects automatically so we just log them rather than crashing.
-const TRANSIENT_PG_CODES = new Set(['CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'CONNECTION_CLOSED']);
+// Postgres connection drops are transient; the pool reconnects automatically
+// so we just log them rather than crashing. Same classifier the error handler
+// above uses, so the two cannot drift apart.
 process.on('unhandledRejection', (err) => {
-  const code = (err as any)?.code;
-  if (TRANSIENT_PG_CODES.has(code)) {
-    console.warn('[WARN] Transient postgres connection error (ignored):', code);
+  if (isTransientPgError(err)) {
+    console.warn('[WARN] Transient postgres connection error (ignored):', pgErrorCode(err));
     return;
   }
   console.error('[FATAL] UnhandledRejection:', err);
