@@ -1,10 +1,17 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import FadeInUp from "./FadeInUp";
 
 export default function DevHomeHeroSection() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
+  // Width alone lets a phone through in landscape (844-915 CSS px), which is
+  // exactly the device this gate exists for. A coarse primary pointer catches
+  // those, and the tablets it also catches lose nothing but decoration.
+  const isCoarsePointer =
+    typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
 
   const handleOpenApp = () => {
     if (isAuthenticated) {
@@ -25,17 +32,24 @@ export default function DevHomeHeroSection() {
         fetchPriority="high"
         style={{ zIndex: -2 }}
       />
-      <video
-        className="ch-hero-bg"
-        src="/videos/Triangle-B&W-Light-Fixed-web.mp4"
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-        style={{ zIndex: -1 }}
-      />
+      {/* The video is decoration over the poster above, which carries the same
+          frame. preload="auto" pulled all 3 MB of it onto every device and kept
+          a decoder alive for a loop nobody looks at, which is a poor trade on a
+          phone and has been reported as the browser dying on open. Pointer
+          devices only; everything touch-first keeps the poster. */}
+      {!isMobile && !isCoarsePointer && (
+        <video
+          className="ch-hero-bg"
+          src="/videos/Triangle-B&W-Light-Fixed-web.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          style={{ zIndex: -1 }}
+        />
+      )}
 
       <div className="ch-container flex justify-end">
         <FadeInUp className="max-w-[640px] mr-4 md:mr-8 lg:mr-[6%] xl:mr-[10%] flex flex-col text-right md:text-left">

@@ -77,9 +77,16 @@
       // Kick off hero video fetch during HTML parse on the homepage only.
       // Same URL and no-cors mode as React's <video>, so HTTP cache is shared
       // and the React-mounted <video> hits cache instantly on canPlay.
+      //
+      // These gates must match the hero's: it renders the video on pointer
+      // devices only, and warming it here regardless would pull the whole 3 MB
+      // file onto a phone that never shows it. Width alone misses a phone held
+      // in landscape, so a coarse primary pointer bails out too.
       (function () {
         var p = location.pathname;
         if (p !== "/" && p !== "") return;
+        if (window.innerWidth < 768) return;
+        if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return;
         var v = document.createElement("video");
         v.preload = "auto";
         v.muted = true;
