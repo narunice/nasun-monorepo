@@ -4,6 +4,7 @@ import { useToast } from "../../../components/ui/Toast";
 import { tierForScratch } from "../../../components/celebration";
 import { useInvalidateGameHistory } from "../../game-history";
 import { NUSDC_UNIT_NUMBER, NUSDC_UNIT } from "../../../lib/constants/assets";
+import { useBalanceStore } from "../../../store/useBalanceStore";
 
 const CARD_PRICE_NUSDC = 5;
 
@@ -116,8 +117,55 @@ export function useScratchCardPage(celebrate: any) {
     }
   }, [walletAddress, results, revealed]);
 
+  // Deferring the purchase-time refresh only silences one writer: useBalanceSync
+  // polls every 15s, so a poll landing while cards are still face-down moves the
+  // Available figure and gives the batch away before the user scratches it. Hold
+  // the balance for as long as the batch has unrevealed cards. The hold waits for
+  // a known balance, because staging the very first fetch away would leave
+  // Available reading 0 for a batch restored from storage.
+  const holdForReveal = useBalanceStore((s) => s.holdForReveal);
+  const releaseReveal = useBalanceStore((s) => s.releaseReveal);
+  const balanceKnown = useBalanceStore((s) => s.isInitialized);
+  const holdingRef = useRef(false);
+  // A purchase in flight counts as unrevealed: executeGameTx waits for the tx
+  // to settle, and the cards are face down for that whole window. Leaving it
+  // out would let this effect run on the re-render that starts the purchase
+  // and release the hold onBuy had just taken.
+  const hasUnrevealed =
+    balanceKnown && (buyingCount !== null || (results.length > 0 && revealed.size < results.length));
+
+  // Declared ahead of the reveal-complete effect so the release (and the staged
+  // balance it flushes) lands before that effect's refresh.
+  useEffect(() => {
+    if (hasUnrevealed === holdingRef.current) return;
+    holdingRef.current = hasUnrevealed;
+    if (hasUnrevealed) holdForReveal();
+    else releaseReveal();
+  }, [hasUnrevealed, holdForReveal, releaseReveal]);
+
+  // Leaving the page mid-reveal must not strand the hold, which would freeze the
+  // displayed balance for the rest of the session.
+  useEffect(
+    () => () => {
+      if (holdingRef.current) {
+        holdingRef.current = false;
+        releaseReveal();
+      }
+    },
+    [releaseReveal],
+  );
+
   const onBuy = useCallback(async (count: number) => {
     setBuyingCount(count);
+    // Take the hold here rather than waiting for the effect's next run, so the
+    // settle window is covered from the first instruction, the way WheelPage
+    // does it. The effect above is still the only release path: `finally`
+    // clears buyingCount, which flips hasUnrevealed back to false for a
+    // purchase that produced no cards and releases the hold then.
+    if (balanceKnown && !holdingRef.current) {
+      holdingRef.current = true;
+      holdForReveal();
+    }
     try {
       const out = await buy(count);
       if (!out) return;
@@ -133,7 +181,7 @@ export function useScratchCardPage(celebrate: any) {
     } finally {
       setBuyingCount(null);
     }
-  }, [buy, showToast, invalidateHistory, revealed]);
+  }, [buy, showToast, invalidateHistory, revealed, balanceKnown, holdForReveal]);
 
   useEffect(() => {
     if (results.length === 0) return;
