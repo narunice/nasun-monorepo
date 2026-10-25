@@ -110,11 +110,7 @@ export async function insertDailyCappedPoints(
     // would instead be fixed by the lock statement itself, so a queued writer
     // would read the table as it was before the writer ahead of it committed
     // and re-open the duplicate credit, with no error to show for it.
-    inserted += await pointsDb.begin('ISOLATION LEVEL READ COMMITTED', async (txRaw) => {
-      // postgres.js TransactionSql drops call-signature typing via Omit<Sql>;
-      // cast back to recover the tagged-template signature (same pattern as
-      // routes/nasun-metrics.ts).
-      const tx = txRaw as unknown as NonNullable<typeof pointsDb>;
+    inserted += await pointsDb.begin('ISOLATION LEVEL READ COMMITTED', async (tx) => {
       await tx`SELECT pg_advisory_xact_lock(${String(CAP_LOCK_KEY)}::bigint)`;
       const res = await tx`
         INSERT INTO activity_points

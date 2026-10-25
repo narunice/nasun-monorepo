@@ -445,11 +445,7 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
   // "canceling statement due to statement timeout" once the per-date snapshot
   // join + re-rank window crossed ~30s on busier days and starved unrelated
   // HTTP queries sharing the pool.
-  await db.begin(async (txRaw) => {
-    // postgres.js TransactionSql drops call-signature typing via Omit<Sql>;
-    // cast back to recover the tagged-template signature (same pattern as
-    // routes/nasun-metrics.ts).
-    const tx = txRaw as unknown as typeof db;
+  await db.begin(async (tx) => {
     await tx`SET LOCAL statement_timeout = '5min'`;
 
   // Step 1: compute mission-filtered base + multiplier-scaled delta for the date.

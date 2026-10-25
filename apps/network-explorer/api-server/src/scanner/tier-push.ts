@@ -138,9 +138,7 @@ async function runPush(): Promise<void> {
       // Race-safe UPDATE: capture `tier` at SELECT time and require WHERE
       // tier = $captured. If nsi-compute mutated the tier between our
       // SELECT and UPDATE, the row simply re-enters the next cycle.
-      await pointsDb.begin(async (txDb) => {
-        const sql = txDb as unknown as typeof pointsDb;
-        if (!sql) return;
+      await pointsDb.begin(async (sql) => {
         for (const r of slice) {
           await sql`
             UPDATE user_nsi

@@ -598,8 +598,7 @@ async function main() {
     };
 
     try {
-      await pgDb.begin(async (tx) => {
-        const sql = tx as unknown as typeof pgDb;
+      await pgDb.begin(async (sql) => {
         await sql`
           INSERT INTO activity_points
             (wallet_address, identity_id, tx_digest, category, activity_type,

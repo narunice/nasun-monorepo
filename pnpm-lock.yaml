@@ -269,8 +269,8 @@ importers:
         specifier: ^5.2.0
         version: 5.10.0
       postgres:
-        specifier: ^3.4.5
-        version: 3.4.8
+        specifier: ^3.4.9
+        version: 3.4.9
       ws:
         specifier: '>=8.20.1'
         version: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -446,8 +446,8 @@ importers:
         specifier: '>=5.10.1 <6'
         version: 5.11.0
       postgres:
-        specifier: ^3.4.5
-        version: 3.4.8
+        specifier: ^3.4.9
+        version: 3.4.9
       ulid:
         specifier: ^3.0.2
         version: 3.0.2
@@ -903,8 +903,8 @@ importers:
         specifier: ^5.2.0
         version: 5.10.0
       postgres:
-        specifier: ^3.4.5
-        version: 3.4.8
+        specifier: ^3.4.9
+        version: 3.4.9
       sharp:
         specifier: '>=0.35.4 <0.36'
         version: 0.35.5(@types/node@22.19.15)
@@ -7886,8 +7886,8 @@ packages:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postgres@3.4.8:
-    resolution: {integrity: sha512-d+JFcLM17njZaOLkv6SCev7uoLaBtfK86vMUXhW1Z4glPWh4jozno9APvW/XKFJ3CCxVoC7OL38BqRydtu5nGg==}
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
     engines: {node: '>=12'}
 
   preact@10.24.2:
@@ -18799,7 +18799,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postgres@3.4.8: {}
+  postgres@3.4.9: {}
 
   preact@10.24.2: {}
 

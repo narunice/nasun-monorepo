@@ -282,8 +282,7 @@ async function runCompute(): Promise<void> {
     // The explicit statement_timeout is scoped to this transaction: the pool-wide
     // 30s default is right for HTTP handlers but too tight for a batch aggregate
     // that legitimately takes seconds and grows with the chain.
-    const txCounts = await indexerDb.begin(async (tx) => {
-      const db = tx as unknown as typeof indexerDb;
+    const txCounts = await indexerDb.begin(async (db) => {
       // `unsafe` because SET does not accept bind parameters -- postgres.js would
       // render this as `SET LOCAL statement_timeout = $1` and Postgres rejects it.
       // The value is a module constant, never user input.
@@ -465,13 +464,8 @@ async function runCompute(): Promise<void> {
 
     const cycleStartedAt = new Date(started);
 
-    // Bulk UPSERT in a single transaction. The `tx as unknown as typeof pointsDb`
-    // cast follows the existing pattern in ban-service.ts:211 and settle-pado.ts:434
-    // — postgres.js's transaction handle is callable both as template literal and
-    // bulk-insert helper but TypeScript's narrowed type loses the call signatures.
-    await pointsDb.begin(async (tx) => {
-      const sql = tx as unknown as typeof pointsDb;
-      if (!sql) return;
+    // Bulk UPSERT in a single transaction.
+    await pointsDb.begin(async (sql) => {
       for (let i = 0; i < computed.length; i += BATCH_SIZE) {
         const slice = computed.slice(i, i + BATCH_SIZE);
         const rows = slice.map((c) => ({

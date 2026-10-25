@@ -208,8 +208,7 @@ export async function applyBans(
   const out: ApplyResult[] = [];
 
   for (const r of mapped) {
-    await db.begin(async (tx) => {
-      const sql = tx as unknown as typeof db;
+    await db.begin(async (sql) => {
       // activity_points has a PG-side guard that blocks all UPDATEs by
       // default. Admin corrections bypass for this transaction only.
       await sql`SET LOCAL app.allow_points_mutation = 'on'`;
@@ -272,8 +271,7 @@ export async function applyUnbans(
   const noteSuffix = mode === 'forward-only' ? ' (forward-only unban)' : '';
 
   for (const r of mapped) {
-    await db.begin(async (tx) => {
-      const sql = tx as unknown as typeof db;
+    await db.begin(async (sql) => {
       await sql`SET LOCAL app.allow_points_mutation = 'on'`;
       const result = await sql<Array<{ identity_id: string; unbanned_at: Date }>>`
         UPDATE banned_users

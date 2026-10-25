@@ -21,7 +21,7 @@
     "@noble/hashes": "^1.8.0",
     "hono": "^4.7.5",
     "jose": "^5.2.0",
-    "postgres": "^3.4.5",
+    "postgres": "^3.4.9",
     "ws": "^8.18.0"
   },
   "devDependencies": {

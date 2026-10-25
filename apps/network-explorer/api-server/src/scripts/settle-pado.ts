@@ -448,8 +448,7 @@ async function main() {
     // Atomic: INSERT activity_points + UPDATE settled in one PG transaction.
     // ON CONFLICT DO NOTHING ensures idempotency on re-runs.
     try {
-      await pgDb.begin(async (tx) => {
-        const sql = tx as unknown as typeof pgDb;
+      await pgDb.begin(async (sql) => {
         await sql`
           INSERT INTO activity_points
             (wallet_address, identity_id, tx_digest, category, activity_type,

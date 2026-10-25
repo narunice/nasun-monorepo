@@ -160,11 +160,7 @@ app.post('/', async (c) => {
   }
 
   try {
-    const result = await pointsDb.begin(async (txRaw) => {
-      // TransactionSql drops call-signature typing via Omit<Sql>; cast back for
-      // tagged-template + helper invocation.
-      const tx = txRaw as unknown as typeof pointsDb;
-      if (!tx) throw new Error('unreachable');
+    const result = await pointsDb.begin(async (tx) => {
       // 1. Temp tables
       await tx.unsafe(
         `CREATE TEMP TABLE verified_wallets (wallet_address TEXT PRIMARY KEY) ON COMMIT DROP`,
