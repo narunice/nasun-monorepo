@@ -505,34 +505,42 @@ async function runCompute(): Promise<void> {
         `;
       }
 
-      // Audit row inside the same transaction — wrapped in a savepoint so
-      // any failure here (JSONB serialisation, schema drift, etc.) only
-      // rolls back the audit insert, never the user_nsi UPSERTs above.
-      // The state side of nsi-compute must never be held hostage to audit
-      // bookkeeping. PK on cycle_started_at + ON CONFLICT DO NOTHING makes
-      // this idempotent across crash-restart races.
+      // Audit row inside the same transaction, in a savepoint so a failure
+      // here (JSONB serialisation, schema drift) rolls back only the audit
+      // insert and the user_nsi UPSERTs above still commit. The state side of
+      // nsi-compute must never be held hostage to audit bookkeeping. PK on
+      // cycle_started_at + ON CONFLICT DO NOTHING makes this idempotent
+      // across crash-restart races.
+      //
+      // It has to be sql.savepoint, not a hand-written SAVEPOINT statement.
+      // postgres.js records the first failed query of a begin() scope and
+      // rethrows it once the callback returns, so catching the error here is
+      // not enough: the driver would still roll the whole transaction back and
+      // take the UPSERTs with it, while this block logged that they were
+      // preserved. savepoint() opens a nested scope with its own error slot,
+      // and the insert must go through that scope's own handle (`tx`) for the
+      // failure to stay inside it.
       try {
-        await sql`SAVEPOINT audit_insert`;
-        await sql`
-          INSERT INTO nsi_compute_events (
-            cycle_started_at, cycle_completed_at, event_type, metadata
-          ) VALUES (
-            ${cycleStartedAt}, ${new Date()}, 'cycle',
-            ${sql.json({
-              t1: dist.t1,
-              t2: dist.t2,
-              t3: dist.t3,
-              monotone_up_active: isMonotoneUpPeriod,
-              identities_computed: computed.length,
-              cycle_duration_ms: Date.now() - started,
-              formula_version: NSI_FORMULA.version,
-            })}
-          )
-          ON CONFLICT (cycle_started_at) DO NOTHING
-        `;
-        await sql`RELEASE SAVEPOINT audit_insert`;
+        await sql.savepoint(async (tx) => {
+          await tx`
+            INSERT INTO nsi_compute_events (
+              cycle_started_at, cycle_completed_at, event_type, metadata
+            ) VALUES (
+              ${cycleStartedAt}, ${new Date()}, 'cycle',
+              ${tx.json({
+                t1: dist.t1,
+                t2: dist.t2,
+                t3: dist.t3,
+                monotone_up_active: isMonotoneUpPeriod,
+                identities_computed: computed.length,
+                cycle_duration_ms: Date.now() - started,
+                formula_version: NSI_FORMULA.version,
+              })}
+            )
+            ON CONFLICT (cycle_started_at) DO NOTHING
+          `;
+        });
       } catch (auditErr) {
-        await sql`ROLLBACK TO SAVEPOINT audit_insert`;
         console.error(
           '[nsi-compute] audit insert failed (state UPSERT preserved):',
           auditErr instanceof Error ? auditErr.message : String(auditErr),
