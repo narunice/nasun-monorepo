@@ -21,8 +21,10 @@ export const UJU_ECOSYSTEM_POSITIONS_ENABLED =
 // External-chain dApps (Uniswap/Aave on Ethereum, Hyperliquid, Drift on Solana)
 // in the Activity > Apps Directory. When false they are filtered out of the
 // registry entirely rather than shown as "coming-soon". Enabled everywhere
-// since 2026-10-11; a pinned entry links out but shows no positions until
-// EcosystemPositionsSection is re-enabled in DashboardTab.
+// since 2026-10-11. A pinned entry links out, and now also shows a positions
+// card, since EcosystemPositionsSection renders behind the flag above. Drift
+// is the one exception: its link works but its card is held back by
+// DRIFT_POSITIONS_AVAILABLE, because the data host it read is gone.
 export const UJU_EXTERNAL_CHAIN_APPS_ENABLED =
   import.meta.env.VITE_UJU_EXTERNAL_CHAIN_APPS_ENABLED === 'true';
 

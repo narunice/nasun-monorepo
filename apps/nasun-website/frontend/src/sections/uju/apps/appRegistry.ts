@@ -87,10 +87,15 @@ const ALL_APPS: AppEntry[] = [
     isNative: true,
   },
   // External dApps. A pinned entry shows up in Activity > Apps Directory and
-  // on the dashboard's activated-apps list with an outbound link; it does NOT
-  // currently surface positions. The per-dApp positions cards exist under
-  // dashboard/positions/ but EcosystemPositionsSection is commented out of
-  // DashboardTab (2026-05-20, reload-loop diagnosis), so nothing renders them.
+  // on the dashboard's activated-apps list with an outbound link, and also
+  // surfaces a positions card when one exists under dashboard/positions/.
+  // EcosystemPositionsSection renders those behind
+  // UJU_ECOSYSTEM_POSITIONS_ENABLED; it used to be commented out of
+  // DashboardTab (2026-05-20, reload-loop isolation) and that comment stayed
+  // here long after the section came back, so check the flag and the section,
+  // not this comment, for what renders. Drift is the exception: its card is
+  // held back by DRIFT_POSITIONS_AVAILABLE because the data host is gone,
+  // while its outbound link still works.
   {
     id: "uniswap",
     name: "Uniswap",

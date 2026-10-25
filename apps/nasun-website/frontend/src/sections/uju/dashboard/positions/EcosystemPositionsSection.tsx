@@ -13,6 +13,7 @@ import { GostopPositionsCard } from "./GostopPositionsCard";
 import { HyperliquidPositionsCard } from "./HyperliquidPositionsCard";
 import { PadoPositionsCard } from "./PadoPositionsCard";
 import { UniswapPositionsCard } from "./UniswapPositionsCard";
+import { DRIFT_POSITIONS_AVAILABLE } from "./driftConfig";
 import { useValidEvmAddress } from "./useValidEvmAddress";
 import { useValidSolanaAddress } from "./useValidSolanaAddress";
 
@@ -26,7 +27,11 @@ export function EcosystemPositionsSection() {
   const showUniswap = isPinned("uniswap") && !!evmAddress;
   const showHyperliquid = isPinned("hyperliquid") && !!evmAddress;
   const showAave = isPinned("aave") && !!evmAddress;
-  const showDrift = isPinned("drift") && !!solAddress;
+  // Drift additionally gates on its data host being reachable at all; see
+  // DRIFT_POSITIONS_AVAILABLE. Without this the card renders a permanent
+  // error for anyone who pinned Drift with a verified Solana address.
+  const showDrift =
+    DRIFT_POSITIONS_AVAILABLE && isPinned("drift") && !!solAddress;
   if (
     !showPado &&
     !showGostop &&
