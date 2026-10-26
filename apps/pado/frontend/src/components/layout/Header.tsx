@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
 import { HeaderNetValue } from "./HeaderNetValue";
-import { GenesisPassBadge } from "@nasun/wallet-ui";
+import { GenesisPassBadge, NasunStandingBadge } from "@nasun/wallet-ui";
+import { useActiveAddress } from "../../hooks/useActiveAddress";
+import { NETWORK_CONFIG } from "../../config/network";
 import { useGenesisPass } from "../../hooks/useGenesisPass";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import { useAdminAccess } from "../../features/admin";
@@ -53,6 +55,7 @@ export function Header() {
   const { isAdmin } = useAdminAccess();
   const isAppAdmin = useAppAdmin();
   const hasGenesisPass = useGenesisPass();
+  const activeAddress = useActiveAddress();
   const hasSpotAccess = isAppAdmin || hasAccess("spot");
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
@@ -248,6 +251,14 @@ export function Header() {
           <ThemeToggle />
           {hasSpotAccess && <HeaderNetValue />}
           {hasGenesisPass && <GenesisPassBadge className="hidden sm:inline-flex" />}
+          {/* Standing sits next to the Genesis Pass badge because both answer
+              "what does this wallet get", and the tier is what sets the trading
+              fee shown in OrderConfirmModal. */}
+          <NasunStandingBadge
+            walletAddress={activeAddress}
+            apiBase={NETWORK_CONFIG.explorerApiUrl}
+            className="hidden sm:inline-flex"
+          />
           {showWalletButton && (
             <WalletConnect addressStartChars={isMobile ? 0 : 2} addressEndChars={3} />
           )}

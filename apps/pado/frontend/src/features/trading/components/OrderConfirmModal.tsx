@@ -73,9 +73,16 @@ export function OrderConfirmModal({
   const feeRate = effectiveBps / 10000;
   const fee = total * feeRate;
   const tier = tierData?.tier ?? 1;
+  // Name the tier even when it earns nothing yet. 59,447 of 62,600 wallets are
+  // tier 1 (measured 2026-10-26), so hiding the label when the discount is 0
+  // kept the fee discount a secret from almost everyone who pays full price,
+  // at the one moment they are looking at the fee.
+  const nextThreshold = tierData?.next_threshold ?? null;
   const feeLabel = discountBps > 0
     ? `${(effectiveBps / 100).toFixed(4)}% (Tier ${tier}, -${discountBps / 100}%)`
-    : `${(effectiveBps / 100).toFixed(2)}%`;
+    : nextThreshold !== null
+      ? `${(effectiveBps / 100).toFixed(2)}% (Tier ${tier}, discount from Tier ${tier + 1})`
+      : `${(effectiveBps / 100).toFixed(2)}% (Tier ${tier})`;
 
   // Price vs mid price comparison
   const priceDiffPct = midPrice > 0 && priceNum > 0
