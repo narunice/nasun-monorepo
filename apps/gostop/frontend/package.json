@@ -14,6 +14,7 @@
     "@mysten/sui": "1.45.2",
     "@nasun/devnet-config": "workspace:*",
     "@nasun/profile-react": "workspace:*",
+    "@nasun/standing": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@tanstack/react-query": "^5.90.12",

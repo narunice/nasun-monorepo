@@ -36,9 +36,15 @@ app.use(
       'https://staging.nasun.io',
       'https://pado.finance',
       'https://staging.pado.finance',
+      // gostop.app reads /standing/by-address for the header badge and the
+      // profile card. It had no browser-side call to this API before, so
+      // without these entries both surfaces fail CORS and, because the hook
+      // fails silently, simply never appear.
+      'https://gostop.app',
       'http://localhost:5174',
       'http://localhost:5175',
       'http://localhost:5176',
+      'http://localhost:5178',
       'http://localhost:4173',
     ],
     maxAge: 3600,

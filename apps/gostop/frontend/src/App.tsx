@@ -1,9 +1,11 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { lazyWithRetry } from './utils/lazyWithRetry'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
-import { WalletConnect } from '@nasun/wallet-ui'
+import { WalletConnect, NasunStandingBadge } from '@nasun/wallet-ui'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import { HeaderBalance } from './components/HeaderBalance'
+import { useActiveAddress } from './hooks/useActiveAddress'
+import { EXPLORER_API_URL } from './lib/explorer'
 import LotteryPage from './pages/LotteryPage'
 import LotteryHistoryPage from './pages/LotteryHistoryPage'
 import ScratchCardPage from './pages/ScratchCardPage'
@@ -115,6 +117,7 @@ export default function App() {
 }
 
 function Header() {
+  const activeAddress = useActiveAddress()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
   const menuRef = useRef<HTMLDivElement>(null)
@@ -160,6 +163,14 @@ function Header() {
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <HeaderBalance />
+          {/* Standing next to the balance: both are "where this wallet stands",
+              and the badge links the three apps to one identity, which the
+              nasun.io link in this same cluster already points at. */}
+          <NasunStandingBadge
+            walletAddress={activeAddress}
+            apiBase={EXPLORER_API_URL}
+            className="hidden sm:inline-flex"
+          />
           <HeaderSoundToggle />
           <div className="shrink-0">
             <WalletConnect />

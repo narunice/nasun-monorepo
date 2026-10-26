@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { StandingPill, standingTooltipLines, useNasunStanding } from '@nasun/wallet-ui';
 import { useMeProfile, useMeStreak } from '../../../lib/api/queries';
+import { EXPLORER_API_URL } from '../../../lib/explorer';
 import { fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, shortWallet } from '../format';
 
 interface HealthBarProps {
@@ -50,6 +52,36 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
   );
 }
 
+/**
+ * Nasun Standing for this wallet, with the distance to the next tier spelled
+ * out: the tier on its own means little when 95% of wallets are tier 1.
+ * Renders nothing until the standing is known, so the card never jumps.
+ */
+function StandingRow({ wallet }: { wallet: string }) {
+  const { standing } = useNasunStanding(wallet, EXPLORER_API_URL);
+  if (!standing) return null;
+
+  const { next } = standingTooltipLines({
+    tier: standing.tier,
+    nsiScore: standing.nsiScore,
+    nextThreshold: standing.nextThreshold,
+  });
+
+  return (
+    <div>
+      <span className="text-xs uppercase tracking-widest text-neutral-300 block mb-0.5">
+        Nasun Standing
+      </span>
+      <StandingPill
+        tier={standing.tier}
+        nsiScore={standing.nsiScore}
+        nextThreshold={standing.nextThreshold}
+      />
+      {next && <span className="block text-[11px] text-neutral-400 mt-0.5">{next}</span>}
+    </div>
+  );
+}
+
 export function MyProfileCard() {
   const { data, isLoading, isError, error, refetch } = useMeProfile();
   const { data: streak } = useMeStreak();
@@ -95,13 +127,19 @@ export function MyProfileCard() {
             </>
           )}
         </div>
-        <div className="text-right flex-shrink-0">
-          <span className="text-xs uppercase tracking-widest text-neutral-300 block">
-            Nasun Points
-          </span>
-          <span className="font-display text-2xl text-gold-200">
-            {data.ecosystem_points.toLocaleString('en-US')}
-          </span>
+        <div className="text-right flex-shrink-0 space-y-1.5">
+          <div>
+            <span className="text-xs uppercase tracking-widest text-neutral-300 block">
+              Nasun Points
+            </span>
+            <span className="font-display text-2xl text-gold-200">
+              {data.ecosystem_points.toLocaleString('en-US')}
+            </span>
+          </div>
+          {/* Standing sits with Nasun Points because both are ecosystem-wide
+              standing rather than gostop results, which the Stat row below
+              already covers. */}
+          <StandingRow wallet={data.wallet} />
         </div>
       </div>
 

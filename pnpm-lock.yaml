@@ -302,6 +302,9 @@ importers:
       '@nasun/profile-react':
         specifier: workspace:*
         version: link:../../../packages/profile-react
+      '@nasun/standing':
+        specifier: workspace:*
+        version: link:../../../packages/nasun-standing
       '@nasun/wallet':
         specifier: workspace:*
         version: link:../../../packages/wallet
@@ -1267,6 +1270,9 @@ importers:
       '@nasun/devnet-config':
         specifier: workspace:*
         version: link:../devnet-config
+      '@nasun/standing':
+        specifier: workspace:*
+        version: link:../nasun-standing
       '@nasun/wallet':
         specifier: workspace:*
         version: link:../wallet
