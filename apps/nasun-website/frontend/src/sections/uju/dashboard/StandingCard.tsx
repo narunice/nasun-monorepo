@@ -1,48 +1,33 @@
 // Nasun Standing (NSI) card for the my-account dashboard.
 //
 // Surfaces the user's current Nasun Standing Index tier + score + the economic
-// benefits the tier unlocks, reading the same public endpoint the (currently
-// hidden) NavStandingBadge uses:
-//   `${VITE_EXPLORER_API_URL}/standing/by-address/{wallet}`
+// benefits the tier unlocks.
 //
 // Notes:
-//   - useState + useEffect (no react-query) mirrors NavStandingBadge so the two
-//     NSI surfaces share identical lifecycle / cancellation semantics.
+//   - The fetch lives in @nasun/wallet-ui's useNasunStanding, shared with the
+//     navbar badge and with Pado / GoStop, so there is one place that knows the
+//     endpoint and the response shape.
 //   - The public route returns a tier-1 baseline even when the user has no
 //     `user_nsi` row yet, so new users see an honest "Tier 1, climb from here"
 //     card rather than an empty gap.
-//   - Silent-fail: any fetch error keeps `data === null` and the card renders
-//     nothing. No noisy fallback.
+//   - Silent-fail: any fetch error leaves the standing null and the card
+//     renders nothing. No noisy fallback.
 //   - Copy strings come from `@nasun/standing/copy.ts` so wording stays
 //     consistent with the navbar badge and future Pado / GoStop surfaces.
 //   - Sub-score breakdown (staking / lp / tx / diversity / nft) needs the
 //     `/standing/me` endpoint, which is reserved for Phase 2 and not yet built;
 //     this card intentionally shows only the public coarse signals.
 
-import { useState, useEffect } from "react";
 import {
   NSI_MAX_SCORE,
   TIER_BADGE_TOOLTIP_DESC,
   type Tier,
 } from "@nasun/standing";
+import { useNasunStanding } from "@nasun/wallet-ui";
 import { useAuth } from "@/features/auth";
 import { UjuCard, UjuSectionHeader, UjuBadge } from "../shared";
 
 const EXPLORER_API = import.meta.env.VITE_EXPLORER_API_URL || "";
-
-interface StandingBenefits {
-  pado_fee_discount_bps: number;
-  gostop_max_bet_usd: number;
-  can_create_vault: boolean;
-}
-
-interface StandingData {
-  tier: Tier;
-  nsi_score: number;
-  next_threshold: number | null;
-  has_gp: boolean;
-  benefits: StandingBenefits;
-}
 
 // Tier badge tone: 1 = neutral, 2 = violet, 3 = gold (amber). Mirrors the
 // brand-neutral palette chosen for NavStandingBadge so the two surfaces agree.
@@ -65,50 +50,7 @@ export function StandingCard() {
   const { user } = useAuth();
   const walletAddress = user?.walletAddress;
 
-  const [data, setData] = useState<StandingData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!walletAddress || !EXPLORER_API) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `${EXPLORER_API}/standing/by-address/${encodeURIComponent(walletAddress)}`,
-        );
-        if (!res.ok || cancelled) return;
-        const json = await res.json();
-        if (cancelled) return;
-        if (typeof json?.tier === "number" && json.tier >= 1 && json.tier <= 3) {
-          setData({
-            tier: json.tier as Tier,
-            nsi_score: Number(json.nsi_score ?? 0),
-            next_threshold:
-              json.next_threshold === null ? null : Number(json.next_threshold),
-            has_gp: Boolean(json.has_gp),
-            benefits: {
-              pado_fee_discount_bps: Number(json.benefits?.pado_fee_discount_bps ?? 0),
-              gostop_max_bet_usd: Number(json.benefits?.gostop_max_bet_usd ?? 0),
-              can_create_vault: Boolean(json.benefits?.can_create_vault),
-            },
-          });
-        }
-      } catch {
-        // Silent-fail: card stays hidden.
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [walletAddress]);
+  const { standing, isLoading: loading } = useNasunStanding(walletAddress, EXPLORER_API);
 
   // Title carries an "Experimental" tag so users read the whole NSI surface as
   // a work-in-progress signal (formula + thresholds may still change; sub-score
@@ -133,9 +75,16 @@ export function StandingCard() {
     );
   }
 
-  if (!data) return null;
+  if (!standing) return null;
 
-  const { tier, nsi_score, next_threshold, has_gp, benefits } = data;
+  const { tier, nsiScore: nsi_score, nextThreshold: next_threshold, hasGp: has_gp } = standing;
+  // Older deployments answer without benefits; treat that as the tier-1 floor
+  // rather than rendering "undefined" discounts.
+  const benefits = standing.benefits ?? {
+    pado_fee_discount_bps: 0,
+    gostop_max_bet_usd: 0,
+    can_create_vault: false,
+  };
   const score = Math.round(nsi_score);
   const progressPct = next_threshold
     ? Math.min(100, Math.round((nsi_score / next_threshold) * 100))
