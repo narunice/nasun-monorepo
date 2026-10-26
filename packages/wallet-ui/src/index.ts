@@ -96,6 +96,12 @@ export type { ZKIDManagerProps } from './social/ZKIDManager';
 export { GenesisPassBadge, AllianceBadge } from './badges';
 export type { GenesisPassBadgeProps, AllianceBadgeProps } from './badges';
 
+// Nasun Standing (NSI) surfaces, shared by nasun.io / Pado / GoStop.
+export { StandingPill, NasunStandingBadge, standingTooltipLines } from './badges';
+export type { StandingPillProps, NasunStandingBadgeProps } from './badges';
+export { useNasunStanding } from './hooks/useNasunStanding';
+export type { NasunStanding, UseNasunStandingResult } from './hooks/useNasunStanding';
+
 // Network components
 export { NetworkBadge } from './network/NetworkBadge';
 export type { NetworkBadgeProps } from './network/NetworkBadge';
